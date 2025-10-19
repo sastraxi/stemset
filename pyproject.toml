@@ -17,6 +17,13 @@ dependencies = [
     "numpy>=2.3.4",
 ]
 
+[project.scripts]
+stemset = "src.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",

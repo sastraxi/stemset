@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { StemMetadata } from '../types';
+import { getFileMetadata } from '../api';
 
 interface StemPlayerProps {
   stems: {
@@ -8,6 +9,8 @@ interface StemPlayerProps {
     bass?: string;
     other?: string;
   };
+  profileName: string;
+  fileName: string;
 }
 
 interface LoadedStem {
@@ -17,13 +20,14 @@ interface LoadedStem {
   metadata: StemMetadata | null;
 }
 
-export function StemPlayer({ stems }: StemPlayerProps) {
+export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const [loadedStems, setLoadedStems] = useState<Map<string, LoadedStem>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [metadata, setMetadata] = useState<Record<string, StemMetadata> | null>(null);
   const startTimeRef = useRef<number>(0);
   const pauseTimeRef = useRef<number>(0);
 
@@ -32,18 +36,29 @@ export function StemPlayer({ stems }: StemPlayerProps) {
     const audioContext = new AudioContext({ sampleRate: 44100 });
     audioContextRef.current = audioContext;
 
-    loadStems();
+    loadMetadataAndStems();
 
     return () => {
       audioContext.close();
     };
   }, []);
 
-  async function loadStems() {
+  async function loadMetadataAndStems() {
     if (!audioContextRef.current) return;
 
     setIsLoading(true);
     const audioContext = audioContextRef.current;
+
+    // Load metadata first
+    let stemMetadata: Record<string, StemMetadata> = {};
+    try {
+      stemMetadata = await getFileMetadata(profileName, fileName);
+      setMetadata(stemMetadata);
+      console.log('Loaded metadata:', stemMetadata);
+    } catch (error) {
+      console.warn('Could not load metadata, using defaults:', error);
+    }
+
     const stemMap = new Map<string, LoadedStem>();
 
     for (const [name, url] of Object.entries(stems)) {
@@ -55,21 +70,29 @@ export function StemPlayer({ stems }: StemPlayerProps) {
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-        // Try to extract metadata from WAV file
-        // For now, we'll start with default gain (the metadata is embedded in WAV,
-        // but reading it requires parsing RIFF chunks which is complex in browser)
-        const metadata: StemMetadata | null = null;
+        // Get metadata for this stem
+        const stemMeta = stemMetadata[name] || null;
 
-        // Create gain node
+        // Create gain node with default from metadata
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 1.0; // Start at unity gain
+
+        // Set initial gain based on stem_gain_adjustment_db from metadata
+        // Convert dB to linear gain: gain = 10^(dB/20)
+        if (stemMeta && stemMeta.stem_gain_adjustment_db !== undefined) {
+          const gainLinear = Math.pow(10, stemMeta.stem_gain_adjustment_db / 20);
+          gainNode.gain.value = gainLinear;
+          console.log(`${name}: setting initial gain to ${stemMeta.stem_gain_adjustment_db}dB (${gainLinear.toFixed(2)} linear)`);
+        } else {
+          gainNode.gain.value = 1.0; // Unity gain if no metadata
+        }
+
         gainNode.connect(audioContext.destination);
 
         stemMap.set(name, {
           buffer: audioBuffer,
           source: null,
           gainNode,
-          metadata,
+          metadata: stemMeta,
         });
 
         // Set duration from first stem

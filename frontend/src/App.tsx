@@ -237,10 +237,14 @@ function App() {
         </aside>
 
         <main className="player-area">
-          {selectedFile ? (
+          {selectedFile && selectedProfile ? (
             <>
               <h2>{selectedFile.name}</h2>
-              <StemPlayer stems={selectedFile.stems} />
+              <StemPlayer
+                stems={selectedFile.stems}
+                profileName={selectedProfile}
+                fileName={selectedFile.name}
+              />
             </>
           ) : (
             <div className="empty-state">

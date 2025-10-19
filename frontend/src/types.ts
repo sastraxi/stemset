@@ -22,12 +22,10 @@ export interface StemFile {
 }
 
 export interface StemMetadata {
-  original_lufs: number;
-  target_lufs: number;
-  normalization_gain_db: number;
-  stem_gain_adjustment_db: number;
-  total_gain_db: number;
   stem_type: string;
+  measured_lufs: number | null;
+  target_lufs: number;
+  stem_gain_adjustment_db: number;
 }
 
 export interface Job {

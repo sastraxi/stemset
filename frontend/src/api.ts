@@ -34,3 +34,11 @@ export async function getJobs(profile?: string): Promise<{ jobs: Job[] }> {
   const response = await fetch(url);
   return response.json();
 }
+
+export async function getFileMetadata(profileName: string, fileName: string): Promise<Record<string, any>> {
+  const response = await fetch(`${API_BASE}/profiles/${profileName}/files/${fileName}/metadata`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch metadata: ${response.statusText}`);
+  }
+  return response.json();
+}

@@ -1,6 +1,7 @@
 """Litestar API for Stemset."""
 
 import asyncio
+import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -101,6 +102,32 @@ async def get_profile_files(profile_name: str) -> dict:
                 )
 
     return {"files": files}
+
+
+@get("/api/profiles/{profile_name:str}/files/{file_name:str}/metadata")
+async def get_file_metadata(profile_name: str, file_name: str) -> dict:
+    """Get metadata for a specific processed file."""
+    config = get_config()
+    profile = config.get_profile(profile_name)
+    if profile is None:
+        return Response(
+            content={"error": f"Profile '{profile_name}' not found"},
+            status_code=404,
+        )
+
+    media_path = profile.get_media_path()
+    metadata_file = media_path / file_name / "metadata.json"
+
+    if not metadata_file.exists():
+        return Response(
+            content={"error": f"Metadata not found for '{file_name}'"},
+            status_code=404,
+        )
+
+    with open(metadata_file, "r") as f:
+        metadata = json.load(f)
+
+    return metadata
 
 
 @post("/api/profiles/{profile_name:str}/scan")
@@ -227,30 +254,25 @@ async def process_job(job: Job) -> dict[str, str]:
     Returns:
         Dict mapping stem names to output file paths
     """
-    import os
-
     config = get_config()
     profile = config.get_profile(job.profile_name)
 
     if profile is None:
         raise ValueError(f"Profile '{job.profile_name}' not found")
 
-    # Set process priority (nice) to be lower than interactive processes
-    # This prevents the separator from slowing down the rest of the system
-    try:
-        os.nice(profile.process_nice)
-        print(f"Set process nice value to {profile.process_nice}")
-    except Exception as e:
-        print(f"Warning: Could not set process priority: {e}")
-
-    # Create separator
+    # Create separator (handles thread limiting internally)
     separator = StemSeparator(profile)
 
     # Run separation in thread pool (blocking operation)
     loop = asyncio.get_event_loop()
-    stem_paths = await loop.run_in_executor(
+    stem_paths, stem_metadata = await loop.run_in_executor(
         None, separator.separate_and_normalize, job.input_file, job.output_folder
     )
+
+    # Save metadata to JSON file alongside stems
+    metadata_file = job.output_folder / "metadata.json"
+    with open(metadata_file, "w") as f:
+        json.dump(stem_metadata, f, indent=2)
 
     # Convert paths to strings
     return {name: str(path) for name, path in stem_paths.items()}
