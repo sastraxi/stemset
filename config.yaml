@@ -13,6 +13,17 @@ profiles:
     output_format: "opus"  # "opus" or "wav"
     opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
 
+  - name: "one"
+    source_folder: "./input/one"
+    target_lufs: -23.0
+    stem_gains:
+      vocals: 0.0
+      drums: -2.0
+      bass: 1.0
+      other: -1.0
+    output_format: "opus"  # "opus" or "wav"
+    opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
+
 # Add more profiles as needed:
 # - name: "live-shows"
 #   source_folder: "/path/to/live/recordings"

@@ -311,6 +311,7 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
+        get_file_metadata,
         scan_profile,
         get_queue_status,
         get_jobs,

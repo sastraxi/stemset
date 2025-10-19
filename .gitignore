@@ -23,8 +23,11 @@ wheels/
 .installed.cfg
 *.egg
 
-# Media files
+# Generated media files
 media/
+
+# Test files
+input/
 
 # IDE
 .vscode/

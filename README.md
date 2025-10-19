@@ -110,6 +110,46 @@ The frontend will start on http://localhost:5173
 5. Select a processed file from the list
 6. Use the player to control individual stem volumes during playback
 
+## Frontend Audio Architecture (React + Web Audio)
+
+The stem player follows a few key patterns that keep the logic predictable and performant:
+
+1. AudioContext as Time Authority: Progress time derives from `audioContext.currentTime - startTimeRef`. No manual timers to advance playback.
+2. Persistent AudioContext: We keep a single context instance alive across stem loads to avoid creating nodes against a closed context (removing prior warnings).
+3. One-Shot BufferSources: On play / seek we recreate sources starting at an offset; decoded `AudioBuffer`s are cached and never mutated.
+4. Playback Generation Token: Each new playback gets a generation number. Old `onended` callbacks and RAF loops ignore updates if their generation is stale—prevents overlapping streams after rapid seeks.
+5. Ref Storage for Nodes: `Map` refs hold Gain nodes & sources; state only reflects lightweight UI fields (time, play status, gains) reducing render churn.
+6. requestAnimationFrame Loop: Single loop per playback generation updates `currentTime` until completion or invalidation.
+7. Seek Semantics: Seek adjusts `pausedAt`; if currently playing we restart sources at the new offset atomically (stopAllSources + startSources) ensuring no double audio.
+8. Volume Management: Gain clamped (0–2 UI range) and applied directly; initial gain (metadata dB converted to linear) stored for reset.
+9. Cleanup: On file/profile change we tear down stems & sources but keep the context. Full context close only occurs when the hook unmounts (optional extension).
+
+### Why Not Single Source Pause?
+Web Audio lacks a native pause/resume for `AudioBufferSourceNode`; once started it plays through. Recreating sources is the stable, low-complexity strategy when combined with accurate timing from the context.
+
+### Hook API Snapshot
+
+```ts
+const {
+  isLoading, isPlaying, currentTime, duration, stems,
+  play, pause, stop, seek,
+  setStemGain, resetStemGain, formatTime,
+} = useStemPlayer({ profileName, fileName, stems });
+```
+
+## Future Enhancements
+
+- Waveform / spectrogram display synchronized with playback time
+- A/B loop region (define start/end loop points)
+- Persist user-adjusted stem gains between sessions (localStorage or backend)
+- Crossfade on seek to avoid abrupt transitions
+- Mute / solo controls per stem
+- Peak/RMS metering using an `AnalyserNode`
+- Offline rendering for exporting custom mixes
+- Optional latency compensation if adding live input monitoring
+
+These can be layered without changing the core timing model.
+
 ## Project Structure
 
 ```

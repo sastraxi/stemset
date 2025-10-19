@@ -97,7 +97,7 @@ class StemSeparator:
         stem_metadata = {}
 
         for output_file_str in output_files:
-            output_file = Path(output_file_str)
+            output_file = output_folder / output_file_str
 
             # Determine stem name from filename
             stem_name = output_file.stem  # e.g., "vocals", "drums", "bass", "other"
@@ -105,31 +105,20 @@ class StemSeparator:
                 stem_paths[stem_name] = output_file
 
                 # Load and analyze loudness for metadata
-                try:
-                    audio_data, _rate = sf.read(str(output_file))
-                    loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)
-                    print(f"  {stem_name}: {loudness_lufs:.1f} LUFS")
+                audio_data, _rate = sf.read(str(output_file))
+                loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)
+                print(f"  {stem_name}: {loudness_lufs:.1f} LUFS")
 
-                    # Calculate gain adjustment from profile
-                    stem_gain_db = getattr(self.profile.stem_gains, stem_name, 0.0)
+                # Calculate gain adjustment from profile
+                stem_gain_db = getattr(self.profile.stem_gains, stem_name, 0.0)
 
-                    # Store metadata
-                    stem_metadata[stem_name] = {
-                        "stem_type": stem_name,
-                        "measured_lufs": round(loudness_lufs, 2),
-                        "target_lufs": self.profile.target_lufs,
-                        "stem_gain_adjustment_db": stem_gain_db,
-                    }
-
-                except Exception as e:
-                    print(f"  {stem_name}: Could not analyze loudness: {e}")
-                    # Provide default metadata if analysis fails
-                    stem_metadata[stem_name] = {
-                        "stem_type": stem_name,
-                        "measured_lufs": None,
-                        "target_lufs": self.profile.target_lufs,
-                        "stem_gain_adjustment_db": getattr(self.profile.stem_gains, stem_name, 0.0),
-                    }
+                # Store metadata
+                stem_metadata[stem_name] = {
+                    "stem_type": stem_name,
+                    "measured_lufs": round(loudness_lufs, 2),
+                    "target_lufs": self.profile.target_lufs,
+                    "stem_gain_adjustment_db": stem_gain_db,
+                }
 
         # Verify we got all expected stems
         missing = set(self.STEM_NAMES) - set(stem_paths.keys())
