@@ -25,6 +25,14 @@ if ! command -v cmake &> /dev/null; then
     exit 1
 fi
 
+# Check for ffmpeg
+if ! command -v ffmpeg &> /dev/null; then
+    echo "Error: ffmpeg is not installed. Please install it first."
+    echo "  On macOS, you can install it via Homebrew:"
+    echo "    brew install ffmpeg"
+    exit 1
+fi
+
 # If you'd like to try cpython 3.14...
 # Check for llvm==20.x
 # if ! llvm_version=$(cmake --find-package -DNAME=LLVM -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=EXISTENCE 2>&1 | grep -oP 'version \K[0-9]+(\.[0-9]+)*'); then
