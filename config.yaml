@@ -2,8 +2,8 @@
 # Multiple profiles allow you to process different recording sources
 
 profiles:
-  - name: "example-profile"
-    source_folder: "/path/to/your/recordings"
+  - name: "h4n"
+    source_folder: "/Volumes/H4N-SD/STEREO"
     target_lufs: -23.0
     stem_gains:
       vocals: 0.0
