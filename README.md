@@ -87,7 +87,7 @@ profiles:
 ### 2. Start the backend
 
 ```bash
-python -m backend.main
+python -m src.main
 ```
 
 The backend will start on http://localhost:8000
@@ -114,7 +114,7 @@ The frontend will start on http://localhost:5173
 
 ```
 stemset/
-├── backend/
+├── src/
 │   ├── config.py          # Configuration management
 │   ├── scanner.py         # File scanning and hashing
 │   ├── separator.py       # BS-RoFormer integration

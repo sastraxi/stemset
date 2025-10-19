@@ -5,7 +5,7 @@ description = "AI-powered audio stem separation with web playback interface"
 requires-python = ">=3.10"
 dependencies = [
     "litestar>=2.0.0",
-    "audio-separator>=0.17.0",
+    "audio-separator>=0.39.1",
     "pyloudnorm>=0.1.1",
     "soundfile>=0.12.1",
     "watchdog>=3.0.0",
@@ -23,8 +23,8 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_backend"
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 100
