@@ -1,9 +1,12 @@
 """Stem separation using BS-RoFormer and loudness normalization."""
 
+import json
 import struct
+import subprocess
 from pathlib import Path
 from typing import Dict
 
+import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
 from audio_separator.separator import Separator
@@ -207,9 +210,13 @@ class StemSeparator:
                 "stem_type": stem_name,
             }
 
-            # Write normalized stem with metadata
-            output_path = output_folder / f"{stem_name}.wav"
-            self._write_wav_with_metadata(output_path, normalized_audio, rate, metadata)
+            # Determine output format and file extension
+            if self.profile.output_format == "opus":
+                output_path = output_folder / f"{stem_name}.opus"
+                self._write_opus_with_metadata(output_path, normalized_audio, rate, metadata)
+            else:  # wav
+                output_path = output_folder / f"{stem_name}.wav"
+                self._write_wav_with_metadata(output_path, normalized_audio, rate, metadata)
 
             stem_paths[stem_name] = output_path
             stem_metadata[stem_name] = metadata
@@ -220,3 +227,50 @@ class StemSeparator:
             print(f"  {stem_name}: {loudness_lufs:.1f} LUFS -> {target_lufs:.1f} LUFS (gain: {total_gain_db:+.1f} dB)")
 
         return stem_paths
+
+    def _write_opus_with_metadata(
+        self, output_path: Path, audio_data, sample_rate: int, metadata: Dict[str, float]
+    ) -> None:
+        """Write Opus file with metadata using ffmpeg.
+
+        Args:
+            output_path: Path to write the Opus file
+            audio_data: Audio samples (numpy array)
+            sample_rate: Sample rate in Hz
+            metadata: Dictionary of metadata to embed as JSON in comment tag
+        """
+        # First write to temporary WAV file
+        temp_wav = output_path.with_suffix(".temp.wav")
+        sf.write(str(temp_wav), audio_data, sample_rate, subtype="PCM_16")
+
+        # Encode metadata as JSON for Opus comment tag
+        metadata_json = json.dumps(metadata)
+
+        # Use ffmpeg to encode to Opus with metadata
+        # Opus is excellent for music: 128-256 kbps gives transparent quality
+        bitrate = f"{self.profile.opus_bitrate}k"
+
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-i", str(temp_wav),
+                    "-c:a", "libopus",
+                    "-b:a", bitrate,
+                    "-vbr", "on",  # Variable bitrate for better quality
+                    "-compression_level", "10",  # Maximum compression efficiency
+                    "-application", "audio",  # Optimize for music/audio (not voip)
+                    "-metadata", f"comment={metadata_json}",
+                    "-y",  # Overwrite output file
+                    str(output_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to encode Opus file: {e.stderr}") from e
+        finally:
+            # Clean up temp file
+            if temp_wav.exists():
+                temp_wav.unlink()

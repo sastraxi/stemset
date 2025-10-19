@@ -22,7 +22,7 @@ echo "✓ Dependencies check passed"
 # Install Python dependencies
 echo ""
 echo "📦 Installing Python dependencies..."
-uv pip install -e .
+uv sync
 
 # Install frontend dependencies
 echo ""

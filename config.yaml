@@ -10,6 +10,8 @@ profiles:
       drums: -2.0
       bass: 1.0
       other: -1.0
+    output_format: "opus"  # "opus" or "wav"
+    opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
 
 # Add more profiles as needed:
 # - name: "live-shows"
@@ -20,3 +22,5 @@ profiles:
 #     drums: 0.0
 #     bass: 1.0
 #     other: 0.0
+#   output_format: "opus"
+#   opus_bitrate: 256  # Higher quality for archival

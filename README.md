@@ -17,6 +17,7 @@ AI-powered audio stem separation with web playback interface for band practice a
 - [uv](https://docs.astral.sh/uv/) - Fast Python package installer
 - [bun](https://bun.sh/) - Fast JavaScript runtime and package manager
 - Python 3.10 or higher
+- [ffmpeg](https://ffmpeg.org/) - Required for Opus encoding (install via `brew install ffmpeg` on macOS)
 
 ### Quick Start
 
@@ -51,7 +52,19 @@ profiles:
       drums: -2.0
       bass: 1.0
       other: -1.0
+    output_format: "opus"  # "opus" or "wav"
+    opus_bitrate: 192      # Bitrate in kbps (recommended: 128-256 for music)
 ```
+
+**Output Format Options:**
+- `opus`: Highly efficient compression, 192 kbps gives near-transparent quality for music (recommended)
+- `wav`: Uncompressed PCM audio (much larger file sizes)
+
+**Opus Bitrate Guide:**
+- 128 kbps: Good quality, smaller files
+- 192 kbps: Excellent quality (recommended default)
+- 256 kbps: Nearly transparent quality
+- 320 kbps: Maximum quality (overkill for most use cases)
 
 ## Usage
 

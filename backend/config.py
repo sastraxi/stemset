@@ -28,6 +28,12 @@ class Profile(BaseModel):
         default_factory=StemGains,
         description="Per-stem gain adjustments in dB (applied after normalization)",
     )
+    output_format: str = Field(
+        "opus", description="Output format for stems: 'wav' or 'opus'"
+    )
+    opus_bitrate: int = Field(
+        192, description="Opus bitrate in kbps (96-512, recommended: 128-256 for music)"
+    )
 
     @field_validator("source_folder")
     @classmethod

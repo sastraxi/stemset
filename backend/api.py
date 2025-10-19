@@ -81,12 +81,15 @@ async def get_profile_files(profile_name: str) -> dict:
     files = []
     for folder in media_path.iterdir():
         if folder.is_dir() and not folder.name.startswith("."):
-            # Check if stems exist
+            # Check if stems exist (both .wav and .opus)
             stems = {}
             for stem_name in ["vocals", "drums", "bass", "other"]:
-                stem_path = folder / f"{stem_name}.wav"
-                if stem_path.exists():
-                    stems[stem_name] = f"/media/{profile_name}/{folder.name}/{stem_name}.wav"
+                # Check for both formats
+                for ext in [".opus", ".wav"]:
+                    stem_path = folder / f"{stem_name}{ext}"
+                    if stem_path.exists():
+                        stems[stem_name] = f"/media/{profile_name}/{folder.name}/{stem_name}{ext}"
+                        break
 
             if stems:
                 files.append(
