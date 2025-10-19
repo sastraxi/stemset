@@ -33,9 +33,14 @@ class StemSeparator:
     def _ensure_separator_loaded(self) -> None:
         """Lazy load the separator model (downloads model on first use)."""
         if self.separator is None:
+            # Create a temporary output directory for the separator
+            temp_output_dir = Path.home() / ".stemset" / "temp_output"
+            temp_output_dir.mkdir(parents=True, exist_ok=True)
+
             self.separator = Separator(
                 log_level=20,  # INFO level
                 model_file_dir=str(Path.home() / ".stemset" / "models"),
+                output_dir=str(temp_output_dir),  # Configure output directory
             )
             # Load BS-RoFormer model (state-of-the-art)
             # This will download the model on first use
@@ -225,6 +230,16 @@ class StemSeparator:
             output_file.unlink()
 
             print(f"  {stem_name}: {loudness_lufs:.1f} LUFS -> {target_lufs:.1f} LUFS (gain: {total_gain_db:+.1f} dB)")
+
+        # Clean up ALL temporary separator output files (not just processed ones)
+        temp_output_dir = Path.home() / ".stemset" / "temp_output"
+        if temp_output_dir.exists():
+            for temp_file in temp_output_dir.glob("*"):
+                try:
+                    if temp_file.is_file():
+                        temp_file.unlink()
+                except Exception as e:
+                    print(f"Warning: Could not delete temporary file {temp_file}: {e}")
 
         return stem_paths
 

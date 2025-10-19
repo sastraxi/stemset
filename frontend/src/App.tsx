@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { StemPlayer } from './components/StemPlayer';
+import { Toast } from './components/Toast';
 import { getProfiles, getProfileFiles, scanProfile, getQueueStatus } from './api';
 import type { Profile, StemFile, QueueStatus } from './types';
 import './App.css';
+
+interface ToastData {
+  id: number;
+  message: string;
+  type: 'info' | 'success' | 'error';
+}
 
 function App() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -11,19 +18,83 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<StemFile | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [toastIdCounter, setToastIdCounter] = useState(0);
+  const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const id = toastIdCounter;
+    setToastIdCounter(id + 1);
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const closeToast = (id: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
 
   useEffect(() => {
-    loadProfiles();
-    // Poll queue status every 2 seconds
-    const interval = setInterval(loadQueueStatus, 2000);
+    // Initial connection check
+    checkBackendConnection().then((connected) => {
+      if (connected) {
+        loadProfiles();
+        loadQueueStatus();
+      }
+    });
+
+    let wasProcessing = false;
+    let wasConnected = backendConnected;
+
+    // Poll backend connection and queue status every 2 seconds
+    const interval = setInterval(async () => {
+      try {
+        // Try to fetch queue status - this also serves as a connection check
+        const status = await getQueueStatus();
+        setQueueStatus(status);
+
+        // Check if we just reconnected
+        const justConnected = !wasConnected && backendConnected !== false;
+        if (justConnected) {
+          // Backend just came online, reload profiles
+          await loadProfiles();
+        }
+
+        setBackendConnected(true);
+        wasConnected = true;
+
+        // Refresh file list when processing just completed
+        const justFinished = wasProcessing && !status.is_processing && status.queue_size === 0;
+        if (selectedProfile && justFinished) {
+          await loadProfileFiles(selectedProfile);
+        }
+
+        wasProcessing = status.is_processing;
+      } catch (error) {
+        // Backend not reachable
+        setBackendConnected(false);
+        wasConnected = false;
+      }
+    }, 2000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Only run once on mount
 
   useEffect(() => {
     if (selectedProfile) {
       loadProfileFiles(selectedProfile);
     }
   }, [selectedProfile]);
+
+  async function checkBackendConnection(): Promise<boolean> {
+    try {
+      await getProfiles();
+      setBackendConnected(true);
+      return true;
+    } catch (error) {
+      console.error('Backend not connected:', error);
+      setBackendConnected(false);
+      return false;
+    }
+  }
 
   async function loadProfiles() {
     try {
@@ -51,7 +122,8 @@ function App() {
       const data = await getQueueStatus();
       setQueueStatus(data);
     } catch (error) {
-      console.error('Error loading queue status:', error);
+      // Don't log error - it's normal when backend is down
+      // Connection state is handled by the polling interval
     }
   }
 
@@ -61,16 +133,49 @@ function App() {
     setIsScanning(true);
     try {
       const result = await scanProfile(selectedProfile);
-      alert(`Scanned: ${result.scanned} new file(s) found and queued for processing`);
+      if (result.scanned === 0) {
+        showToast('No new files found', 'info');
+      } else {
+        showToast(`Found ${result.scanned} new file(s), queued for processing`, 'success');
+      }
       await loadQueueStatus();
       // Refresh file list after a delay to allow processing
       setTimeout(() => loadProfileFiles(selectedProfile), 1000);
     } catch (error) {
       console.error('Error scanning:', error);
-      alert('Error scanning for new files');
+      showToast('Error scanning for new files', 'error');
     } finally {
       setIsScanning(false);
     }
+  }
+
+  // Show splash screen if backend is not connected
+  if (backendConnected === false) {
+    return (
+      <div className="splash-screen">
+        <div className="splash-content">
+          <h1>Stemset</h1>
+          <p className="splash-subtitle">Backend not running</p>
+          <div className="splash-instructions">
+            <p>Please start the backend server:</p>
+            <pre><code>python -m src.main</code></pre>
+            <p className="splash-hint">The frontend will automatically connect when the backend is ready.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking connection
+  if (backendConnected === null) {
+    return (
+      <div className="splash-screen">
+        <div className="splash-content">
+          <h1>Stemset</h1>
+          <p className="splash-subtitle">Connecting to backend...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -143,6 +248,18 @@ function App() {
             </div>
           )}
         </main>
+      </div>
+
+      {/* Toast notifications */}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => closeToast(toast.id)}
+          />
+        ))}
       </div>
     </div>
   );

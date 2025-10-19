@@ -12,6 +12,7 @@ profiles:
       other: -1.0
     output_format: "opus"  # "opus" or "wav"
     opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
+    process_nice: 10       # CPU nice value (0-19, higher = lower priority)
 
 # Add more profiles as needed:
 # - name: "live-shows"

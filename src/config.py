@@ -34,6 +34,9 @@ class Profile(BaseModel):
     opus_bitrate: int = Field(
         192, description="Opus bitrate in kbps (96-512, recommended: 128-256 for music)"
     )
+    process_nice: int = Field(
+        10, description="CPU nice value (0-19, higher = lower priority, 10 = recommended)"
+    )
 
     @field_validator("source_folder")
     @classmethod

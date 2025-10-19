@@ -112,6 +112,7 @@ class FileScanner:
 
                 # Check if we've already processed this content
                 if file_hash in self.processed_hashes:
+                    print(f"Skipping already processed file: {file_path.name} (hash: {file_hash[:8]})")
                     continue
 
                 # New file - derive output name
@@ -123,6 +124,11 @@ class FileScanner:
                     output_name = f"{output_name}_{file_hash[:8]}"
 
                 new_files.append((file_path, output_name))
+
+                # Immediately mark as processed to prevent duplicate queueing
+                # This prevents the same file from being queued multiple times if scanned again
+                self.processed_hashes[file_hash] = output_name
+                self._save_hash_db()
 
         return new_files
 

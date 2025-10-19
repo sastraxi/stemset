@@ -218,7 +218,7 @@ async def get_job(job_id: str) -> dict:
     }
 
 
-async def process_job(job: Job) -> dict:
+async def process_job(job: Job) -> dict[str, str]:
     """Process a job by separating stems.
 
     Args:
@@ -227,11 +227,21 @@ async def process_job(job: Job) -> dict:
     Returns:
         Dict mapping stem names to output file paths
     """
+    import os
+
     config = get_config()
     profile = config.get_profile(job.profile_name)
 
     if profile is None:
         raise ValueError(f"Profile '{job.profile_name}' not found")
+
+    # Set process priority (nice) to be lower than interactive processes
+    # This prevents the separator from slowing down the rest of the system
+    try:
+        os.nice(profile.process_nice)
+        print(f"Set process nice value to {profile.process_nice}")
+    except Exception as e:
+        print(f"Warning: Could not set process priority: {e}")
 
     # Create separator
     separator = StemSeparator(profile)
@@ -241,10 +251,6 @@ async def process_job(job: Job) -> dict:
     stem_paths = await loop.run_in_executor(
         None, separator.separate_and_normalize, job.input_file, job.output_folder
     )
-
-    # Mark file as processed in scanner
-    scanner = FileScanner(profile)
-    scanner.mark_as_processed(job.input_file, job.output_folder.name)
 
     # Convert paths to strings
     return {name: str(path) for name, path in stem_paths.items()}
