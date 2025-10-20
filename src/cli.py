@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
-import argparse
 import asyncio
-import sys
+import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import Annotated
+
+import typer
+from dotenv import load_dotenv
 
 from .config import get_config, JobStatus
 from .scanner import FileScanner
 from .queue import get_queue
 from .modern_separator import StemSeparator
+from .models.manifest import ProfileInfo, ProfilesManifest, ProfileTracks, TrackInfo
+
+app = typer.Typer(
+    name="stemset",
+    help="AI-powered audio stem separation tool",
+    no_args_is_help=True,
+)
 
 
 async def process_single_file(profile_name: str, file_path: Path) -> int:
@@ -218,37 +227,283 @@ async def process_profile(profile_name: str) -> int:
         return 1
 
 
-def main() -> None:
-    """Main CLI entrypoint."""
-    parser = argparse.ArgumentParser(
-        description="Process audio files for stem separation",
-        prog="stemset"
-    )
-    _ = parser.add_argument(
-        "profile",
-        help="Profile name to process (from config.yaml)"
-    )
-    _ = parser.add_argument(
-        "file",
-        nargs="?",
-        help="Optional: specific WAV file to process (ignores hash tracking, always processes)"
-    )
+def generate_manifests() -> int:
+    """Generate static manifest files for all profiles.
 
-    args = parser.parse_args()
+    Creates:
+    - media/profiles.json - Top-level manifest of all profiles
+    - media/{profile}/tracks.json - Track list for each profile
 
-    profile_name = cast(str, args.profile)
-    file_arg = cast(str | None, args.file)
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
+    try:
+        config = get_config()
+        media_root = Path("media")
 
-    # Determine which mode to use
-    if file_arg:
+        if not media_root.exists():
+            print("Error: media/ directory not found", file=sys.stderr)
+            return 1
+
+        print("Generating static manifests...")
+        print()
+
+        profile_infos = []
+        generation_time = datetime.now()
+
+        # Process each profile
+        for profile in config.profiles:
+            profile_dir = media_root / profile.name
+
+            if not profile_dir.exists():
+                print(f"Skipping profile '{profile.name}' (no media directory)")
+                continue
+
+            print(f"Processing profile: {profile.name}")
+
+            # Find all track directories
+            track_infos = []
+            for item in profile_dir.iterdir():
+                # Skip hidden files and .processed_hashes.json
+                if item.name.startswith(".") or not item.is_dir():
+                    continue
+
+                track_name = item.name
+                print(f"  - {track_name}")
+
+                # Find available stems
+                stems = {}
+                for stem_name in ["vocals", "drums", "bass", "other"]:
+                    # Check for both .opus and .wav formats
+                    for ext in [".opus", ".wav"]:
+                        stem_path = item / f"{stem_name}{ext}"
+                        if stem_path.exists():
+                            # Just the filename (peer to metadata.json)
+                            stems[stem_name] = f"{stem_name}{ext}"
+                            break
+
+                if not stems:
+                    print(f"    Warning: No stems found, skipping")
+                    continue
+
+                # Get creation timestamp from metadata.json if it exists
+                metadata_path = item / "metadata.json"
+                created_at = datetime.fromtimestamp(item.stat().st_mtime)
+
+                # Build TrackInfo
+                track_info = TrackInfo(
+                    name=track_name,
+                    stems=stems,
+                    metadata_url="metadata.json",  # Peer file
+                    created_at=created_at,
+                )
+                track_infos.append(track_info)
+
+            # Sort tracks by creation time (newest first)
+            track_infos.sort(key=lambda t: t.created_at, reverse=True)
+
+            # Create ProfileTracks manifest
+            profile_tracks = ProfileTracks(
+                profile_name=profile.name,
+                tracks=track_infos,
+                last_updated=generation_time,
+            )
+
+            # Write tracks.json
+            tracks_file = profile_dir / "tracks.json"
+            profile_tracks.to_file(tracks_file)
+            print(f"  ✓ Created {tracks_file}")
+
+            # Add to top-level profile list
+            profile_info = ProfileInfo(
+                name=profile.name,
+                display_name=profile.name.replace("_", " ").replace("-", " ").title(),
+                track_count=len(track_infos),
+                last_updated=generation_time,
+                tracks_url=f"{profile.name}/tracks.json",
+            )
+            profile_infos.append(profile_info)
+            print()
+
+        # Create top-level profiles manifest
+        profiles_manifest = ProfilesManifest(
+            profiles=profile_infos,
+            generated_at=generation_time,
+        )
+
+        profiles_file = media_root / "profiles.json"
+        profiles_manifest.to_file(profiles_file)
+        print(f"✓ Created {profiles_file}")
+        print()
+        print("=" * 60)
+        print(f"Successfully generated manifests for {len(profile_infos)} profile(s)")
+
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+@app.command(name="process")
+def process_cmd(
+    profile: Annotated[str, typer.Argument(help="Profile name from config.yaml")],
+    file: Annotated[Path | None, typer.Argument(help="Specific WAV file to process")] = None,
+) -> None:
+    """Process audio files for stem separation.
+
+    If FILE is provided, processes that specific file.
+    Otherwise, scans the profile's source folder for new files and processes them.
+    """
+    if file:
         # Single file mode
-        file_path = Path(file_arg).expanduser().resolve()
-        exit_code = asyncio.run(process_single_file(profile_name, file_path))
+        file_path = file.expanduser().resolve()
+        exit_code = asyncio.run(process_single_file(profile, file_path))
     else:
         # Directory scan mode
-        exit_code = asyncio.run(process_profile(profile_name))
+        exit_code = asyncio.run(process_profile(profile))
 
-    sys.exit(exit_code)
+    raise typer.Exit(code=exit_code)
+
+
+@app.command(name="build")
+def build_cmd() -> None:
+    """Generate static manifest files for all profiles.
+
+    Creates:
+    - media/profiles.json - Top-level manifest of all profiles
+    - media/{profile}/tracks.json - Track list for each profile
+
+    Run this after processing new tracks to update the static site manifests.
+    """
+    exit_code = generate_manifests()
+    raise typer.Exit(code=exit_code)
+
+
+@app.command(name="deploy")
+def deploy_cmd(
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would be deployed without uploading")] = False,
+) -> None:
+    """Deploy frontend and media to Cloudflare Pages using Wrangler CLI.
+
+    This command:
+    1. Builds the frontend (bun run build)
+    2. Copies media/ into frontend/dist/
+    3. Deploys frontend/dist/ to Cloudflare Pages
+
+    Requires wrangler to be installed and configured.
+    Run 'stemset build' before deploying to ensure manifests are up to date.
+    """
+    media_dir = Path("media")
+    frontend_dir = Path("frontend")
+    dist_dir = frontend_dir / "dist"
+
+    # Check prerequisites
+    if not media_dir.exists():
+        typer.secho("Error: media/ directory not found", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    if not frontend_dir.exists():
+        typer.secho("Error: frontend/ directory not found", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    # Check if bun is installed
+    try:
+        result = subprocess.run(
+            ["bun", "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            typer.secho("Error: bun not found. Install from: https://bun.sh", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+    except FileNotFoundError:
+        typer.secho("Error: bun not found. Install from: https://bun.sh", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    # Check if wrangler is installed
+    try:
+        result = subprocess.run(
+            ["wrangler", "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            typer.secho("Error: wrangler CLI not found. Install with: npm install -g wrangler", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+    except FileNotFoundError:
+        typer.secho("Error: wrangler CLI not found. Install with: npm install -g wrangler", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    if dry_run:
+        typer.secho("Dry run mode - would perform the following:", fg=typer.colors.YELLOW)
+        typer.echo("  1. Build frontend: bun run build")
+        typer.echo(f"  2. Copy media/ → {dist_dir / 'media'}")
+
+        # Count files
+        media_file_count = sum(1 for _ in media_dir.rglob("*") if _.is_file())
+        typer.echo(f"  3. Deploy {dist_dir} to Cloudflare Pages ({media_file_count} media files)")
+
+        typer.secho("\nRun without --dry-run to deploy", fg=typer.colors.YELLOW)
+        raise typer.Exit(code=0)
+
+    # Step 1: Build frontend
+    typer.secho("Building frontend...", fg=typer.colors.GREEN)
+    result = subprocess.run(
+        ["bun", "run", "build"],
+        cwd=str(frontend_dir),
+        check=False,
+    )
+
+    if result.returncode != 0:
+        typer.secho("\n✗ Frontend build failed", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=result.returncode)
+
+    typer.secho("✓ Frontend built successfully\n", fg=typer.colors.GREEN)
+
+    # Step 2: Copy media into dist
+    import shutil
+
+    typer.secho("Copying media files to dist...", fg=typer.colors.GREEN)
+    dist_media = dist_dir / "media"
+
+    # Remove existing media if present
+    if dist_media.exists():
+        shutil.rmtree(dist_media)
+
+    # Copy media directory
+    shutil.copytree(media_dir, dist_media)
+
+    media_file_count = sum(1 for _ in dist_media.rglob("*") if _.is_file())
+    typer.secho(f"✓ Copied {media_file_count} media files\n", fg=typer.colors.GREEN)
+
+    # Step 3: Deploy to Cloudflare Pages
+    typer.secho("Deploying to Cloudflare Pages...", fg=typer.colors.GREEN)
+    typer.echo(f"Directory: {dist_dir.absolute()}")
+    typer.echo()
+
+    # Run wrangler pages deploy
+    # User will need authentication via wrangler login or CLOUDFLARE_API_TOKEN
+    result = subprocess.run(
+        ["wrangler", "pages", "deploy", str(dist_dir)],
+        check=False,
+    )
+
+    if result.returncode == 0:
+        typer.secho("\n✓ Deployment successful!", fg=typer.colors.GREEN)
+    else:
+        typer.secho("\n✗ Deployment failed", fg=typer.colors.RED, err=True)
+
+    raise typer.Exit(code=result.returncode)
+
+
+def main() -> None:
+    """Main CLI entrypoint."""
+    # Load .env file if it exists (doesn't override existing env vars)
+    load_dotenv()
+    app()
 
 
 if __name__ == "__main__":

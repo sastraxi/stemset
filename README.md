@@ -1,185 +1,226 @@
 # Stemset
 
-AI-powered audio stem separation with web playback interface for band practice and critical listening.
+AI-powered audio stem separation with static site generation for band practice and critical listening.
+
+## What It Does
+
+Stemset processes audio recordings locally and separates them into individual instrument stems (vocals, drums, bass, other) using state-of-the-art ML models. It generates a static website deployed to Cloudflare Pages where your band can practice with independent volume control for each stem.
 
 ## Features
 
-- **Profile-based configuration**: Multiple source folders with independent settings
-- **BS-RoFormer stem separation**: State-of-the-art AI model for vocals, drums, bass, and other instruments
-- **Loudness normalization**: ITU-R BS.1770-4 compliant LUFS normalization with per-stem gain control
-- **Duplicate detection**: Content-based hashing prevents reprocessing
-- **Web playback interface**: Independent volume control for each stem with synchronized playback
+- **Multiple separation strategies** - Configure successive or parallel model pipelines
+- **LUFS normalization** - ITU-R BS.1770-4 compliant loudness analysis with per-stem gain control
+- **Waveform visualization** - Auto-generated waveforms with perceptual scaling
+- **Content-based deduplication** - SHA256 hashing prevents reprocessing renamed files
+- **Static site generation** - No backend server needed, deploys to Cloudflare Pages CDN
+- **Web playback interface** - Independent volume control with master EQ and limiter
 
-## Setup
+## Quick Start
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) - Fast Python package installer
-- [bun](https://bun.sh/) - Fast JavaScript runtime and package manager
-- Python 3.10 or higher
-- [ffmpeg](https://ffmpeg.org/) - Required for Opus encoding (install via `brew install ffmpeg` on macOS)
+- **Python 3.13+** with [uv](https://docs.astral.sh/uv/)
+- **Node.js** with [bun](https://bun.sh/)
+- **ffmpeg** for Opus encoding (`brew install ffmpeg` on macOS)
+- **wrangler** for deployment (`npm install -g wrangler`)
 
-### Quick Start
+### Setup
 
 ```bash
-# Run the setup script
 ./setup.sh
 ```
 
-Or manually:
+This installs all Python and frontend dependencies.
+
+### Configuration
+
+**1. Create `.env` file (optional):**
 
 ```bash
-# Install Python dependencies
-uv pip install -e .
-
-# Install frontend dependencies
-cd frontend
-bun install
-cd ..
+cp .env.example .env
 ```
 
-## Configuration
+Edit `.env` to customize:
+- `STEMSET_MODEL_CACHE_DIR` - Where AI models are cached (default: `~/.stemset/models`)
+- `TORCH_NUM_THREADS` - Override CPU thread count (default: auto)
 
-Edit `config.yaml` to set up your profiles:
+**2. Edit `config.yaml` to set up your profiles:**
 
 ```yaml
+strategies:
+  successive:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    not_vocals:
+      _: "kuielab_b_drums.onnx"
+      drums: drums
+      not_drums:
+        _: "kuielab_a_bass.onnx"
+        bass: bass
+        not_bass: other
+
 profiles:
   - name: "band-practice"
     source_folder: "/path/to/recordings"
-    output_format: "opus"  # "opus" or "wav"
-    opus_bitrate: 192      # Bitrate in kbps (recommended: 128-256 for music)
+    strategy: "successive"
+    output:
+      format: "opus"
+      bitrate: 192
 ```
 
 **Output Format Options:**
-- `opus`: Highly efficient compression, 192 kbps gives near-transparent quality for music (recommended)
-- `wav`: Uncompressed PCM audio (much larger file sizes)
+- `opus` - Highly efficient (192 kbps recommended for music)
+- `wav` - Uncompressed PCM (much larger)
 
-**Opus Bitrate Guide:**
-- 128 kbps: Good quality, smaller files
-- 192 kbps: Excellent quality (recommended default)
-- 256 kbps: Nearly transparent quality
-- 320 kbps: Maximum quality (overkill for most use cases)
+## Workflow
 
-## Usage
-
-### 1. Configure your profiles
-
-Edit `config.yaml` and update the `source_folder` path to point to your audio recordings folder:
-
-```yaml
-profiles:
-  - name: "my-band"
-    source_folder: "/path/to/your/recordings"  # Update this!
-```
-
-### 2. Start the backend
+### 1. Process New Recordings
 
 ```bash
-python -m src.main
+# Scan source folder and process all new files
+uv run stemset process band-practice
+
+# Or process a specific file
+uv run stemset process band-practice path/to/recording.wav
 ```
 
-The backend will start on http://localhost:8000
+This separates stems, generates waveforms, and computes LUFS metadata.
 
-### 3. Start the frontend (in a new terminal)
+### 2. Build Static Manifests
+
+```bash
+uv run stemset build
+```
+
+Generates `media/profiles.json` and `media/{profile}/tracks.json` for the frontend.
+
+### 3. Deploy to Cloudflare Pages
+
+**Option A: Using API Token (for shared accounts)**
+
+```bash
+# Get API token from: https://dash.cloudflare.com/profile/api-tokens
+# Create token with "Cloudflare Pages - Edit" permissions
+export CLOUDFLARE_API_TOKEN=your-token-here
+
+# Deploy (builds frontend + copies media + deploys)
+uv run stemset deploy
+```
+
+**Option B: Using personal account**
+
+```bash
+# First time: login with your Cloudflare account
+wrangler login
+
+# Deploy (builds frontend + copies media + deploys)
+uv run stemset deploy
+```
+
+**Dry run to preview:**
+```bash
+uv run stemset deploy --dry-run
+```
+
+The deploy command automatically:
+1. Builds the frontend (`bun run build`)
+2. Copies `media/` into `frontend/dist/media/`
+3. Deploys `frontend/dist/` to Cloudflare Pages
+
+## Development
+
+### Run Frontend Locally
 
 ```bash
 cd frontend
 bun run dev
 ```
 
-The frontend will start on http://localhost:5173
+Opens http://localhost:5173 with hot reload.
 
-### 4. Use the application
+### Frontend Development
 
-1. Open http://localhost:5173 in your browser
-2. Select your profile from the dropdown
-3. Click "Scan for New Files" to find and queue audio files for processing
-4. Wait for processing to complete (you can see the queue status in the sidebar)
-5. Select a processed file from the list
-6. Use the player to control individual stem volumes during playback
+The frontend serves static files from `./media` during development. Vite is configured to proxy media requests.
 
-## Frontend Audio Architecture (React + Web Audio)
-
-The stem player follows a few key patterns that keep the logic predictable and performant:
-
-1. AudioContext as Time Authority: Progress time derives from `audioContext.currentTime - startTimeRef`. No manual timers to advance playback.
-2. Persistent AudioContext: We keep a single context instance alive across stem loads to avoid creating nodes against a closed context (removing prior warnings).
-3. One-Shot BufferSources: On play / seek we recreate sources starting at an offset; decoded `AudioBuffer`s are cached and never mutated.
-4. Playback Generation Token: Each new playback gets a generation number. Old `onended` callbacks and RAF loops ignore updates if their generation is stale—prevents overlapping streams after rapid seeks.
-5. Ref Storage for Nodes: `Map` refs hold Gain nodes & sources; state only reflects lightweight UI fields (time, play status, gains) reducing render churn.
-6. requestAnimationFrame Loop: Single loop per playback generation updates `currentTime` until completion or invalidation.
-7. Seek Semantics: Seek adjusts `pausedAt`; if currently playing we restart sources at the new offset atomically (stopAllSources + startSources) ensuring no double audio.
-8. Volume Management: Gain clamped (0–2 UI range) and applied directly; initial gain (metadata dB converted to linear) stored for reset.
-9. Cleanup: On file/profile change we tear down stems & sources but keep the context. Full context close only occurs when the hook unmounts (optional extension).
-
-### Master Effects Chain
-
-Below the stem controls the player provides a master processing "island" composed of:
-
-- 5-Band Musical Graphic EQ (Low Shelf 80Hz, Low Mid 250Hz, Mid 1kHz, High Mid 3.5kHz, High Shelf 10kHz)
-  - Implemented via `BiquadFilterNode`s in series.
-  - Adjustable gain per band (-12dB to +12dB); frequency & Q could be extended later.
-  - Persisted in `localStorage` under key `stemset.master.eq.v1`.
-- Simple Limiter (Ceiling control 50–100%, enable toggle)
-  - Currently a soft ceiling using a final `GainNode` (placeholder for true dynamics processing).
-  - Persisted in `localStorage` under key `stemset.master.limiter.v1`.
-
-Routing: Each stem's gain node feeds a master input gain. The chain is Master Gain → EQ Filters (in order) → Limiter Gain → `AudioContext.destination`.
-
-Persistence Strategy: Settings are loaded on hook initialization; updates trigger writes to `localStorage` immediately (no debounce needed due to small payload).
-
-Future Enhancements for Effects:
-- True peak limiter / compressor (ScriptProcessor or AudioWorklet with lookahead).
-- Adjustable frequencies & Q for bands (turning graphic EQ into parametric EQ).
-- Preset management (save/load multiple EQ/limiter profiles).
-- Spectrum analyzer visualized with `AnalyserNode` beneath controls.
-
-### Why Not Single Source Pause?
-Web Audio lacks a native pause/resume for `AudioBufferSourceNode`; once started it plays through. Recreating sources is the stable, low-complexity strategy when combined with accurate timing from the context.
-
-### Hook API Snapshot
-
-```ts
-const {
-  isLoading, isPlaying, currentTime, duration, stems,
-  play, pause, stop, seek,
-  setStemGain, resetStemGain, formatTime,
-} = useStemPlayer({ profileName, fileName, stems });
+To test with production-like paths:
+```bash
+cd frontend
+bun run preview
 ```
-
-## Future Enhancements
-
-- Waveform / spectrogram display synchronized with playback time
-- A/B loop region (define start/end loop points)
-- Persist user-adjusted stem gains between sessions (localStorage or backend)
-- Crossfade on seek to avoid abrupt transitions
-- Mute / solo controls per stem
-- Peak/RMS metering using an `AnalyserNode`
-- Offline rendering for exporting custom mixes
-- Optional latency compensation if adding live input monitoring
-
-These can be layered without changing the core timing model.
 
 ## Project Structure
 
 ```
 stemset/
 ├── src/
-│   ├── config.py          # Configuration management
-│   ├── scanner.py         # File scanning and hashing
-│   ├── separator.py       # BS-RoFormer integration
-│   ├── queue.py           # Processing queue
-│   └── api.py             # Litestar API
+│   ├── cli.py                 # Typer-based CLI
+│   ├── config.py              # Pydantic configuration models
+│   ├── scanner.py             # SHA256-based deduplication
+│   ├── modern_separator.py    # Separation orchestration
+│   ├── models/
+│   │   ├── registry.py        # Model registry
+│   │   ├── atomic_models.py   # Concrete model implementations
+│   │   ├── strategy_executor.py # Strategy tree execution
+│   │   ├── metadata.py        # LUFS analysis & waveforms
+│   │   └── manifest.py        # Static manifest models
 ├── frontend/
 │   └── src/
 │       ├── components/
 │       └── App.tsx
-├── media/                 # Generated stems (gitignored)
+├── media/                     # Generated stems (gitignored)
+│   ├── profiles.json
 │   └── {profile}/
-│       └── {file}/
-│           ├── vocals.wav
-│           ├── drums.wav
-│           ├── bass.wav
-│           └── other.wav
+│       ├── tracks.json
+│       └── {track}/
+│           ├── vocals.opus
+│           ├── drums.opus
+│           ├── bass.opus
+│           ├── other.opus
+│           ├── {stem}_waveform.png
+│           └── metadata.json
+├── docs/
+│   ├── goal.md                # Original design prompt
+│   └── architecture.md        # Implementation details
 └── config.yaml
 ```
+
+## CLI Commands
+
+```bash
+# Process audio files
+uv run stemset process <profile> [file]
+
+# Generate static manifests
+uv run stemset build
+
+# Deploy to Cloudflare Pages
+uv run stemset deploy [--dry-run]
+
+# Help
+uv run stemset --help
+```
+
+## How It Works
+
+1. **Separation**: Uses ML models (BS-RoFormer, Demucs) via `audio-separator` library
+2. **Strategy Trees**: Config defines successive or parallel model pipelines
+3. **LUFS Analysis**: Measures integrated loudness per stem using `pyloudnorm`
+4. **Waveform Generation**: Creates grayscale PNGs with perceptual scaling
+5. **Manifest Generation**: Pydantic models serialize to JSON
+6. **Deployment**: Wrangler uploads `media/` to Cloudflare Pages
+
+## Documentation
+
+- [Architecture Details](docs/architecture.md) - Frontend audio implementation, effects chain, future enhancements
+- [Original Design](docs/goal.md) - Research and decision log
+
+## Why Static?
+
+- **No server costs** - Cloudflare Pages free tier has unlimited bandwidth
+- **Global CDN** - Fast audio delivery worldwide
+- **Simple deployment** - Just `wrangler pages deploy media/`
+- **Perfect for band use** - Add tracks manually, not constantly streaming
+
+## License
+
+MIT

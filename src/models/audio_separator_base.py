@@ -79,9 +79,21 @@ class AudioSeparator(ABC):
             import torch
             import os
 
+            # Get model cache directory from env or use default
+            model_cache = os.getenv("STEMSET_MODEL_CACHE_DIR")
+            if model_cache:
+                model_file_dir = Path(model_cache)
+            else:
+                model_file_dir = Path.home() / ".stemset" / "models"
+
             # Limit CPU threads to keep system responsive
             cpu_count = os.cpu_count() or 4
-            thread_count = max(1, cpu_count // 2)
+            thread_override = os.getenv("TORCH_NUM_THREADS")
+            if thread_override:
+                thread_count = int(thread_override)
+            else:
+                thread_count = max(1, cpu_count // 2)
+
             torch.set_num_threads(thread_count)
             torch.set_num_interop_threads(thread_count)
             print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
@@ -92,7 +104,7 @@ class AudioSeparator(ABC):
 
             self._separator = Separator(
                 log_level=20,  # INFO level
-                model_file_dir=str(Path.home() / ".stemset" / "models"),
+                model_file_dir=str(model_file_dir),
                 output_format=output_format,
                 output_bitrate=output_bitrate,
                 normalization_threshold=0.9,  # Prevent clipping

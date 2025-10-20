@@ -265,8 +265,8 @@ class AudioMetadataAnalyzer:
         # Print loudness info
         print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
 
-        # Generate waveform URL
-        waveform_url = f"/api/profiles/{profile.name}/songs/{song_name}/stems/{stem_name}/waveform"
+        # Waveform filename (peer to metadata.json in same directory)
+        waveform_url = f"{stem_name}_waveform.png"
 
         return StemMetadata(
             stem_type=stem_name,
@@ -306,6 +306,41 @@ class AudioMetadataAnalyzer:
         max_peak = max(peak_amplitudes.values()) if peak_amplitudes else 1.0
         print(f"  Max peak across all stems: {max_peak:.4f}")
 
+        # Second pass: collect LUFS measurements for relative gain calculation
+        print("Analyzing LUFS for relative gain calculation...")
+        lufs_measurements = {}
+        for stem_name, audio_file in stem_paths.items():
+            loudness_lufs, _ = self.analyze_stem_loudness(audio_file)
+            lufs_measurements[stem_name] = loudness_lufs
+
+        # Calculate relative gains while capping max gain at 2x (6.02 dB)
+        max_gain_db = 6.02  # 2x linear gain
+        target_lufs = -23.0
+        
+        # Calculate initial target gains
+        target_gains_db = {}
+        for stem_name, loudness_lufs in lufs_measurements.items():
+            if loudness_lufs > -60:  # Only adjust if we have meaningful measurement
+                target_gains_db[stem_name] = target_lufs - loudness_lufs
+            else:
+                target_gains_db[stem_name] = 0.0
+        
+        # Find the stem that needs the most gain
+        max_needed_gain = max(target_gains_db.values()) if target_gains_db else 0.0
+        
+        # If any stem would exceed our max gain, shift all gains down proportionally
+        # to maintain relative relationships while staying within limits
+        gain_offset = 0.0
+        if max_needed_gain > max_gain_db:
+            gain_offset = max_needed_gain - max_gain_db
+            print(f"  Applying gain offset of {gain_offset:.1f} dB to maintain 2x cap")
+        
+        # Apply the offset and clamp to reasonable range
+        final_gains_db = {}
+        for stem_name, target_gain in target_gains_db.items():
+            adjusted_gain = target_gain - gain_offset
+            final_gains_db[stem_name] = max(-12, min(max_gain_db, adjusted_gain))
+
         print("Generating waveforms...")
         for stem_name, audio_file in stem_paths.items():
             # Generate waveform PNG with normalized peak scaling
@@ -315,9 +350,23 @@ class AudioMetadataAnalyzer:
             )
             print(f"  ✓ {stem_name}: {waveform_path.name}")
 
-            # Create metadata
-            stems_dict[stem_name] = self.create_stem_metadata(
-                stem_name, audio_file, profile, song_name
+            # Create metadata with calculated relative gain
+            loudness_lufs = lufs_measurements[stem_name]
+            peak_amplitude = peak_amplitudes[stem_name]
+            stem_gain_adjustment_db = final_gains_db[stem_name]
+            
+            # Print loudness info
+            print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
+
+            # Waveform filename (peer to metadata.json in same directory)
+            waveform_url = f"{stem_name}_waveform.png"
+
+            stems_dict[stem_name] = StemMetadata(
+                stem_type=stem_name,
+                measured_lufs=round(loudness_lufs, 2),
+                peak_amplitude=round(peak_amplitude, 4),
+                stem_gain_adjustment_db=round(stem_gain_adjustment_db, 2),
+                waveform_url=waveform_url,
             )
 
         return StemsMetadata(stems=stems_dict)

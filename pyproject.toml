@@ -16,6 +16,8 @@ dependencies = [
     "onnxruntime>=1.23.1",
     "numpy>=2.3.4",
     "pillow>=10.0.0",
+    "typer>=0.20.0",
+    "python-dotenv>=1.1.1",
 ]
 
 [project.scripts]
