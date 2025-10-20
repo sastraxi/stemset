@@ -17,6 +17,7 @@ export interface StemFile {
 export interface StemMetadata {
   stem_type: string;
   measured_lufs: number | null;
+  peak_amplitude: number;
   stem_gain_adjustment_db: number;
   waveform_url: string;
 }

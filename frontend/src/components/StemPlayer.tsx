@@ -1,6 +1,8 @@
 import { useStemPlayer } from './useStemPlayer';
 import type { StemSources } from './useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
+import { Ruler } from './Ruler';
+import { useState } from 'react';
 
 interface StemPlayerProps {
   stems: StemSources;
@@ -14,6 +16,8 @@ interface StemPlayerProps {
  * - Delegates all audio graph & timing logic to hook.
  */
 export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
+  const [previewTime, setPreviewTime] = useState<number | null>(null);
+  
   const {
     isLoading,
     loadingMetrics,
@@ -83,67 +87,77 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
   return (
     <>
       <div className="player-panel stem-player">
-        <div className="playback-controls">
-          <button onClick={isPlaying ? pause : play} disabled={stemEntries.length === 0}>
-            {isPlaying ? '⏸ Pause' : '▶ Play'}
-          </button>
-          <button onClick={stop} disabled={!isPlaying && currentTime === 0}>
-            ⏹ Stop
-          </button>
-          <div className="time-display">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </div>
-        </div>
-
-        <div className="seek-bar">
-          <input
-            type="range"
-            min={0}
-            max={duration}
-            step={0.1}
-            value={currentTime}
-            onChange={(e) => seek(parseFloat(e.target.value))}
-          />
-        </div>
-
         <div className="waveforms-section">
+          {/* Ruler row with controls alignment */}
+          <div className="waveform-row">
+            <div className="waveform-controls playback-controls">
+              <div className="time-display">
+                {formatTime(previewTime !== null ? previewTime : currentTime)} / {formatTime(duration)}
+              </div>
+              <button 
+                onClick={isPlaying ? pause : play} 
+                disabled={stemEntries.length === 0}
+                className="playback-button"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </button>
+              <button 
+                onClick={stop} 
+                disabled={!isPlaying && currentTime === 0}
+                className="playback-button"
+                title="Reset"
+              >
+                ⏹
+              </button>
+            </div>
+            <Ruler
+              currentTime={currentTime}
+              duration={duration}
+              previewTime={previewTime || undefined}
+              onSeek={seek}
+              onPreview={setPreviewTime}
+              height={48}
+            />
+          </div>
+
           {stemEntries.map((stem) => (
             <div key={stem.name} className="waveform-row">
-              <label className="waveform-stem-label">{stem.name}</label>
+              <div className="waveform-controls">
+                <label className="waveform-stem-label">{stem.name}</label>
+                <div className="waveform-volume-control">
+                  <input
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={0.01}
+                    value={stem.gain}
+                    onChange={(e) => setStemGain(stem.name, parseFloat(e.target.value))}
+                    className="volume-slider"
+                  />
+                  <span className="volume-label">
+                    {(stem.gain * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="waveform-control-buttons">
+                  <button
+                    onClick={() => resetStemGain(stem.name)}
+                    className="reset-gain"
+                    title="Reset to initial gain"
+                  >
+                    ↺
+                  </button>
+                </div>
+              </div>
               <WaveformVisualization
                 waveformUrl={stem.waveformUrl}
                 stemName={stem.name}
                 currentTime={currentTime}
                 duration={duration}
+                previewTime={previewTime || undefined}
                 onSeek={seek}
+                onPreview={setPreviewTime}
               />
-            </div>
-          ))}
-        </div>
-
-        <div className="stem-controls">
-          {stemEntries.map((stem) => (
-            <div key={stem.name} className="stem-control">
-              <label className="stem-name">{stem.name}</label>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.01}
-                value={stem.gain}
-                onChange={(e) => setStemGain(stem.name, parseFloat(e.target.value))}
-                className="volume-slider"
-              />
-              <span className="volume-label">
-                {(stem.gain * 100).toFixed(0)}%
-                <button
-                  onClick={() => resetStemGain(stem.name)}
-                  className="reset-gain"
-                  title="Reset to initial gain"
-                >
-                  ↺
-                </button>
-              </span>
             </div>
           ))}
         </div>

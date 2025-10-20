@@ -1,78 +1,47 @@
 import { useEffect, useRef, useState } from 'react';
 
-interface WaveformVisualizationProps {
-  waveformUrl: string | null;
-  stemName: string;
+interface RulerProps {
   currentTime: number;
   duration: number;
   previewTime?: number; // Optional preview time for scrubbing visualization
   onSeek?: (seconds: number) => void;
   onPreview?: (seconds: number | null) => void; // Preview callback
+  height?: number; // Optional height, defaults to 48px
 }
 
-/** Stem color palette matching the dark theme */
-const STEM_COLORS: Record<string, string> = {
-  vocals: '#ff6b6b',    // Red
-  drums: '#ff9f43',     // Orange
-  bass: '#48dbfb',      // Cyan
-  other: '#a29bfe',     // Purple
-};
-
-/** Consistent cursor color for all tracks */
-const CURSOR_COLOR = '#ffffff';
-
 /**
- * WaveformVisualization - Renders a clickable waveform display with playback position indicator
- *
- * Backend generates grayscale PNG waveforms (white on transparent). This component:
- * 1. Loads the PNG into an offscreen canvas
- * 2. Colors it via canvas compositing (stem-specific colors)
- * 3. Renders it at full width with responsive scaling
- * 4. Overlays playback position indicator
- * 5. Handles click-to-seek interactions
+ * Ruler - A time ruler component with time codes at minute and 30-second marks
+ * 
+ * Features:
+ * - Shows time codes at 1-minute and 30-second intervals
+ * - Interactive scrubbing and seeking
+ * - Vertical line showing current playback position
+ * - Grid lines for time navigation
+ * - Same interaction logic as WaveformVisualization
  */
-export function WaveformVisualization({
-  waveformUrl,
-  stemName,
+export function Ruler({
   currentTime,
   duration,
   previewTime,
   onSeek,
-  onPreview
-}: WaveformVisualizationProps) {
+  onPreview,
+  height = 48
+}: RulerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Load waveform image
-  useEffect(() => {
-    console.log(`[WaveformVisualization:${stemName}] waveformUrl:`, waveformUrl);
-    if (!waveformUrl) {
-      imageRef.current = null;
-      return;
-    }
+  // Format time in MM:SS format
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous'; // For CORS if needed
-    img.onload = () => {
-      console.log(`[WaveformVisualization:${stemName}] Image loaded successfully`);
-      imageRef.current = img;
-      renderWaveform();
-    };
-    img.onerror = (e) => {
-      console.error(`[WaveformVisualization:${stemName}] Failed to load waveform image`, waveformUrl, e);
-      imageRef.current = null;
-    };
-    console.log(`[WaveformVisualization:${stemName}] Starting image load:`, waveformUrl);
-    img.src = waveformUrl;
-  }, [waveformUrl]);
-
-  // Render waveform with dual-tone coloring (greyscale left, vibrant right)
-  const renderWaveform = () => {
+  // Render ruler with time codes and grid lines
+  const renderRuler = () => {
     const canvas = canvasRef.current;
-    const img = imageRef.current;
-    if (!canvas || !img) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
@@ -84,9 +53,9 @@ export function WaveformVisualization({
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
     canvas.width = rect.width * dpr;
-    canvas.height = 128 * dpr; // Fixed height for consistent UI
+    canvas.height = height * dpr;
     canvas.style.width = `${rect.width}px`;
-    canvas.style.height = '128px';
+    canvas.style.height = `${height}px`;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -95,59 +64,21 @@ export function WaveformVisualization({
     const progress = duration > 0 ? displayTime / duration : 0;
     const cursorX = progress * canvas.width;
 
-    const stemColor = STEM_COLORS[stemName] || '#4a9eff';
-    const cursorColor = CURSOR_COLOR;
-
-    // LEFT SIDE: Played portion (dark greyscale)
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, cursorX, canvas.height);
-    ctx.clip();
-
-    // Draw waveform image
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // Apply dark greyscale using source-in + dark grey fill
-    ctx.globalCompositeOperation = 'source-in';
-    ctx.fillStyle = '#3a3a3a'; // Dark grey for played portion
+    // Background
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.restore();
-
-    // RIGHT SIDE: Unplayed portion (vibrant stem color)
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(cursorX, 0, canvas.width - cursorX, canvas.height);
-    ctx.clip();
-
-    // Draw waveform image
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // Apply vibrant stem color
-    ctx.globalCompositeOperation = 'source-in';
-    ctx.fillStyle = stemColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.restore();
 
     // TIME GRID: Vertical lines for time navigation
     if (duration > 0) {
       ctx.globalCompositeOperation = 'source-over';
       
       // Helper function to draw vertical grid line
-      const drawGridLine = (timeSeconds: number, opacity: number, lineWidth: number = 1, dotted: boolean = false) => {
+      const drawGridLine = (timeSeconds: number, opacity: number, lineWidth: number = 1) => {
         const x = (timeSeconds / duration) * canvas.width;
         if (x >= 0 && x <= canvas.width) {
           ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
           ctx.lineWidth = lineWidth * dpr;
-          
-          // Set dash pattern for dotted lines
-          if (dotted) {
-            ctx.setLineDash([3 * dpr, 3 * dpr]); // 3px dashes with 3px gaps
-          } else {
-            ctx.setLineDash([]); // Solid line
-          }
+          ctx.setLineDash([]); // Solid line
           
           ctx.beginPath();
           ctx.moveTo(x, 0);
@@ -156,47 +87,72 @@ export function WaveformVisualization({
         }
       };
 
-      // Draw time grid lines
-      for (let time = 0; time <= duration; time += 15) {
+      // Draw time grid lines (60s and 30s only, skip 15s)
+      for (let time = 0; time <= duration; time += 30) {
         if (time % 60 === 0) {
-          // Every minute - solid line with 12% opacity
-          drawGridLine(time, 0.12, 1, false);
-        } else if (time % 30 === 0) {
-          // Every 30 seconds - solid line with 8% opacity
-          drawGridLine(time, 0.08, 1, false);
+          // Every minute - solid line with 15% opacity
+          drawGridLine(time, 0.15, 1);
         } else {
-          // Every 15 seconds - dotted line with 4% opacity
-          drawGridLine(time, 0.04, 1, true);
+          // Every 30 seconds - solid line with 10% opacity
+          drawGridLine(time, 0.10, 1);
+        }
+      }
+
+      // TIME CODES: Draw time labels
+      ctx.font = `${11 * dpr}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      for (let time = 0; time <= duration; time += 30) {
+        const x = (time / duration) * canvas.width;
+        if (x >= 20 * dpr && x <= canvas.width - 20 * dpr) { // Avoid edges
+          const timeText = formatTime(time);
+          
+          if (time % 60 === 0) {
+            // Every minute - white text, larger
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `${12 * dpr}px system-ui, sans-serif`;
+            ctx.fillText(timeText, x, canvas.height / 2);
+          } else {
+            // Every 30 seconds - dimmer text, smaller
+            ctx.fillStyle = '#999999';
+            ctx.font = `${10 * dpr}px system-ui, sans-serif`;
+            ctx.fillText(timeText, x, canvas.height / 2);
+          }
         }
       }
     }
 
-    // CURSOR: Vertical line at playback position
+    // CURSOR: Triangle at bottom indicating playback position
     if (duration > 0) {
       ctx.globalCompositeOperation = 'source-over';
 
-      // Vertical line with consistent white color
-      ctx.strokeStyle = cursorColor;
-      ctx.lineWidth = 2 * dpr;
+      // Draw triangle pointing down at the bottom of the ruler
+      const triangleSize = 6 * dpr;
+      const triangleY = canvas.height - triangleSize;
+      
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(cursorX, 0);
-      ctx.lineTo(cursorX, canvas.height);
-      ctx.stroke();
+      ctx.moveTo(cursorX, canvas.height); // Bottom point
+      ctx.lineTo(cursorX - triangleSize, triangleY); // Top left
+      ctx.lineTo(cursorX + triangleSize, triangleY); // Top right
+      ctx.closePath();
+      ctx.fill();
     }
   };
 
   // Re-render on time change, preview time change, or window resize
   useEffect(() => {
-    renderWaveform();
-  }, [currentTime, previewTime, duration]);
+    renderRuler();
+  }, [currentTime, previewTime, duration, height]);
 
   useEffect(() => {
-    const handleResize = () => renderWaveform();
+    const handleResize = () => renderRuler();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Real-time scrubbing handlers
+  // Real-time scrubbing handlers (same logic as WaveformVisualization)
   const getSeekTime = (clientX: number) => {
     const canvas = canvasRef.current;
     if (!canvas || duration === 0) return null;
@@ -277,19 +233,11 @@ export function WaveformVisualization({
     }
   }, [isDragging, onSeek, onPreview, previewTime, duration]);
 
-  if (!waveformUrl) {
-    return (
-      <div className="waveform-placeholder">
-        <span>No waveform available</span>
-      </div>
-    );
-  }
-
   return (
-    <div ref={containerRef} className="waveform-container">
+    <div ref={containerRef} className="ruler-container">
       <canvas
         ref={canvasRef}
-        className="waveform-canvas"
+        className="ruler-canvas"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

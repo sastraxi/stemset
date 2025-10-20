@@ -111,7 +111,7 @@ function App() {
   async function loadProfileFiles(profileName: string) {
     try {
       const data = await getProfileFiles(profileName);
-      setFiles(data.files);
+      setFiles(data);
     } catch (error) {
       console.error('Error loading files:', error);
     }

@@ -215,8 +215,13 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       const t0 = performance.now();
       const metaStart = performance.now();
       try {
-        metadata = await getFileMetadata(profileName, fileName);
-      } catch {}
+        const response = await getFileMetadata(profileName, fileName);
+        console.log('[useStemPlayer] Fetched metadata:', response);
+        // Handle both old format (flat) and new format (nested under "stems")
+        metadata = response.stems || response;
+      } catch (err) {
+        console.error('[useStemPlayer] Failed to fetch metadata:', err);
+      }
       const metaEnd = performance.now();
       const newMap = new Map<string, LoadedStem>();
       const stemEntries = Object.entries(stems).filter(([, url]) => !!url);
@@ -236,6 +241,8 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
           const decodeEnd = performance.now();
           if (aborted) return;
           const meta = metadata[name] || null;
+          console.log(`[useStemPlayer] Looking up metadata for stem "${name}":`, meta);
+          console.log(`[useStemPlayer] Available metadata keys:`, Object.keys(metadata));
           let initialGain = 1;
           if (meta && typeof meta.stem_gain_adjustment_db === 'number') {
             initialGain = Math.pow(10, meta.stem_gain_adjustment_db / 20);
@@ -263,12 +270,14 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       }));
       if (aborted) return;
       loadedStemsRef.current = newMap;
-      setStemState(Array.from(newMap.entries()).map(([n, s]) => ({
+      const stemStateArray = Array.from(newMap.entries()).map(([n, s]) => ({
         name: n,
         gain: s.gain.gain.value,
         initialGain: s.initialGain,
         waveformUrl: s.metadata?.waveform_url || null
-      })));
+      }));
+      console.log('[useStemPlayer] Setting stem state:', stemStateArray);
+      setStemState(stemStateArray);
       setIsLoading(false);
       pausedAtRef.current = 0;
       startTimeRef.current = ctx.currentTime;

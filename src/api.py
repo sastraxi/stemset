@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime
 from pathlib import Path
+from src.models.metadata import StemsMetadata
 
 from litestar import Litestar, get, post
 from litestar.config.cors import CORSConfig
@@ -167,7 +168,7 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
 
 
 @get("/api/profiles/{profile_name:str}/files/{file_name:str}/metadata")
-async def get_file_metadata(profile_name: str, file_name: str) -> dict[str, dict[str, str | float]]:
+async def get_file_metadata(profile_name: str, file_name: str) -> StemsMetadata:
     """Get metadata for a specific processed file."""
     from .models.metadata import StemsMetadata
 
@@ -185,15 +186,8 @@ async def get_file_metadata(profile_name: str, file_name: str) -> dict[str, dict
     # Load using Pydantic for type safety
     stems_metadata = StemsMetadata.from_file(metadata_file)
 
-    # Convert to dict format for API response
-    return {
-        stem_name: {
-            "stem_type": stem.stem_type,
-            "measured_lufs": stem.measured_lufs,
-            "waveform_url": stem.waveform_url,
-        }
-        for stem_name, stem in stems_metadata.stems.items()
-    }
+    # Return Pydantic model directly - Litestar will serialize it
+    return stems_metadata
 
 
 @get("/api/profiles/{profile_name:str}/songs/{song_name:str}/stems/{stem_name:str}/waveform")
@@ -203,6 +197,7 @@ async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -
     The waveform is rendered as white on transparent background.
     Frontend should apply color via CSS filters or canvas operations.
     """
+    print(f"Fetching waveform for profile='{profile_name}', song='{song_name}', stem='{stem_name}'")
     config = get_config()
     profile = config.get_profile(profile_name)
     if profile is None:

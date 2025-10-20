@@ -12,7 +12,7 @@ export async function getProfile(name: string): Promise<Profile> {
   return response.json();
 }
 
-export async function getProfileFiles(name: string): Promise<{ files: StemFile[] }> {
+export async function getProfileFiles(name: string): Promise<StemFile[]> {
   const response = await fetch(`${API_BASE}/profiles/${name}/files`);
   return response.json();
 }
