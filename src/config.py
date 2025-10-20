@@ -1,9 +1,8 @@
 """Configuration management for Stemset."""
 
-from pathlib import Path
-from typing import Dict, List
-
 import yaml
+from pathlib import Path
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -16,11 +15,32 @@ class StemGains(BaseModel):
     other: float = 0.0
 
 
+class ModelType(str, Enum):
+    """Enum for available separation model types."""
+    
+    DEMUCS = "demucs"
+    BSMAMBA2 = "bsmamba2"
+        
+    @classmethod
+    def get_available_models(cls) -> list[str]:
+        """Get a list of all available model names."""
+        return [model.value for model in cls]
+    
+    @classmethod
+    def get_default_model(cls) -> "ModelType":
+        """Get the default model type."""
+        return cls.DEMUCS
+
+
 class Profile(BaseModel):
     """A processing profile with source folder and settings."""
 
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
+    model: ModelType = Field(
+        default=ModelType.DEMUCS, 
+        description=f"Separation model to use. Available: {', '.join(ModelType.get_available_models())}"
+    )
     target_lufs: float = Field(
         -23.0, description="Target loudness in LUFS for normalization"
     )
@@ -58,7 +78,7 @@ class Profile(BaseModel):
 class Config(BaseModel):
     """Global configuration."""
 
-    profiles: List[Profile] = Field(
+    profiles: list[Profile] = Field(
         default_factory=list, description="List of processing profiles"
     )
 
@@ -81,7 +101,7 @@ class Config(BaseModel):
                 return profile
         return None
 
-    def get_profile_names(self) -> List[str]:
+    def get_profile_names(self) -> list[str]:
         """Get list of all profile names."""
         return [p.name for p in self.profiles]
 

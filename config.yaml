@@ -4,6 +4,7 @@
 profiles:
   - name: "h4n"
     source_folder: "/Volumes/H4N_SD/STEREO"
+    model: "demucs"       # Available: "demucs" (4-stem), "bsmamba2" (experimental 4-stem)
     target_lufs: -23.0
     stem_gains:
       vocals: 0.0
@@ -15,6 +16,7 @@ profiles:
 
   - name: "one"
     source_folder: "./input/one"
+    model: "demucs"       # Available: "demucs" (4-stem), "bsmamba2" (experimental 4-stem)
     target_lufs: -23.0
     stem_gains:
       vocals: 0.0
