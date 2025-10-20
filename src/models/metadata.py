@@ -1,13 +1,36 @@
 """Utilities for audio metadata analysis and stem metadata creation."""
 
 from pathlib import Path
-from typing import Any
 
 import pyloudnorm as pyln
 import soundfile as sf
-
+from pydantic import BaseModel
 
 from ..config import Profile
+
+
+class StemMetadata(BaseModel):
+    """Metadata for a single stem."""
+
+    stem_type: str
+    measured_lufs: float
+
+
+class StemsMetadata(BaseModel):
+    """Metadata for all stems in a separation."""
+
+    stems: dict[str, StemMetadata]
+
+    def to_file(self, file_path: Path) -> None:
+        """Write metadata to a JSON file."""
+        with open(file_path, "w") as f:
+            f.write(self.model_dump_json(indent=2))
+
+    @classmethod
+    def from_file(cls, file_path: Path) -> "StemsMetadata":
+        """Load metadata from a JSON file."""
+        with open(file_path, "r") as f:
+            return cls.model_validate_json(f.read())
 
 
 class AudioMetadataAnalyzer:
@@ -33,53 +56,52 @@ class AudioMetadataAnalyzer:
         return float(loudness_lufs)
     
     def create_stem_metadata(
-        self, 
-        stem_name: str, 
-        audio_file: Path, 
+        self,
+        stem_name: str,
+        audio_file: Path,
         profile: Profile
-    ) -> dict[str, Any]:
-        """Create metadata dictionary for a single stem.
-        
+    ) -> StemMetadata:
+        """Create metadata for a single stem.
+
         Args:
             stem_name: Name of the stem (e.g., "vocals", "drums")
             audio_file: Path to the stem audio file
             profile: Profile configuration
-            
+
         Returns:
-            Dictionary containing stem metadata
+            StemMetadata model
         """
         # Analyze loudness
         loudness_lufs = self.analyze_stem_loudness(audio_file)
-        
-        
+
         # Print loudness info
         print(f"  {stem_name}: {loudness_lufs:.1f} LUFS")
-        
-        return {
-            "stem_type": stem_name,
-            "measured_lufs": round(loudness_lufs, 2),
-        }
-    
+
+        return StemMetadata(
+            stem_type=stem_name,
+            measured_lufs=round(loudness_lufs, 2),
+        )
+
     def create_stems_metadata(
-        self, 
-        stem_paths: dict[str, Path], 
+        self,
+        stem_paths: dict[str, Path],
         profile: Profile
-    ) -> dict[str, dict[str, Any]]:
+    ) -> StemsMetadata:
         """Create metadata for multiple stems.
-        
+
         Args:
             stem_paths: Dictionary mapping stem names to file paths
             profile: Profile configuration
-            
+
         Returns:
-            Dictionary mapping stem names to their metadata
+            StemsMetadata model containing all stem metadata
         """
-        metadata = {}
-        
+        stems_dict = {}
+
         for stem_name, audio_file in stem_paths.items():
-            metadata[stem_name] = self.create_stem_metadata(stem_name, audio_file, profile)
-            
-        return metadata
+            stems_dict[stem_name] = self.create_stem_metadata(stem_name, audio_file, profile)
+
+        return StemsMetadata(stems=stems_dict)
 
 
 # Global instance for convenience

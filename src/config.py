@@ -1,39 +1,108 @@
+# pyright: reportExplicitAny=false
 """Configuration management for Stemset."""
 
 from __future__ import annotations
 
 import yaml
 from pathlib import Path
-from enum import Enum
-from pydantic import BaseModel, Field, field_validator
-from typing import Any
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, cast
 
 
-class StemGains(BaseModel):
-    """Per-stem gain adjustments in dB."""
+class OutputConfig(BaseModel):
+    """Output format configuration."""
 
-    vocals: float = 0.0
-    drums: float = 0.0
-    bass: float = 0.0
-    other: float = 0.0
+    format: str = Field("opus", description="Output format: 'wav' or 'opus'")
+    bitrate: int = Field(192, description="Bitrate in kbps for lossy formats (e.g., Opus)")
 
-
-class ModelType(str, Enum):
-    """Enum for available separation model types."""
-    
-    HTDEMUCS_FT = "htdemucs_ft"
-    HDEMUCS_MMI = "hdemucs_mmi"
-    SUCCESSIVE = "successive"
-        
+    @field_validator("format")
     @classmethod
-    def get_available_models(cls) -> list[str]:
-        """Get a list of all available model names."""
-        return [model.value for model in cls]
-    
+    def validate_format(cls, v: str) -> str:
+        """Validate output format."""
+        allowed = {"wav", "opus"}
+        if v.lower() not in allowed:
+            raise ValueError(f"Invalid format '{v}'. Must be one of: {', '.join(allowed)}")
+        return v.lower()
+
+
+class StrategyNode(BaseModel):
+    """A node in the separation strategy tree."""
+
+    model: str = Field(..., description="Model name to use for separation")
+    outputs: dict[str, str | StrategyNode] = Field(
+        default_factory=dict, description="Output slot mappings (slot_name -> final_name or subtree)"
+    )
+
+    @model_validator(mode="before")
     @classmethod
-    def get_default_model(cls) -> "ModelType":
-        """Get the default model type."""
-        return cls.HTDEMUCS_FT
+    def extract_outputs(cls, data: Any) -> dict[str, Any]:
+        """Extract model and outputs from YAML structure."""
+        if not isinstance(data, dict):
+            raise ValueError("Strategy node must be a dictionary")
+
+        dict_data = cast(dict[str, Any], data)
+
+        # If already processed (has 'model' key), return as-is
+        if "model" in dict_data:
+            return dict_data
+
+        # Extract from YAML format (with '_' key)
+        if "_" not in dict_data:
+            raise ValueError("Strategy node must have '_' key specifying model name")
+
+        model_name = cast(str, dict_data["_"])
+        outputs = {k: v for k, v in dict_data.items() if k != "_"}
+
+        return {"model": model_name, "outputs": outputs}
+
+    def validate_outputs(self, expected_slots: set[str]) -> None:
+        """Validate that output slots match model's expected slots.
+
+        Args:
+            expected_slots: Set of slot names the model produces
+
+        Raises:
+            ValueError: If output slots don't match expected slots
+        """
+        actual_slots = set(self.outputs.keys())
+
+        if actual_slots != expected_slots:
+            missing = expected_slots - actual_slots
+            extra = actual_slots - expected_slots
+            errors = []
+            if missing:
+                errors.append(f"missing slots: {missing}")
+            if extra:
+                errors.append(f"unexpected slots: {extra}")
+            raise ValueError(
+                f"Model '{self.model}' output mismatch: {', '.join(errors)}. " +
+                f"Expected: {expected_slots}"
+            )
+
+    def get_final_outputs(self) -> set[str]:
+        """Get all final output names from this tree."""
+        final_outputs = set()
+        for output_value in self.outputs.values():
+            if isinstance(output_value, str):
+                # Leaf node - final output name
+                final_outputs.add(output_value)
+            elif isinstance(output_value, StrategyNode):
+                # Subtree - recurse
+                final_outputs.update(output_value.get_final_outputs())
+        return final_outputs
+
+
+class Strategy(BaseModel):
+    """A separation strategy defining a tree of models."""
+
+    name: str = Field(..., description="Strategy name (unique identifier)")
+    root: StrategyNode = Field(..., description="Root node of strategy tree")
+
+    @classmethod
+    def from_dict(cls, name: str, data: dict[str, Any]) -> Strategy:
+        """Create strategy from YAML dictionary."""
+        root = StrategyNode.model_validate(data)
+        return cls(name=name, root=root)
 
 
 class Profile(BaseModel):
@@ -41,15 +110,9 @@ class Profile(BaseModel):
 
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
-    model: ModelType = Field(
-        default=ModelType.HTDEMUCS_FT, 
-        description=f"Separation model to use. Available: {', '.join(ModelType.get_available_models())}"
-    )
-    output_format: str = Field(
-        "opus", description="Output format for stems: 'wav' or 'opus'"
-    )
-    opus_bitrate: int = Field(
-        192, description="Opus bitrate in kbps (96-512, recommended: 128-256 for music)"
+    strategy: str = Field(..., description="Strategy name to use for separation")
+    output: OutputConfig = Field(
+        default_factory=lambda: OutputConfig(), description="Output format configuration"
     )
 
     @field_validator("source_folder")
@@ -71,6 +134,9 @@ class Profile(BaseModel):
 class Config(BaseModel):
     """Global configuration."""
 
+    strategies: dict[str, Strategy] = Field(
+        default_factory=dict, description="Available separation strategies"
+    )
     profiles: list[Profile] = Field(
         default_factory=list, description="List of processing profiles"
     )
@@ -85,7 +151,32 @@ class Config(BaseModel):
         with open(path, "r") as f:
             data: dict[str, Any] = yaml.safe_load(f)
 
-        return cls(**data)
+        # Parse strategies from YAML
+        strategies_dict = {}
+        if "strategies" in data:
+            for strategy_name, strategy_data in data["strategies"].items():
+                strategies_dict[strategy_name] = Strategy.from_dict(strategy_name, strategy_data)
+            data["strategies"] = strategies_dict
+
+        config = cls(**data)
+
+        # Validate profile strategy references
+        for profile in config.profiles:
+            if profile.strategy not in config.strategies:
+                available = ", ".join(config.strategies.keys())
+                raise ValueError(
+                    f"Profile '{profile.name}' references unknown strategy '{profile.strategy}'. " +
+                    f"Available strategies: {available}"
+                )
+
+        # Note: Strategy output slot validation happens at execution time
+        # in StrategyExecutor, where we have the actual model instances
+
+        return config
+
+    def get_strategy(self, name: str) -> Strategy | None:
+        """Get a strategy by name."""
+        return self.strategies.get(name)
 
     def get_profile(self, name: str) -> Profile | None:
         """Get a profile by name."""

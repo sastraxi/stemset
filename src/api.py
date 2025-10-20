@@ -2,68 +2,144 @@
 
 import asyncio
 import json
+from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
-from litestar import Litestar, MediaType, get, post
+from litestar import Litestar, get, post
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
-from litestar.response import File, Response
+from litestar.exceptions import NotFoundException
 from litestar.static_files import create_static_files_router
+from pydantic import BaseModel
 
-from .config import Profile, get_config
+from .config import get_config
 from .queue import Job, JobStatus, get_queue
 from .scanner import FileScanner
-from .separator import StemSeparator
+from .modern_separator import StemSeparator
 
 
-# API Response Models (using plain dicts for simplicity)
+# API Response Models
+
+
+class ProfileResponse(BaseModel):
+    """Profile information response."""
+
+    name: str
+    source_folder: str
+
+
+class FileItem(BaseModel):
+    """Processed file item."""
+
+    name: str
+    path: str
+    created_at: str
+
+
+class FilesResponse(BaseModel):
+    """List of processed files."""
+
+    files: list[FileItem]
+
+
+class ScanResponse(BaseModel):
+    """Scan results response."""
+
+    queued: int
+    message: str
+
+
+class JobResponse(BaseModel):
+    """Job information response."""
+
+    id: str
+    profile_name: str
+    input_file: str
+    output_folder: str
+    status: JobStatus
+    created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    output_files: dict[str, str] | None
+    error: str | None
+
+
+class QueueStatusResponse(BaseModel):
+    """Queue status response."""
+
+    queue_size: int
+    processing: bool
+    current_job: JobResponse | None
+
+
+class FileWithStems(BaseModel):
+    """File with stem paths."""
+
+    name: str
+    path: str
+    stems: dict[str, str]
+
+
+class JobListResponse(BaseModel):
+    """List of jobs."""
+
+    jobs: list[JobResponse]
+
+
+# Helper functions
+
+
+def job_to_response(job: Job) -> JobResponse:
+    """Convert Job to JobResponse."""
+    return JobResponse(
+        id=job.id,
+        profile_name=job.profile_name,
+        input_file=str(job.input_file),
+        output_folder=str(job.output_folder),
+        status=job.status,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        output_files={k: str(v) for k, v in job.output_files.items()} if job.output_files else None,
+        error=job.error,
+    )
+
+
+# API Endpoints
 
 
 @get("/api/profiles")
-async def get_profiles() -> List[dict]:
+async def get_profiles() -> list[ProfileResponse]:
     """Get all configured profiles."""
     config = get_config()
     return [
-        {
-            "name": p.name,
-            "source_folder": p.source_folder,
-        }
+        ProfileResponse(name=p.name, source_folder=p.source_folder)
         for p in config.profiles
     ]
 
 
 @get("/api/profiles/{profile_name:str}")
-async def get_profile(profile_name: str) -> dict:
+async def get_profile(profile_name: str) -> ProfileResponse:
     """Get a specific profile by name."""
     config = get_config()
     profile = config.get_profile(profile_name)
     if profile is None:
-        return Response(
-            content={"error": f"Profile '{profile_name}' not found"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-    return {
-        "name": profile.name,
-        "source_folder": profile.source_folder,
-    }
+    return ProfileResponse(name=profile.name, source_folder=profile.source_folder)
 
 
 @get("/api/profiles/{profile_name:str}/files")
-async def get_profile_files(profile_name: str) -> dict:
+async def get_profile_files(profile_name: str) -> list[FileWithStems]:
     """Get all processed files for a profile."""
     config = get_config()
     profile = config.get_profile(profile_name)
     if profile is None:
-        return Response(
-            content={"error": f"Profile '{profile_name}' not found"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
     media_path = profile.get_media_path()
     if not media_path.exists():
-        return {"files": []}
+        return []
 
     files = []
     for folder in media_path.iterdir():
@@ -80,52 +156,49 @@ async def get_profile_files(profile_name: str) -> dict:
 
             if stems:
                 files.append(
-                    {
-                        "name": folder.name,
-                        "path": str(folder),
-                        "stems": stems,
-                    }
+                    FileWithStems(
+                        name=folder.name,
+                        path=str(folder),
+                        stems=stems,
+                    )
                 )
 
-    return {"files": files}
+    return files
 
 
 @get("/api/profiles/{profile_name:str}/files/{file_name:str}/metadata")
-async def get_file_metadata(profile_name: str, file_name: str) -> dict:
+async def get_file_metadata(profile_name: str, file_name: str) -> dict[str, dict[str, str | float]]:
     """Get metadata for a specific processed file."""
+    from .models.metadata import StemsMetadata
+
     config = get_config()
     profile = config.get_profile(profile_name)
     if profile is None:
-        return Response(
-            content={"error": f"Profile '{profile_name}' not found"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
     media_path = profile.get_media_path()
     metadata_file = media_path / file_name / "metadata.json"
 
     if not metadata_file.exists():
-        return Response(
-            content={"error": f"Metadata not found for '{file_name}'"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Metadata not found for '{file_name}'")
 
-    with open(metadata_file, "r") as f:
-        metadata = json.load(f)
+    # Load using Pydantic for type safety
+    stems_metadata = StemsMetadata.from_file(metadata_file)
 
-    return metadata
+    # Convert to dict format for API response
+    return {
+        stem_name: {"stem_type": stem.stem_type, "measured_lufs": stem.measured_lufs}
+        for stem_name, stem in stems_metadata.stems.items()
+    }
 
 
 @post("/api/profiles/{profile_name:str}/scan")
-async def scan_profile(profile_name: str, state: State) -> dict:
+async def scan_profile(profile_name: str) -> ScanResponse:
     """Scan a profile for new files and queue them for processing."""
     config = get_config()
     profile = config.get_profile(profile_name)
     if profile is None:
-        return Response(
-            content={"error": f"Profile '{profile_name}' not found"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
     # Scan for new files
     scanner = FileScanner(profile)
@@ -133,51 +206,34 @@ async def scan_profile(profile_name: str, state: State) -> dict:
 
     # Queue jobs for new files
     queue = get_queue()
-    jobs = []
     for input_file, output_name in new_files:
         output_folder = profile.get_media_path() / output_name
-        job = queue.add_job(profile_name, input_file, output_folder)
-        jobs.append(
-            {
-                "id": job.id,
-                "input_file": str(job.input_file),
-                "output_folder": str(job.output_folder),
-                "status": job.status.value,
-            }
-        )
+        _ = queue.add_job(profile_name, input_file, output_folder)
 
-    return {
-        "scanned": len(new_files),
-        "jobs": jobs,
-    }
+    return ScanResponse(
+        queued=len(new_files),
+        message=f"Queued {len(new_files)} file(s) for processing",
+    )
 
 
 @get("/api/queue")
-async def get_queue_status() -> dict:
+async def get_queue_status() -> QueueStatusResponse:
     """Get the current queue status."""
     queue = get_queue()
 
-    current_job_info = None
+    current_job_response = None
     if queue.current_job:
-        current_job_info = {
-            "id": queue.current_job.id,
-            "profile": queue.current_job.profile_name,
-            "input_file": str(queue.current_job.input_file),
-            "status": queue.current_job.status.value,
-            "started_at": queue.current_job.started_at.isoformat()
-            if queue.current_job.started_at
-            else None,
-        }
+        current_job_response = job_to_response(queue.current_job)
 
-    return {
-        "queue_size": queue.get_queue_size(),
-        "is_processing": queue.is_processing(),
-        "current_job": current_job_info,
-    }
+    return QueueStatusResponse(
+        queue_size=queue.get_queue_size(),
+        processing=queue.is_processing(),
+        current_job=current_job_response,
+    )
 
 
 @get("/api/jobs")
-async def get_jobs(profile: Optional[str] = None) -> dict:
+async def get_jobs(profile: str | None = None) -> JobListResponse:
     """Get all jobs, optionally filtered by profile."""
     queue = get_queue()
 
@@ -186,49 +242,19 @@ async def get_jobs(profile: Optional[str] = None) -> dict:
     else:
         jobs = queue.get_all_jobs()
 
-    return {
-        "jobs": [
-            {
-                "id": job.id,
-                "profile": job.profile_name,
-                "input_file": str(job.input_file),
-                "output_folder": str(job.output_folder),
-                "status": job.status.value,
-                "created_at": job.created_at.isoformat(),
-                "started_at": job.started_at.isoformat() if job.started_at else None,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                "error": job.error,
-                "output_files": job.output_files,
-            }
-            for job in jobs
-        ]
-    }
+    return JobListResponse(jobs=[job_to_response(job) for job in jobs])
 
 
 @get("/api/jobs/{job_id:str}")
-async def get_job(job_id: str) -> dict:
+async def get_job(job_id: str) -> JobResponse:
     """Get a specific job by ID."""
     queue = get_queue()
     job = queue.get_job(job_id)
 
     if job is None:
-        return Response(
-            content={"error": f"Job '{job_id}' not found"},
-            status_code=404,
-        )
+        raise NotFoundException(detail=f"Job '{job_id}' not found")
 
-    return {
-        "id": job.id,
-        "profile": job.profile_name,
-        "input_file": str(job.input_file),
-        "output_folder": str(job.output_folder),
-        "status": job.status.value,
-        "created_at": job.created_at.isoformat(),
-        "started_at": job.started_at.isoformat() if job.started_at else None,
-        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-        "error": job.error,
-        "output_files": job.output_files,
-    }
+    return job_to_response(job)
 
 
 async def process_job(job: Job) -> dict[str, str]:

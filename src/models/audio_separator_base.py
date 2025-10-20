@@ -1,40 +1,89 @@
-"""Shared base implementation for audio-separator based models."""
+"""Abstract base class for audio separation models."""
 
 from __future__ import annotations
 from pathlib import Path
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..config import OutputConfig
 
 from audio_separator.separator import Separator
 
-from .protocols import AtomicSeparatorModel, SeparationResult, StemType
-from .metadata import get_metadata_analyzer
-from ..config import Profile
 
+class AudioSeparator(ABC):
+    """Abstract base class for audio separation models.
 
-class AudioSeparatorBase:
-    """Base class for models using the audio-separator library."""
-    
-    def __init__(self, profile: Profile):
-        """Initialize with profile configuration."""
-        self.profile = profile
+    All separator models must implement:
+    - output_slots: dict mapping slot names to descriptions
+    - model_filename: the model file to load
+    - separate: perform separation and return paths
+    """
+
+    def __init__(self, output_config: OutputConfig):
+        """Initialize with output configuration.
+
+        Args:
+            output_config: Output format and bitrate settings
+        """
+        self.output_config = output_config
         self._separator: Separator | None = None
-    
+
+    @property
+    @abstractmethod
+    def output_slots(self) -> dict[str, str]:
+        """Get output slot names and descriptions.
+
+        Returns:
+            Dict mapping slot_name -> description
+
+        Example:
+            {"vocals": "Vocal track", "no_vocals": "Instrumental track"}
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def model_filename(self) -> str:
+        """Get the model filename to load.
+
+        Returns:
+            Model filename (e.g., "htdemucs_ft.yaml", "kuielab_b_drums.onnx")
+        """
+        ...
+
+    @abstractmethod
+    def separate(self, input_file: Path, output_dir: Path) -> dict[str, Path]:
+        """Perform audio separation.
+
+        Args:
+            input_file: Input audio file path
+            output_dir: Directory to write output files
+
+        Returns:
+            Dict mapping slot_name -> output_file_path
+
+        Raises:
+            RuntimeError: If separation fails or outputs are missing
+        """
+        ...
+
     def _get_separator(self) -> Separator:
-        """Get or create audio separator instance."""
+        """Get or create audio separator instance with configured output format."""
         if self._separator is None:
             import torch
             import os
 
-            # Limit CPU threads to be nice to interactive processes
+            # Limit CPU threads to keep system responsive
             cpu_count = os.cpu_count() or 4
             thread_count = max(1, cpu_count - 2)
             torch.set_num_threads(thread_count)
             torch.set_num_interop_threads(thread_count)
             print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
-            # Determine output format and bitrate
-            output_format = self.profile.output_format.upper()
-            output_bitrate = f"{self.profile.opus_bitrate}k" if output_format == "OPUS" else None
+            # Configure output format
+            output_format = self.output_config.format.upper()
+            output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
 
             self._separator = Separator(
                 log_level=20,  # INFO level
@@ -43,78 +92,56 @@ class AudioSeparatorBase:
                 output_bitrate=output_bitrate,
                 normalization_threshold=0.9,  # Prevent clipping
             )
-        
+
         return self._separator
-    
-    @abstractmethod
-    def _get_model_filename(self) -> str:
-        """Get the model filename to load."""
-        ...
-    
-    @abstractmethod 
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
-        """Get mapping from audio-separator output names to StemType."""
-        ...
-    
-    def separate(self, input_file: Path, output_folder: Path) -> SeparationResult:
-        """Perform separation using audio-separator."""
-        output_folder.mkdir(parents=True, exist_ok=True)
-        
-        # Get separator and load model
+
+
+class AudioSeparatorLibraryModel(AudioSeparator):
+    """Base implementation for models using audio-separator library directly.
+
+    Subclasses only need to define output_slots and model_filename.
+    """
+
+    def separate(self, input_file: Path, output_dir: Path) -> dict[str, Path]:
+        """Perform separation using audio-separator library."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Get separator and load model if needed
         separator = self._get_separator()
         if not hasattr(separator, '_model_loaded') or not separator._model_loaded:
-            separator.load_model(self._get_model_filename())
+            separator.load_model(self.model_filename)
             separator._model_loaded = True
-            
-            output_format = self.profile.output_format.upper()
-            output_bitrate = f"{self.profile.opus_bitrate}k" if output_format == "OPUS" else None
-            print(f"{self.model_name} model loaded (output: {output_format}" +
+
+            output_format = self.output_config.format.upper()
+            output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
+            print(f"Model '{self.model_filename}' loaded (output: {output_format}" +
                   (f" @ {output_bitrate})" if output_bitrate else ")"))
-        
+
         # Set output directory
-        separator.model_instance.output_dir = str(output_folder.absolute())
-        
-        print(f"Separating {input_file.name} with {self.model_name}...")
-        
-        # Build custom output names to avoid underscores
-        stem_mapping = self._get_output_stem_mapping()
-        custom_output_names = {
-            stem_name: stem_name 
-            for stem_name in stem_mapping.keys()
-        }
-        
+        separator.model_instance.output_dir = str(output_dir.absolute())
+
+        print(f"Separating {input_file.name} with {self.model_filename}...")
+
+        # Build custom output names matching our slot names
+        custom_output_names = {slot_name: slot_name for slot_name in self.output_slots.keys()}
+
         # Perform separation
         output_files = separator.separate(str(input_file), custom_output_names=custom_output_names)
-        
-        # Map output files to stem types
-        output_stems: dict[StemType, Path] = {}
+
+        # Map output files to slots
+        output_paths: dict[str, Path] = {}
         for output_file_str in output_files:
-            output_file = output_folder / output_file_str
-            stem_name = output_file.stem
-            if stem_name in stem_mapping:
-                stem_type = stem_mapping[stem_name]
-                output_stems[stem_type] = output_file
-        
-        # Verify we got expected outputs
-        expected_stems = set(stem_mapping.values())
-        missing = expected_stems - set(output_stems.keys())
+            output_file = output_dir / output_file_str
+            slot_name = output_file.stem
+            if slot_name in self.output_slots:
+                output_paths[slot_name] = output_file
+
+        # Verify we got all expected outputs
+        expected_slots = set(self.output_slots.keys())
+        missing = expected_slots - set(output_paths.keys())
         if missing:
-            raise RuntimeError(f"{self.model_name} separation incomplete: missing stems {missing}")
-        
-        # Analyze metadata
-        analyzer = get_metadata_analyzer()
-        stem_paths_for_analysis = {stem.value: path for stem, path in output_stems.items()}
-        raw_metadata = analyzer.create_stems_metadata(stem_paths_for_analysis, self.profile)
-        
-        # Convert metadata keys to StemType
-        metadata: dict[StemType, dict[str, float]] = {}
-        for stem_name, stem_meta in raw_metadata.items():
-            stem_type = StemType(stem_name)
-            metadata[stem_type] = stem_meta
-        
-        return SeparationResult(
-            input_file=input_file,
-            output_stems=output_stems,
-            metadata=metadata,
-            model_used=self.model_name
-        )
+            raise RuntimeError(
+                f"Model '{self.model_filename}' separation incomplete: missing outputs {missing}"
+            )
+
+        return output_paths

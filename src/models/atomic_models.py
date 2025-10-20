@@ -1,132 +1,84 @@
 """Atomic separator models using audio-separator library."""
 
 from __future__ import annotations
-from pathlib import Path
 
-from .audio_separator_base import AudioSeparatorBase
-from .protocols import AtomicSeparatorModel, StemType
-from ..config import Profile
+from .audio_separator_base import AudioSeparatorLibraryModel
 
 
-class HTDemucsModel(AudioSeparatorBase):
+class HTDemucsModel(AudioSeparatorLibraryModel):
     """HD-Demucs model for 4-stem separation."""
-    
-    def __init__(self, profile: Profile):
-        super().__init__(profile)
-    
+
     @property
-    def model_name(self) -> str:
-        return "htdemucs_ft"
-    
-    @property 
-    def output_stem_types(self) -> list[StemType]:
-        return [StemType.VOCALS, StemType.DRUMS, StemType.BASS, StemType.OTHER]
-    
-    def _get_model_filename(self) -> str:
+    def output_slots(self) -> dict[str, str]:
+        return {
+            "vocals": "Vocal track",
+            "drums": "Drum track",
+            "bass": "Bass track",
+            "other": "Other instruments (guitars, keys, etc.)",
+        }
+
+    @property
+    def model_filename(self) -> str:
         return "htdemucs_ft.yaml"
-    
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
-        return {
-            "vocals": StemType.VOCALS,
-            "drums": StemType.DRUMS, 
-            "bass": StemType.BASS,
-            "other": StemType.OTHER
-        }
 
 
-class HDDemucsMMIModel(AudioSeparatorBase):
+class HDDemucsMMIModel(AudioSeparatorLibraryModel):
     """HD-Demucs MMI model for 4-stem separation."""
-    
-    def __init__(self, profile: Profile):
-        super().__init__(profile)
-    
+
     @property
-    def model_name(self) -> str:
-        return "hdemucs_mmi"
-    
+    def output_slots(self) -> dict[str, str]:
+        return {
+            "vocals": "Vocal track",
+            "drums": "Drum track",
+            "bass": "Bass track",
+            "other": "Other instruments (guitars, keys, etc.)",
+        }
+
     @property
-    def output_stem_types(self) -> list[StemType]:
-        return [StemType.VOCALS, StemType.DRUMS, StemType.BASS, StemType.OTHER]
-    
-    def _get_model_filename(self) -> str:
+    def model_filename(self) -> str:
         return "hdemucs_mmi.yaml"
-    
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
-        return {
-            "vocals": StemType.VOCALS,
-            "drums": StemType.DRUMS,
-            "bass": StemType.BASS, 
-            "other": StemType.OTHER
-        }
 
 
-class VocalsMelBandRoformerModel(AudioSeparatorBase):
+class VocalsMelBandRoformerModel(AudioSeparatorLibraryModel):
     """Vocals extraction model for successive splitting."""
-    
-    def __init__(self, profile: Profile):
-        super().__init__(profile)
-    
+
     @property
-    def model_name(self) -> str:
-        return "vocals_mel_band_roformer"
-    
+    def output_slots(self) -> dict[str, str]:
+        return {
+            "vocals": "Vocal track",
+            "not_vocals": "Instrumental (no vocals)",
+        }
+
     @property
-    def output_stem_types(self) -> list[StemType]:
-        return [StemType.VOCALS, StemType.NO_VOCALS]
-    
-    def _get_model_filename(self) -> str:
+    def model_filename(self) -> str:
         return "vocals_mel_band_roformer.ckpt"
-    
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
-        return {
-            "vocals": StemType.VOCALS,
-            "no_vocals": StemType.NO_VOCALS
-        }
 
 
-class KuielabDrumsModel(AudioSeparatorBase):
+class KuielabDrumsModel(AudioSeparatorLibraryModel):
     """Drums extraction model for successive splitting."""
-    
-    def __init__(self, profile: Profile):
-        super().__init__(profile)
-    
+
     @property
-    def model_name(self) -> str:
-        return "kuielab_b_drums"
-    
+    def output_slots(self) -> dict[str, str]:
+        return {
+            "drums": "Drum track",
+            "not_drums": "Audio without drums",
+        }
+
     @property
-    def output_stem_types(self) -> list[StemType]:
-        return [StemType.DRUMS, StemType.NO_DRUMS]
-    
-    def _get_model_filename(self) -> str:
+    def model_filename(self) -> str:
         return "kuielab_b_drums.onnx"
-    
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
-        return {
-            "drums": StemType.DRUMS,
-            "no_drums": StemType.NO_DRUMS
-        }
 
 
-class KuielabBassModel(AudioSeparatorBase):
+class KuielabBassModel(AudioSeparatorLibraryModel):
     """Bass extraction model for successive splitting."""
-    
-    def __init__(self, profile: Profile):
-        super().__init__(profile)
-    
+
     @property
-    def model_name(self) -> str:
-        return "kuielab_a_bass"
-    
-    @property
-    def output_stem_types(self) -> list[StemType]:
-        return [StemType.BASS, StemType.OTHER]
-    
-    def _get_model_filename(self) -> str:
-        return "kuielab_a_bass.onnx"
-    
-    def _get_output_stem_mapping(self) -> dict[str, StemType]:
+    def output_slots(self) -> dict[str, str]:
         return {
-            "bass": StemType.BASS,
-            "other": StemType.OTHER
+            "bass": "Bass track",
+            "not_bass": "Audio without bass (other instruments)",
         }
+
+    @property
+    def model_filename(self) -> str:
+        return "kuielab_a_bass.onnx"

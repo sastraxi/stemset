@@ -32,13 +32,15 @@ profiles:
 #################################
   - name: "h4n"
     source_folder: "/Volumes/H4N_SD/STEREO"
-    strategy: "htdemucs_ft"
-    output_format: "opus"
-    opus_bitrate: 192
+    strategy: "hdemucs_mmi"
+    output:
+      format: "opus"
+      bitrate: 192
 
   - name: "one"
     source_folder: "./input/one"
     strategy: "successive"
-    output_format: "opus"
-    opus_bitrate: 192
+    output:
+      format: "opus"
+      bitrate: 192
 
