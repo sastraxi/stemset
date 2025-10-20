@@ -1,25 +1,36 @@
 """Litestar API for Stemset."""
 
 import asyncio
+import secrets
 from datetime import datetime
 from pathlib import Path
-from src.models.metadata import StemsMetadata
+from urllib.parse import urlencode
 
-from litestar import Litestar, get, post
+import httpx
+from litestar import Litestar, Request, get, post
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
-from litestar.exceptions import NotFoundException
-from litestar.response import File
+from litestar.exceptions import NotFoundException, NotAuthorizedException
+from litestar.response import File, Redirect
 from litestar.static_files import create_static_files_router
 from pydantic import BaseModel
 
+from .auth import UserInfo, auth_middleware, create_jwt_token, is_auth_bypassed
 from .config import get_config, Job, JobStatus
+from .models.metadata import StemsMetadata
 from .queue import get_queue
 from .scanner import FileScanner
 from .modern_separator import StemSeparator
 
 
 # API Response Models
+
+
+class AuthStatusResponse(BaseModel):
+    """Auth status response."""
+
+    authenticated: bool
+    email: str | None = None
 
 
 class ProfileResponse(BaseModel):
@@ -89,6 +100,9 @@ class JobListResponse(BaseModel):
 
 # Helper functions
 
+# In-memory storage for OAuth state (production should use Redis or similar)
+_oauth_states: dict[str, str] = {}
+
 
 def job_to_response(job: Job) -> JobResponse:
     """Convert Job to JobResponse."""
@@ -104,6 +118,115 @@ def job_to_response(job: Job) -> JobResponse:
         output_files={k: str(v) for k, v in job.output_files.items()} if job.output_files else None,
         error=job.error,
     )
+
+
+# API Endpoints
+
+# Auth Endpoints
+
+
+@get("/auth/status")
+async def get_auth_status(request: Request) -> AuthStatusResponse:
+    """Get current authentication status."""
+    # If auth is bypassed, return authenticated
+    if is_auth_bypassed():
+        return AuthStatusResponse(authenticated=True, email="dev@localhost")
+
+    # Check for user email in request state (set by auth middleware)
+    user_email = getattr(request.state, "user_email", None)
+    if user_email:
+        return AuthStatusResponse(authenticated=True, email=user_email)
+
+    return AuthStatusResponse(authenticated=False)
+
+
+@get("/auth/login")
+async def auth_login() -> Redirect:
+    """Redirect to Google OAuth login page."""
+    config = get_config()
+    if config.auth is None:
+        raise NotAuthorizedException(detail="Authentication not configured")
+
+    # Generate random state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = state
+
+    # Build Google OAuth URL
+    params = {
+        "client_id": config.auth.google_client_id,
+        "redirect_uri": config.auth.redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+    }
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+
+    return Redirect(path=auth_url)
+
+
+@get("/auth/callback")
+async def auth_callback(code: str, state: str) -> Redirect:
+    """Handle Google OAuth callback."""
+    config = get_config()
+    if config.auth is None:
+        raise NotAuthorizedException(detail="Authentication not configured")
+
+    # Validate state
+    if state not in _oauth_states:
+        raise NotAuthorizedException(detail="Invalid state parameter")
+    _oauth_states.pop(state)
+
+    # Exchange code for tokens
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": config.auth.google_client_id,
+                "client_secret": config.auth.google_client_secret,
+                "redirect_uri": config.auth.redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        token_response.raise_for_status()
+        tokens = token_response.json()
+
+        # Get user info
+        userinfo_response = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        userinfo_response.raise_for_status()
+        userinfo = UserInfo(**userinfo_response.json())
+
+    # Check if email is allowed
+    from .auth import is_email_allowed
+
+    if not is_email_allowed(userinfo.email, config):
+        raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
+
+    # Create JWT token
+    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret)
+
+    # Redirect to frontend with token in cookie
+    response = Redirect(path="/")
+    response.set_cookie(
+        key="stemset_token",
+        value=jwt_token,
+        httponly=True,
+        secure=True,  # Only send over HTTPS in production
+        samesite="lax",
+        max_age=30 * 24 * 60 * 60,  # 30 days
+    )
+    return response
+
+
+@get("/auth/logout")
+async def auth_logout() -> Redirect:
+    """Logout user by clearing token cookie."""
+    response = Redirect(path="/")
+    response.delete_cookie(key="stemset_token")
+    return response
 
 
 # API Endpoints
@@ -324,21 +447,41 @@ async def on_shutdown() -> None:
 
 
 # Create static file router for serving media files
-static_router = create_static_files_router(
+media_router = create_static_files_router(
     path="/media",
     directories=["media"],
 )
 
-# CORS configuration for frontend
+# Create static file router for serving frontend (production)
+# In development, Vite dev server handles this
+frontend_dist = Path("frontend/dist")
+if frontend_dist.exists():
+    frontend_router = create_static_files_router(
+        path="/",
+        directories=[str(frontend_dist)],
+        html_mode=True,  # Serve index.html for client-side routing
+    )
+    static_handlers = [media_router, frontend_router]
+else:
+    static_handlers = [media_router]
+
+# CORS configuration for frontend (dev mode)
 cors_config = CORSConfig(
     allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite/React default ports
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
+    allow_credentials=True,  # Allow cookies for JWT
 )
 
 # Create Litestar app
 app = Litestar(
     route_handlers=[
+        # Auth endpoints
+        get_auth_status,
+        auth_login,
+        auth_callback,
+        auth_logout,
+        # API endpoints
         get_profiles,
         get_profile,
         get_profile_files,
@@ -348,8 +491,10 @@ app = Litestar(
         get_queue_status,
         get_jobs,
         get_job,
-        static_router,
+        # Static files
+        *static_handlers,
     ],
+    middleware=[auth_middleware],
     on_startup=[on_startup],
     on_shutdown=[on_shutdown],
     cors_config=cors_config,

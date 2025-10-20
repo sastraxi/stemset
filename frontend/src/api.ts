@@ -2,41 +2,65 @@ import type { Profile, StemFile, Job, QueueStatus } from './types';
 
 const API_BASE = '/api';
 
+// Default fetch options to include credentials (cookies)
+const defaultOptions: RequestInit = {
+  credentials: 'include',
+};
+
 export async function getProfiles(): Promise<Profile[]> {
-  const response = await fetch(`${API_BASE}/profiles`);
+  const response = await fetch(`${API_BASE}/profiles`, defaultOptions);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch profiles: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function getProfile(name: string): Promise<Profile> {
-  const response = await fetch(`${API_BASE}/profiles/${name}`);
+  const response = await fetch(`${API_BASE}/profiles/${name}`, defaultOptions);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch profile: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function getProfileFiles(name: string): Promise<StemFile[]> {
-  const response = await fetch(`${API_BASE}/profiles/${name}/files`);
+  const response = await fetch(`${API_BASE}/profiles/${name}/files`, defaultOptions);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch files: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function scanProfile(name: string): Promise<{ scanned: number; jobs: Job[] }> {
   const response = await fetch(`${API_BASE}/profiles/${name}/scan`, {
+    ...defaultOptions,
     method: 'POST',
   });
+  if (!response.ok) {
+    throw new Error(`Failed to scan profile: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function getQueueStatus(): Promise<QueueStatus> {
-  const response = await fetch(`${API_BASE}/queue`);
+  const response = await fetch(`${API_BASE}/queue`, defaultOptions);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch queue status: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function getJobs(profile?: string): Promise<{ jobs: Job[] }> {
   const url = profile ? `${API_BASE}/jobs?profile=${profile}` : `${API_BASE}/jobs`;
-  const response = await fetch(url);
+  const response = await fetch(url, defaultOptions);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+  }
   return response.json();
 }
 
 export async function getFileMetadata(profileName: string, fileName: string): Promise<Record<string, any>> {
-  const response = await fetch(`${API_BASE}/profiles/${profileName}/files/${fileName}/metadata`);
+  const response = await fetch(`${API_BASE}/profiles/${profileName}/files/${fileName}/metadata`, defaultOptions);
   if (!response.ok) {
     throw new Error(`Failed to fetch metadata: ${response.statusText}`);
   }

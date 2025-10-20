@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import os
+import re
 import yaml
 from datetime import datetime
 from enum import Enum
@@ -133,6 +135,19 @@ class Strategy(BaseModel):
         return cls(name=name, root=root)
 
 
+class AuthConfig(BaseModel):
+    """Authentication configuration."""
+
+    allowed_emails: list[str] = Field(..., description="List of allowed email addresses")
+    google_client_id: str = Field(..., description="Google OAuth client ID")
+    google_client_secret: str = Field(..., description="Google OAuth client secret")
+    jwt_secret: str = Field(..., description="Secret key for JWT signing")
+    redirect_uri: str = Field(
+        default="http://localhost:8000/auth/callback",
+        description="OAuth redirect URI (update for production)"
+    )
+
+
 class Profile(BaseModel):
     """A processing profile with source folder and settings."""
 
@@ -166,6 +181,43 @@ class Config(BaseModel):
     profiles: list[Profile] = Field(
         default_factory=list, description="List of processing profiles"
     )
+    auth: AuthConfig | None = Field(
+        default=None, description="Authentication configuration (optional)"
+    )
+
+    @classmethod
+    def _substitute_env_vars(cls, data: Any) -> Any:
+        """Recursively substitute ${VAR_NAME} with environment variables.
+
+        Args:
+            data: YAML data structure (dict, list, str, etc.)
+
+        Returns:
+            Data with environment variables substituted
+
+        Raises:
+            ValueError: If referenced environment variable is not set
+        """
+        if isinstance(data, dict):
+            return {k: cls._substitute_env_vars(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [cls._substitute_env_vars(item) for item in data]
+        elif isinstance(data, str):
+            # Replace ${VAR_NAME} with environment variable
+            pattern = r'\$\{([^}]+)\}'
+
+            def replace_var(match: re.Match[str]) -> str:
+                var_name = match.group(1)
+                value = os.getenv(var_name)
+                if value is None:
+                    raise ValueError(
+                        f"Environment variable '{var_name}' referenced in config but not set"
+                    )
+                return value
+
+            return re.sub(pattern, replace_var, data)
+        else:
+            return data
 
     @classmethod
     def load(cls, config_path: str = "config.yaml") -> Config:
@@ -176,6 +228,9 @@ class Config(BaseModel):
 
         with open(path, "r") as f:
             data: dict[str, Any] = yaml.safe_load(f)
+
+        # Substitute environment variables
+        data = cls._substitute_env_vars(data)
 
         # Parse strategies from YAML
         strategies_dict = {}

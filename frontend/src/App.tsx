@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { StemPlayer } from './components/StemPlayer';
 import { Toast } from './components/Toast';
+import { LoginPage } from './components/LoginPage';
+import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles, scanProfile, getQueueStatus } from './api';
 import type { Profile, StemFile, QueueStatus } from './types';
 import './App.css';
@@ -12,6 +14,21 @@ interface ToastData {
 }
 
 function App() {
+  const { authStatus, loading: authLoading, logout } = useAuth();
+
+  // Show login page if not authenticated
+  if (authLoading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  if (!authStatus?.authenticated) {
+    return <LoginPage />;
+  }
+
+  return <AuthenticatedApp userEmail={authStatus.email} onLogout={logout} />;
+}
+
+function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; onLogout: () => void }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [files, setFiles] = useState<StemFile[]>([]);
@@ -183,6 +200,10 @@ function App() {
       <header className="app-header">
         <h1>Stemset</h1>
         <p>AI-powered stem separation for band practice</p>
+        <div className="user-info">
+          <span>{userEmail}</span>
+          <button onClick={onLogout} className="logout-button">Logout</button>
+        </div>
       </header>
 
       <div className="main-content">
