@@ -249,12 +249,20 @@ button:disabled {
 }
 
 /* Stem Player */
-.stem-player {
+.player-panel {
   background: #242424;
   border: 1px solid #3a3a3a;
   border-radius: 8px;
   padding: 2rem;
   max-width: 800px;
+  margin-bottom: 1.5rem;
+}
+
+
+.master-effects.player-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .stem-player.loading {
@@ -343,9 +351,149 @@ button:disabled {
   border-color: #4a9eff;
 }
 
+/* EQ Vertical Sliders */
+.eq-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.master-effects-row {
+  display: flex;
+  flex-direction: row;
+  gap: 2.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.eq-section { flex: 1 1 380px; }
+.limiter-section { flex: 1 1 240px; }
+
+.eq-bands.vertical {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-end;
+  padding: 0.75rem 0 0.25rem;
+  min-height: 160px; /* ensure space even before slider renders */
+}
+
+.eq-band-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 60px;
+}
+
+.eq-band-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  text-align: center;
+}
+
+.eq-slider-vertical {
+  writing-mode: bt-lr; /* fallback for some browsers */
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  width: 10px;
+  height: 140px;
+  padding: 0;
+  cursor: pointer;
+}
+
+@supports not (-webkit-appearance: slider-vertical) {
+  .eq-slider-vertical {
+    transform: rotate(-90deg);
+    width: 140px;
+    height: 10px;
+    margin-top: 60px; /* shift rotated slider down */
+  }
+}
+
+.eq-band-value {
+  font-size: 0.7rem;
+  color: #ccc;
+  font-variant-numeric: tabular-nums;
+}
+
+.eq-header, .limiter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.limiter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.limiter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: center;
+}
+
+.gr-meter {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.gr-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9800, #f44336);
+}
+
+.limiter-controls label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #999;
+  margin-bottom: 0.25rem;
+}
+
+.limiter-reduction {
+  width: 100%;
+  display: block;
+}
+
+.limiter-ceiling {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 160px;
+}
+
+.limiter-enabled {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
 /* Range Input Styling */
 input[type="range"] {
   cursor: pointer;
   accent-color: #3a8eef;
   height: 6px;
+}
+
+/* Override generic range styling for vertical EQ sliders */
+.eq-slider-vertical {
+  height: 140px !important; /* ensure vertical dimension */
+}
+@supports not (-webkit-appearance: slider-vertical) {
+  .eq-slider-vertical {
+    height: 10px !important; /* rotated variant height */
+  }
 }

@@ -124,6 +124,28 @@ The stem player follows a few key patterns that keep the logic predictable and p
 8. Volume Management: Gain clamped (0–2 UI range) and applied directly; initial gain (metadata dB converted to linear) stored for reset.
 9. Cleanup: On file/profile change we tear down stems & sources but keep the context. Full context close only occurs when the hook unmounts (optional extension).
 
+### Master Effects Chain
+
+Below the stem controls the player provides a master processing "island" composed of:
+
+- 5-Band Musical Graphic EQ (Low Shelf 80Hz, Low Mid 250Hz, Mid 1kHz, High Mid 3.5kHz, High Shelf 10kHz)
+  - Implemented via `BiquadFilterNode`s in series.
+  - Adjustable gain per band (-12dB to +12dB); frequency & Q could be extended later.
+  - Persisted in `localStorage` under key `stemset.master.eq.v1`.
+- Simple Limiter (Ceiling control 50–100%, enable toggle)
+  - Currently a soft ceiling using a final `GainNode` (placeholder for true dynamics processing).
+  - Persisted in `localStorage` under key `stemset.master.limiter.v1`.
+
+Routing: Each stem's gain node feeds a master input gain. The chain is Master Gain → EQ Filters (in order) → Limiter Gain → `AudioContext.destination`.
+
+Persistence Strategy: Settings are loaded on hook initialization; updates trigger writes to `localStorage` immediately (no debounce needed due to small payload).
+
+Future Enhancements for Effects:
+- True peak limiter / compressor (ScriptProcessor or AudioWorklet with lookahead).
+- Adjustable frequencies & Q for bands (turning graphic EQ into parametric EQ).
+- Preset management (save/load multiple EQ/limiter profiles).
+- Spectrum analyzer visualized with `AnalyserNode` beneath controls.
+
 ### Why Not Single Source Pause?
 Web Audio lacks a native pause/resume for `AudioBufferSourceNode`; once started it plays through. Recreating sources is the stable, low-complexity strategy when combined with accurate timing from the context.
 

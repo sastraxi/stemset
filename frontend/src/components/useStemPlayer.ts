@@ -42,6 +42,21 @@ interface StemStateEntry {
   initialGain: number;
 }
 
+// Equalizer band representation
+interface EqBand {
+  id: string;
+  frequency: number; // center Hz
+  type: BiquadFilterType;
+  gain: number; // dB
+  q: number; // Q factor
+}
+
+interface LimiterSettings {
+  thresholdDb: number; // compressor threshold (e.g. -12 to 0 dB)
+  release: number; // seconds
+  enabled: boolean;
+}
+
 export interface UseStemPlayerResult {
   isLoading: boolean;
   isPlaying: boolean;
@@ -55,6 +70,15 @@ export interface UseStemPlayerResult {
   setStemGain: (stemName: string, gain: number) => void;
   resetStemGain: (stemName: string) => void;
   formatTime: (seconds: number) => string;
+  eqBands: EqBand[];
+  updateEqBand: (id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => void;
+  resetEq: () => void;
+  limiter: LimiterSettings;
+  updateLimiter: (changes: Partial<LimiterSettings>) => void;
+  resetLimiter: () => void;
+  eqEnabled: boolean;
+  setEqEnabled: (enabled: boolean) => void;
+  gainReduction: number; // positive dB amount of current gain reduction
 }
 
 export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
@@ -64,6 +88,47 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [stemState, setStemState] = useState<StemStateEntry[]>([]);
+  const [eqBands, setEqBands] = useState<EqBand[]>(() => {
+    const defaults: EqBand[] = [
+      { id: 'low', frequency: 80, type: 'lowshelf', gain: 0, q: 1 },
+      { id: 'lowmid', frequency: 250, type: 'peaking', gain: 0, q: 1 },
+      { id: 'mid', frequency: 1000, type: 'peaking', gain: 0, q: 1 },
+      { id: 'highmid', frequency: 3500, type: 'peaking', gain: 0, q: 1 },
+      { id: 'high', frequency: 10000, type: 'highshelf', gain: 0, q: 1 },
+    ];
+    try {
+      const raw = localStorage.getItem('stemset.master.eq.v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed as EqBand[];
+      }
+    } catch {}
+    return defaults;
+  });
+  const [limiter, setLimiter] = useState<LimiterSettings>(() => {
+    const def: LimiterSettings = { thresholdDb: -6, release: 0.12, enabled: true };
+    try {
+      const raw = localStorage.getItem('stemset.master.limiter.v2');
+      if (raw) return { ...def, ...JSON.parse(raw) };
+      // legacy migration from v1 (ceiling field)
+      const legacy = localStorage.getItem('stemset.master.limiter.v1');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (parsed.ceiling) {
+          // Approximate mapping: ceiling ~ makeupGain, threshold default
+          return { ...def, makeupGain: parsed.ceiling, enabled: parsed.enabled ?? true };
+        }
+      }
+    } catch {}
+    return def;
+  });
+  const [eqEnabled, setEqEnabled] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('stemset.master.eq.enabled.v1');
+      if (raw) return JSON.parse(raw) === true;
+    } catch {}
+    return true;
+  });
 
   // Refs for audio graph & timing
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -76,11 +141,50 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
   const endedRef = useRef<boolean>(false);
   const isPlayingRef = useRef<boolean>(false); // authoritative play state for RAF closure
   const manualEndModeRef = useRef<'none' | 'pause' | 'stop'>('none'); // differentiate natural end vs user action
+  const masterInputRef = useRef<GainNode | null>(null); // stems connect to this instead of context.destination
+  const eqFilterRefs = useRef<BiquadFilterNode[]>([]);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const makeupGainRef = useRef<GainNode | null>(null); // post compressor makeup gain
+  const [gainReduction, setGainReduction] = useState<number>(0);
 
   // Lazy init AudioContext
   const ensureContext = useCallback(() => {
+    // Context & master chain initialization should NOT depend on dynamic EQ/limiter settings;
+    // changing those caused stem reloads. We build the chain once with default values and
+    // subsequent adjustments update nodes directly.
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       audioCtxRef.current = new AudioContext({ sampleRate });
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx && !masterInputRef.current) {
+      masterInputRef.current = ctx.createGain();
+      // Initialize filters with current eqBands snapshot
+      eqFilterRefs.current = eqBands.map(b => {
+        const f = ctx.createBiquadFilter();
+        f.type = b.type;
+        f.frequency.value = b.frequency;
+        f.Q.value = b.q;
+        f.gain.value = b.gain;
+        return f;
+      });
+      let node: AudioNode = masterInputRef.current;
+      eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
+      compressorRef.current = ctx.createDynamicsCompressor();
+      compressorRef.current.threshold.value = limiter.thresholdDb;
+      compressorRef.current.knee.value = 6;
+      compressorRef.current.ratio.value = 20;
+      compressorRef.current.attack.value = 0.003;
+      compressorRef.current.release.value = limiter.release;
+      makeupGainRef.current = ctx.createGain();
+      makeupGainRef.current.gain.value = 1;
+      if (limiter.enabled) {
+        node.connect(compressorRef.current);
+        compressorRef.current.connect(makeupGainRef.current);
+        makeupGainRef.current.connect(ctx.destination);
+      } else {
+        node.connect(makeupGainRef.current);
+        makeupGainRef.current.connect(ctx.destination);
+      }
     }
     return audioCtxRef.current;
   }, [sampleRate]);
@@ -120,7 +224,12 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
           if (ctx.state === 'closed') return;
           const gainNode = ctx.createGain();
           gainNode.gain.value = initialGain;
-          gainNode.connect(ctx.destination);
+          // Connect stem gain into master chain
+          if (masterInputRef.current) {
+            gainNode.connect(masterInputRef.current);
+          } else {
+            gainNode.connect(ctx.destination); // fallback
+          }
           newMap.set(name, { buffer, gain: gainNode, initialGain, metadata: meta });
           setDuration((prev) => (prev === 0 ? buffer.duration : prev));
         } catch (e) {
@@ -140,6 +249,102 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       aborted = true;
     };
   }, [profileName, fileName, stems, ensureContext]);
+
+  // Persist settings
+  useEffect(() => { try { localStorage.setItem('stemset.master.eq.v1', JSON.stringify(eqBands)); } catch {} }, [eqBands]);
+  useEffect(() => { try { localStorage.setItem('stemset.master.limiter.v2', JSON.stringify(limiter)); } catch {} }, [limiter]);
+  useEffect(() => { try { localStorage.setItem('stemset.master.eq.enabled.v1', JSON.stringify(eqEnabled)); } catch {} }, [eqEnabled]);
+
+  // React to eqBands change: update existing filters or rebuild if count changes
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || !masterInputRef.current) return;
+    if (eqFilterRefs.current.length !== eqBands.length) {
+      // Disconnect old
+      eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch {} });
+      eqFilterRefs.current = eqBands.map(b => {
+        const f = ctx.createBiquadFilter();
+        f.type = b.type;
+        f.frequency.value = b.frequency;
+        f.Q.value = b.q;
+        f.gain.value = b.gain;
+        return f;
+      });
+      // Reconnect chain masterInput -> filters -> limiter
+      let node: AudioNode = masterInputRef.current;
+      eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
+      if (compressorRef.current && makeupGainRef.current) {
+        node.connect(compressorRef.current);
+        compressorRef.current.connect(makeupGainRef.current);
+        makeupGainRef.current.connect(ctx.destination);
+      }
+    } else {
+      eqBands.forEach((b, i) => {
+        const f = eqFilterRefs.current[i];
+        if (!f) return;
+        f.type = b.type;
+        f.frequency.setTargetAtTime(b.frequency, ctx.currentTime, 0.01);
+        f.Q.setTargetAtTime(b.q, ctx.currentTime, 0.01);
+        f.gain.setTargetAtTime(b.gain, ctx.currentTime, 0.01);
+      });
+    }
+    // Bypass or enable EQ: connect masterInput directly to limiter when disabled.
+    if (makeupGainRef.current && compressorRef.current) {
+      // First disconnect any existing connections from masterInput.
+      try { masterInputRef.current.disconnect(); } catch {}
+      if (eqEnabled && eqFilterRefs.current.length) {
+        // Reconnect chain master -> filters -> limiter
+        let node: AudioNode = masterInputRef.current;
+        eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
+        node.connect(compressorRef.current);
+        compressorRef.current.connect(makeupGainRef.current);
+        makeupGainRef.current.connect(audioCtxRef.current!.destination);
+      } else {
+        masterInputRef.current.connect(compressorRef.current);
+        compressorRef.current.connect(makeupGainRef.current);
+        makeupGainRef.current.connect(audioCtxRef.current!.destination);
+      }
+    }
+  }, [eqBands, eqEnabled, limiter.enabled]);
+
+  // Limiter updates (simple: adjust ceiling gain). Real threshold/release processing would need dynamics analysis.
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || !compressorRef.current) return;
+    compressorRef.current.threshold.setTargetAtTime(limiter.thresholdDb, ctx.currentTime, 0.01);
+    compressorRef.current.release.setTargetAtTime(limiter.release, ctx.currentTime, 0.05);
+  }, [limiter.thresholdDb, limiter.release]);
+
+  // Poll compressor reduction with auto makeup; bypass when disabled.
+  useEffect(() => {
+    let raf: number;
+    let smooth = 0;
+    const alpha = 0.3; // responsiveness (higher = snappier)
+    const tick = () => {
+      if (compressorRef.current && makeupGainRef.current && audioCtxRef.current) {
+        let rawReduction = 0;
+        if (limiter.enabled) {
+          const r = compressorRef.current.reduction; // negative dB or 0
+          rawReduction = r < 0 ? -r : 0;
+        }
+        smooth = smooth === 0 ? rawReduction : (smooth * (1 - alpha) + rawReduction * alpha);
+        // Cap display at 25 dB
+        const display = Math.min(smooth, 25);
+        setGainReduction(display);
+        // Auto makeup gain (compensate 70% of smooth reduction, capped 12 dB)
+        const makeupDb = limiter.enabled ? Math.min(smooth * 0.7, 12) : 0;
+        const targetLinear = Math.pow(10, makeupDb / 20);
+        makeupGainRef.current.gain.setTargetAtTime(targetLinear, audioCtxRef.current.currentTime, 0.02);
+        if (!limiter.enabled && smooth !== 0) {
+          // Reset smoothing quickly when disabled
+          smooth = 0;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [limiter.enabled]);
 
   const updateStemState = useCallback(() => {
     setStemState(Array.from(loadedStemsRef.current.entries()).map(([name, s]) => ({ name, gain: s.gain.gain.value, initialGain: s.initialGain })));
@@ -161,7 +366,7 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     loadedStemsRef.current.forEach((stem, name) => {
       const src = ctx.createBufferSource();
       src.buffer = stem.buffer;
-      src.connect(stem.gain);
+  src.connect(stem.gain);
       src.onended = () => {
         // Ignore if superseded by a newer playback generation OR manually stopped/paused
         if (playbackGenRef.current !== thisPlaybackGen) return;
@@ -258,6 +463,28 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     updateStemState();
   }, [updateStemState]);
 
+  // EQ management
+  const updateEqBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => {
+    setEqBands(prev => prev.map(b => b.id === id ? { ...b, ...changes } : b));
+  }, []);
+  const resetEq = useCallback(() => {
+    setEqBands([
+      { id: 'low', frequency: 80, type: 'lowshelf', gain: 0, q: 1 },
+      { id: 'lowmid', frequency: 250, type: 'peaking', gain: 0, q: 1 },
+      { id: 'mid', frequency: 1000, type: 'peaking', gain: 0, q: 1 },
+      { id: 'highmid', frequency: 3500, type: 'peaking', gain: 0, q: 1 },
+      { id: 'high', frequency: 10000, type: 'highshelf', gain: 0, q: 1 },
+    ]);
+  }, []);
+
+  // Limiter management
+  const updateLimiter = useCallback((changes: Partial<LimiterSettings>) => {
+    setLimiter(prev => ({ ...prev, ...changes }));
+  }, []);
+  const resetLimiter = useCallback(() => {
+    setLimiter({ thresholdDb: -6, release: 0.12, enabled: true });
+  }, []);
+
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -277,5 +504,14 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     setStemGain,
     resetStemGain,
     formatTime,
+    eqBands,
+    updateEqBand,
+    resetEq,
+    limiter,
+    updateLimiter,
+    resetLimiter,
+    eqEnabled,
+    setEqEnabled,
+    gainReduction,
   };
 }
