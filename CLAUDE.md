@@ -13,7 +13,7 @@ We do not catch exceptions to provide fallbacks. If something fails, we want to 
 
 ### Modern Python
 - Use Python 3.13+ features: `from __future__ import annotations`, type unions with `|`, no `Optional`
-- Type everything. No `Any` unless interfacing with untyped third-party code.
+- Type everything. No `Any` unless interfacing with untyped third-party code. Check with `basedpyright`
 - Pydantic for all data models, configuration, and serialization
 - `uv` for package management, not pip
 
