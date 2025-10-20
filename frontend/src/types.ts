@@ -18,6 +18,7 @@ export interface StemMetadata {
   stem_type: string;
   measured_lufs: number | null;
   stem_gain_adjustment_db: number;
+  waveform_url: string;
 }
 
 export interface Job {

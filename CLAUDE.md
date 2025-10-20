@@ -185,3 +185,4 @@ This codebase values clarity over cleverness. When adding features:
 5. Delete any code made obsolete by the change
 
 We refactor aggressively. If a pattern emerges three times, abstract it. If an abstraction is only used once, inline it.
+- We use bun for typescript / react / vite.

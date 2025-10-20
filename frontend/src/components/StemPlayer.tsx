@@ -1,5 +1,6 @@
 import { useStemPlayer } from './useStemPlayer';
 import type { StemSources } from './useStemPlayer';
+import { WaveformVisualization } from './WaveformVisualization';
 
 interface StemPlayerProps {
   stems: StemSources;
@@ -103,6 +104,21 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
             value={currentTime}
             onChange={(e) => seek(parseFloat(e.target.value))}
           />
+        </div>
+
+        <div className="waveforms-section">
+          {stemEntries.map((stem) => (
+            <div key={stem.name} className="waveform-row">
+              <label className="waveform-stem-label">{stem.name}</label>
+              <WaveformVisualization
+                waveformUrl={stem.waveformUrl}
+                stemName={stem.name}
+                currentTime={currentTime}
+                duration={duration}
+                onSeek={seek}
+              />
+            </div>
+          ))}
         </div>
 
         <div className="stem-controls">

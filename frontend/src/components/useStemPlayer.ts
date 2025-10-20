@@ -40,6 +40,7 @@ interface StemStateEntry {
   name: string;
   gain: number; // current linear gain for UI
   initialGain: number;
+  waveformUrl: string | null;
 }
 
 // Equalizer band representation
@@ -262,7 +263,12 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       }));
       if (aborted) return;
       loadedStemsRef.current = newMap;
-      setStemState(Array.from(newMap.entries()).map(([n, s]) => ({ name: n, gain: s.gain.gain.value, initialGain: s.initialGain })));
+      setStemState(Array.from(newMap.entries()).map(([n, s]) => ({
+        name: n,
+        gain: s.gain.gain.value,
+        initialGain: s.initialGain,
+        waveformUrl: s.metadata?.waveform_url || null
+      })));
       setIsLoading(false);
       pausedAtRef.current = 0;
       startTimeRef.current = ctx.currentTime;
@@ -394,7 +400,12 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
   }, [limiter.enabled]);
 
   const updateStemState = useCallback(() => {
-    setStemState(Array.from(loadedStemsRef.current.entries()).map(([name, s]) => ({ name, gain: s.gain.gain.value, initialGain: s.initialGain })));
+    setStemState(Array.from(loadedStemsRef.current.entries()).map(([name, s]) => ({
+      name,
+      gain: s.gain.gain.value,
+      initialGain: s.initialGain,
+      waveformUrl: s.metadata?.waveform_url || null
+    })));
   }, []);
 
   // Create buffer sources and start playback from offset
