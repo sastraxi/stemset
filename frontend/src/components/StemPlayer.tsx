@@ -15,6 +15,7 @@ interface StemPlayerProps {
 export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
   const {
     isLoading,
+    loadingMetrics,
     isPlaying,
     currentTime,
     duration,
@@ -36,6 +37,43 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
     setEqEnabled,
     gainReduction,
   } = useStemPlayer({ profileName, fileName, stems });
+
+  // Dump profile info once after load completes
+  const hasLoggedRef = (window as any).__stemPlayerLoggedRef || ((window as any).__stemPlayerLoggedRef = { current: new Set<string>() });
+  const key = `${profileName}::${fileName}`;
+  if (!isLoading && !hasLoggedRef.current.has(key)) {
+    hasLoggedRef.current.add(key);
+    // Assemble snapshot
+    const snapshot = {
+      profileName,
+      fileName,
+      loadingMetrics,
+      stemCount: stemEntries.length,
+      stems: stemEntries.map(s => ({ name: s.name, gain: s.gain, initialGain: s.initialGain })),
+      eqEnabled,
+      eqBands,
+      limiter,
+      timestamp: new Date().toISOString(),
+    };
+    // Pretty print
+    try {
+      // eslint-disable-next-line no-console
+      console.groupCollapsed(`StemPlayer Load Profile: ${key}`);
+      console.info('Summary', { totalMs: loadingMetrics?.totalMs, stemCount: snapshot.stemCount });
+      if (loadingMetrics) {
+        console.table(loadingMetrics.stems.map(t => ({ Stem: t.name, Fetch_ms: t.fetchMs.toFixed(1), Decode_ms: t.decodeMs.toFixed(1), Total_ms: t.totalMs.toFixed(1), KB: (t.bytes/1024).toFixed(1) })));
+        console.info('Metadata fetch ms', loadingMetrics.metadataMs.toFixed(1));
+        console.info('Overall ms', loadingMetrics.totalMs.toFixed(1));
+      }
+      console.info('EQ', { enabled: eqEnabled, bands: eqBands });
+      console.info('Limiter', limiter);
+      console.info('Stems', snapshot.stems);
+      console.groupEnd();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log('StemPlayer snapshot', snapshot);
+    }
+  }
 
   if (isLoading) {
     return <div className="stem-player loading">Loading stems...</div>;
@@ -157,7 +195,6 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
                     // Log-like visualization: map 0-25dB to 0-100% using (value/25)^(0.65)
                     const norm = gainReduction <= 0 ? 0 : Math.pow(Math.min(gainReduction,25)/25, 0.65);
                     const pct = norm * 100;
-                    console.log(pct)
                     return <div className="gr-fill" style={{ width: `${pct}%` }} />;
                   })()}
                 </div>

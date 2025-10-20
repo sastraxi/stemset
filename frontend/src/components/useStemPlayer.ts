@@ -57,8 +57,25 @@ interface LimiterSettings {
   enabled: boolean;
 }
 
+interface StemTiming {
+  name: string;
+  fetchMs: number;
+  decodeMs: number;
+  totalMs: number;
+  bytes: number;
+}
+
+interface LoadingMetrics {
+  startedAt: number;
+  finishedAt: number;
+  totalMs: number;
+  stems: StemTiming[];
+  metadataMs: number;
+}
+
 export interface UseStemPlayerResult {
   isLoading: boolean;
+  loadingMetrics: LoadingMetrics | null;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -84,6 +101,7 @@ export interface UseStemPlayerResult {
 export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
   // Public state
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMetrics, setLoadingMetrics] = useState<LoadingMetrics | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -179,12 +197,13 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     return audioCtxRef.current;
   }, [sampleRate]);
 
-  // Load metadata + audio buffers
+  // Load metadata + audio buffers (parallel with instrumentation)
   useEffect(() => {
     let aborted = false;
     const ctx = ensureContext();
     async function load() {
       setIsLoading(true);
+      setLoadingMetrics(null);
       // Tear down previous stems (keep context)
       sourcesRef.current.forEach((src) => { try { src.stop(); } catch {}; });
       sourcesRef.current.clear();
@@ -192,40 +211,55 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       loadedStemsRef.current.clear();
       setDuration(0);
       let metadata: Record<string, StemMetadata> = {};
+      const t0 = performance.now();
+      const metaStart = performance.now();
       try {
         metadata = await getFileMetadata(profileName, fileName);
       } catch {}
+      const metaEnd = performance.now();
       const newMap = new Map<string, LoadedStem>();
-      for (const [name, url] of Object.entries(stems)) {
-        if (aborted) return;
-        if (!url) continue;
+      const stemEntries = Object.entries(stems).filter(([, url]) => !!url);
+      const timingAccumulator: StemTiming[] = [];
+      await Promise.all(stemEntries.map(async ([name, url]) => {
+        if (aborted || !url) return;
+        const fetchStart = performance.now();
         try {
           const resp = await fetch(url);
-          const arrayBuffer = await resp.arrayBuffer();
+          const blob = await resp.blob();
+          const fetchEnd = performance.now();
+          const bytes = blob.size;
+          const arrayBuffer = await blob.arrayBuffer();
           if (aborted) return;
+          const decodeStart = performance.now();
           const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+          const decodeEnd = performance.now();
           if (aborted) return;
           const meta = metadata[name] || null;
           let initialGain = 1;
           if (meta && typeof meta.stem_gain_adjustment_db === 'number') {
             initialGain = Math.pow(10, meta.stem_gain_adjustment_db / 20);
           }
-            // Guard against closed context (should not happen because we keep it open)
           if (ctx.state === 'closed') return;
           const gainNode = ctx.createGain();
           gainNode.gain.value = initialGain;
-          // Connect stem gain into master chain
           if (masterInputRef.current) {
             gainNode.connect(masterInputRef.current);
           } else {
-            gainNode.connect(ctx.destination); // fallback
+            gainNode.connect(ctx.destination);
           }
           newMap.set(name, { buffer, gain: gainNode, initialGain, metadata: meta });
           setDuration((prev) => (prev === 0 ? buffer.duration : prev));
+          timingAccumulator.push({
+            name,
+            fetchMs: fetchEnd - fetchStart,
+            decodeMs: decodeEnd - decodeStart,
+            totalMs: decodeEnd - fetchStart,
+            bytes,
+          });
         } catch (e) {
           if (!aborted) console.error('Failed to load stem', name, e);
         }
-      }
+      }));
       if (aborted) return;
       loadedStemsRef.current = newMap;
       setStemState(Array.from(newMap.entries()).map(([n, s]) => ({ name: n, gain: s.gain.gain.value, initialGain: s.initialGain })));
@@ -233,6 +267,14 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       pausedAtRef.current = 0;
       startTimeRef.current = ctx.currentTime;
       setCurrentTime(0);
+      const t1 = performance.now();
+      setLoadingMetrics({
+        startedAt: t0,
+        finishedAt: t1,
+        totalMs: t1 - t0,
+        stems: timingAccumulator.sort((a,b) => a.name.localeCompare(b.name)),
+        metadataMs: metaEnd - metaStart,
+      });
     }
     load();
     return () => {
@@ -498,6 +540,7 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
 
   return {
     isLoading,
+    loadingMetrics,
     isPlaying,
     currentTime,
     duration,
