@@ -19,7 +19,8 @@ class ModelType(str, Enum):
     """Enum for available separation model types."""
     
     DEMUCS = "demucs"
-    BSMAMBA2 = "bsmamba2"
+    HDEMUCS_MMI = "hdemucs_mmi"
+    SUCCESSIVE = "successive"
         
     @classmethod
     def get_available_models(cls) -> list[str]:

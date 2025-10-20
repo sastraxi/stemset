@@ -115,13 +115,9 @@ class FileScanner:
                     print(f"Skipping already processed file: {file_path.name} (hash: {file_hash[:8]})")
                     continue
 
-                # New file - derive output name
-                output_name = self._derive_output_name(file_path)
-
-                # Handle name collisions by appending hash suffix
-                output_path = self.profile.get_media_path() / output_name
-                if output_path.exists():
-                    output_name = f"{output_name}_{file_hash[:8]}"
+                # New file - derive output name with hash suffix for uniqueness
+                base_output_name = self._derive_output_name(file_path)
+                output_name = f"{base_output_name}_{file_hash[:8]}"
 
                 new_files.append((file_path, output_name))
 

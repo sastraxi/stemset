@@ -4,7 +4,7 @@
 profiles:
   - name: "h4n"
     source_folder: "/Volumes/H4N_SD/STEREO"
-    model: "demucs"       # Available: "demucs" (4-stem), "bsmamba2" (experimental 4-stem)
+    model: "demucs"       # Available: "demucs", "hdemucs_mmi", "successive" (experimental multi-model)
     target_lufs: -23.0
     stem_gains:
       vocals: 0.0
@@ -16,7 +16,7 @@ profiles:
 
   - name: "one"
     source_folder: "./input/one"
-    model: "demucs"       # Available: "demucs" (4-stem), "bsmamba2" (experimental 4-stem)
+    model: "hdemucs_mmi"       # Available: "demucs", "hdemucs_mmi", "successive" (experimental multi-model)
     target_lufs: -23.0
     stem_gains:
       vocals: 0.0
@@ -26,7 +26,25 @@ profiles:
     output_format: "opus"  # "opus" or "wav"
     opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
 
-# Add more profiles as needed:
+# Example profiles for different model types:
+# - name: "experimental-successive"
+#   source_folder: "./input/test"
+#   model: "successive"   # Multi-model approach: vocals→drums→bass extraction  
+#   target_lufs: -23.0
+#   stem_gains:
+#     vocals: 0.0
+#     drums: 0.0
+#     bass: 0.0
+#     other: 0.0
+#   output_format: "opus"
+#   opus_bitrate: 192
+#
+# - name: "hd-demucs-test"
+#   source_folder: "./input/test"
+#   model: "hdemucs_mmi"  # HD-Demucs with Multi-Modal Interaction
+#   target_lufs: -23.0
+#   output_format: "wav"  # Uncompressed for analysis
+#
 # - name: "live-shows"
 #   source_folder: "/path/to/live/recordings"
 #   target_lufs: -20.0

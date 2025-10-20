@@ -2,14 +2,16 @@
 
 from .base import SeparatorModel, BaseModelSeparator
 from .demucs import DemucsModelSeparator
-from .bsmamba2 import BSMamba2ModelSeparator
+from .hdemucs_mmi import HDemucsMMIModelSeparator
+from .successive import SuccessiveModelSeparator
 from .metadata import AudioMetadataAnalyzer, get_metadata_analyzer
 
 __all__ = [
     "SeparatorModel",
     "BaseModelSeparator", 
     "DemucsModelSeparator",
-    "BSMamba2ModelSeparator",
+    "HDemucsMMIModelSeparator",
+    "SuccessiveModelSeparator",
     "AudioMetadataAnalyzer",
     "get_metadata_analyzer",
 ]

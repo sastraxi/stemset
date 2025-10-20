@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from .config import Profile, ModelType
-from .models import DemucsModelSeparator, SeparatorModel
+from .models import DemucsModelSeparator, HDemucsMMIModelSeparator, SuccessiveModelSeparator, SeparatorModel
 
 
 class StemSeparator:
@@ -24,10 +24,10 @@ class StemSeparator:
             match self.profile.model:
                 case ModelType.DEMUCS:
                     self._model_instance = DemucsModelSeparator(self.profile)
-                case ModelType.BSMAMBA2:
-                    # Will implement this next
-                    from .models.bsmamba2 import BSMamba2ModelSeparator
-                    self._model_instance = BSMamba2ModelSeparator(self.profile)
+                case ModelType.HDEMUCS_MMI:
+                    self._model_instance = HDemucsMMIModelSeparator(self.profile)
+                case ModelType.SUCCESSIVE:
+                    self._model_instance = SuccessiveModelSeparator(self.profile)
         
         return self._model_instance
 
