@@ -1,266 +1,187 @@
-Let me chronologically analyze this conversation to create a comprehensive summary:
+# Stemset Development Guide
 
-1. **Initial Setup**: User wanted to implement an AI-powered audio stem separation application with two components:
-   - Backend: Scans directory for audio files, uses BS-RoFormer to separate into vocals/drums/bass/other
-   - Frontend: Web player with independent volume controls
+## What This Is
 
-2. **Technology Choices Made**:
-   - Python backend with Litestar API framework (user explicitly requested)
-   - Bun for frontend package management (user explicitly requested)
-   - Minimal TypeScript/React frontend
-   - BS-RoFormer for stem separation (state-of-the-art model)
-   - Opus compression for output (configurable, user requested)
+Stemset is an AI-powered audio stem separation application with two components:
+1. **Backend**: Python service that monitors directories, separates audio into stems using ML models, and serves results via REST API
+2. **Frontend**: Minimal web player for bandmates to practice with independent stem volume controls
 
-3. **Key Implementation Decisions**:
-   - Profile-based configuration (multiple source folders)
-   - Content-based hashing to prevent duplicate processing
-   - Queue system for sequential processing
-   - Per-stem gain adjustments (informational only for UI)
+## Core Principles
 
-4. **Major Pivots and User Corrections**:
-   - User requested uv instead of pip
-   - User requested bun instead of npm
-   - User wanted to remove redundant mark_as_processed call
-   - User asked to simplify separator by using audio-separator library features properly
-   - User wanted fail-fast approach, removing try/except fallbacks
-   - User clarified that per-stem gains are UI defaults, not post-processing
+### Fail Fast
+We do not catch exceptions to provide fallbacks. If something fails, we want to know immediately. No `try/except` blocks unless absolutely necessary for resource cleanup.
 
-5. **Critical Issues Found and Fixed**:
-   - Frontend infinite polling loop (useEffect dependencies)
-   - CPU nice not working (switched to PyTorch thread limiting)
-   - Toast notifications instead of window alerts
-   - Backend connection splash screen
-   - Queue status not clearing
-   - Temporary WAV files littering directory
-   - Duplicate folder creation (files marked processed immediately when queued)
-   - Wrong model being used (2-stem instead of 4-stem)
+### Modern Python
+- Use Python 3.13+ features: `from __future__ import annotations`, type unions with `|`, no `Optional`
+- Type everything. No `Any` unless interfacing with untyped third-party code.
+- Pydantic for all data models, configuration, and serialization
+- `uv` for package management, not pip
 
-6. **Files Created/Modified**:
-   - Backend (src/): config.py, scanner.py, separator.py, queue.py, api.py, main.py
-   - Frontend (frontend/): App.tsx, Toast.tsx, StemPlayer.tsx, types.ts, api.ts
-   - Config: config.yaml, pyproject.toml, README.md
+### Clean Architecture Layers
 
-7. **Architectural Patterns**:
-   - Singleton pattern for config and queue
-   - Profile-based configuration
-   - Content-based deduplication using SHA256 hashes
-   - AsyncIO queue processing with threading for blocking operations
-   - Web Audio API for synchronized multi-track playback
+**Unidirectional dependencies only.** Higher layers can import from lower layers, never the reverse.
 
-Summary:
-1. **Primary Request and Intent**:
-   - Build a two-component application for AI-powered audio stem separation:
-     - **Component 1 (Backend)**: Directory scanner that monitors for new WAV files, uses state-of-the-art BS-RoFormer AI model to separate audio into 4 stems (vocals, drums, bass, other/guitars), 
-saves stems with configurable Opus compression
-     - **Component 2 (Frontend)**: Minimal web application allowing bandmates to play back separated stems with independent volume controls for practice/critical listening
-   - Support multiple "profiles" (different source folders with independent settings)
-   - Use content-based hashing to prevent duplicate processing (filenames change on recording device)
-   - Process files sequentially in a queue (one at a time, no real-time requirement)
-   - Apply loudness normalization with per-stem gain adjustments
-   - Per-stem gain adjustments are informational only (set default UI slider positions, not applied during processing)
+```
+Configuration (config.py)
+    ↓
+Registry (models/registry.py)
+    ↓
+Base Abstractions (models/audio_separator_base.py)
+    ↓
+Concrete Models (models/atomic_models.py)
+    ↓
+Executors (models/strategy_executor.py)
+    ↓
+Public Interface (modern_separator.py)
+    ↓
+API (api.py)
+```
 
-2. **Key Technical Concepts**:
-   - **BS-RoFormer**: Band-Split Rotary Transformer - state-of-the-art model for music source separation (11.89 dB SDR for vocals)
-   - **LUFS Normalization**: ITU-R BS.1770-4 compliant loudness measurement and normalization
-   - **Opus Compression**: High-quality lossy audio codec optimized for music (192 kbps default)
-   - **Content-Based Hashing**: SHA256 hashing of file contents to detect duplicates regardless of filename
-   - **Profile-Based Configuration**: YAML configuration supporting multiple source folders with independent settings
-   - **Web Audio API**: Browser API for synchronized multi-track playback with independent gain control
-   - **AsyncIO with Threading**: Event loop with ThreadPoolExecutor for blocking ML operations
-   - **PyTorch Thread Limiting**: `torch.set_num_threads()` to limit CPU usage and keep system responsive
+Use `TYPE_CHECKING` imports only when necessary to break circular dependencies at the lowest possible layer.
 
-3. **Files and Code Sections**:
+## How We Structure Code
 
-   **Backend Core Files:**
-   
-   - **`/Users/cam/dev/stemset/src/config.py`**
-     - Why: Manages profile-based configuration using Pydantic models
-     - Changes: Added `output_format` and `opus_bitrate` fields, removed unused `process_nice`
-     - Key Code:
-     ```python
-     class Profile(BaseModel):
-         name: str
-         source_folder: str
-         output_format: str = Field("opus")
-         opus_bitrate: int = Field(192)
-     ```
+### Separation Models
 
-   - **`/Users/cam/dev/stemset/src/scanner.py`**
-     - Why: Scans directories for new audio files, prevents duplicates via content hashing
-     - Critical Fix: Files now marked as processed IMMEDIATELY when queued (not after completion) to prevent duplicate folder creation
-     - Key Code:
-     ```python
-     def scan_for_new_files(self) -> list[tuple[Path, str]]:
-         # ... file scanning logic ...
-         file_hash = self._compute_file_hash(file_path)
-         if file_hash in self.processed_hashes:
-             continue
-         # ... derive output name ...
-         new_files.append((file_path, output_name))
-         # Mark as processed immediately to prevent duplicates
-         self.processed_hashes[file_hash] = output_name
-         self._save_hash_db()
-     ```
+All audio separation models inherit from `AudioSeparator` ABC which defines:
+- `output_slots: dict[str, str]` - What this model produces (e.g., `{"vocals": "Vocal track", "not_vocals": "Instrumental"}`)
+- `model_filename: str` - Which model file to load
+- `separate(input_file, output_dir) -> dict[str, Path]` - Performs separation
 
-   - **`/Users/cam/dev/stemset/src/separator.py`** (MOST RECENT CRITICAL CHANGES)
-     - Why: Core stem separation logic using audio-separator library
-     - Major Refactor: Reduced from 280+ lines to 105 lines by properly using library features
-     - Removed: All manual WAV metadata, Opus encoding, temp file management, try/except fallbacks
-     - Critical Model Change: Updated to use 4-stem model instead of 2-stem
-     - Key Code:
-     ```python
-     def _ensure_separator_loaded(self) -> None:
-         if self.separator is None:
-             import torch
-             # Limit CPU threads for system responsiveness
-             cpu_count = os.cpu_count() or 4
-             thread_count = max(1, cpu_count // 2)
-             torch.set_num_threads(thread_count)
-             torch.set_num_interop_threads(thread_count)
-             
-             output_format = self.profile.output_format.upper()
-             output_bitrate = f"{self.profile.opus_bitrate}k" if output_format == "OPUS" else None
-             
-             self.separator = Separator(
-                 log_level=20,
-                 model_file_dir=str(Path.home() / ".stemset" / "models"),
-                 output_format=output_format,
-                 output_bitrate=output_bitrate,
-                 normalization_threshold=0.9,
-             )
-             
-             # Load 4-stem model (vocals, drums, bass, other)
-             self.separator.load_model("model_bs_roformer_viperx_sdr_10.5309.ckpt")
-     
-     def separate_and_normalize(self, input_file: Path, output_folder: Path) -> dict[str, Path]:
-         # Build custom output names
-         custom_output_names = {
-             stem_name: str(output_folder / stem_name)
-             for stem_name in self.STEM_NAMES
-         }
-         # Library handles everything (encoding, normalization, file writing)
-         output_files = self.separator.separate(str(input_file), custom_output_names=custom_output_names)
-         # Verify all 4 stems returned
-         missing = set(self.STEM_NAMES) - set(stem_paths.keys())
-         if missing:
-             raise RuntimeError(f"Separation incomplete: missing stems {missing}")
-     ```
+We use `AudioSeparatorLibraryModel` as the base for models using the `audio-separator` library, so concrete models only need to define `output_slots` and `model_filename`.
 
-   - **`/Users/cam/dev/stemset/src/queue.py`**
-     - Why: Manages sequential job processing queue
-     - Key Pattern: AsyncIO queue with job status tracking
-     - Key Code:
-     ```python
-     @dataclass
-     class Job:
-         id: str
-         profile_name: str
-         input_file: Path
-         output_folder: Path
-         status: JobStatus
-         created_at: datetime
-         started_at: Optional[datetime] = None
-         completed_at: Optional[datetime] = None
-     ```
+### Strategy Trees
 
-   - **`/Users/cam/dev/stemset/src/api.py`**
-     - Why: Litestar REST API endpoints
-     - Changes: Removed ineffective `os.nice()` call, removed redundant `mark_as_processed` call
-     - Key Endpoints: `/api/profiles`, `/api/profiles/{name}/scan`, `/api/queue`, `/api/jobs`
-     - Key Code:
-     ```python
-     async def process_job(job: Job) -> dict[str, str]:
-         config = get_config()
-         profile = config.get_profile(job.profile_name)
-         separator = StemSeparator(profile)  # Handles thread limiting
-         loop = asyncio.get_event_loop()
-         stem_paths = await loop.run_in_executor(
-             None, separator.separate_and_normalize, job.input_file, job.output_folder
-         )
-         return {name: str(path) for name, path in stem_paths.items()}
-     ```
+Strategies are defined in `config.yaml` as recursive trees:
+```yaml
+successive:
+  _: "vocals_mel_band_roformer.ckpt"  # Model to use
+  vocals: vocals                       # Final output
+  not_vocals:                          # Feed into next model
+    _: "kuielab_b_drums.onnx"
+    drums: drums
+    not_drums:
+      _: "kuielab_a_bass.onnx"
+      bass: bass
+      not_bass: other
+```
 
-   **Configuration Files:**
+The `_` key specifies which model to use. Other keys map that model's output slots to either:
+- **String values**: Final stem names (leaf nodes)
+- **Dict values**: Subtrees that process that output further
 
-   - **`/Users/cam/dev/stemset/config.yaml`**
-     - Current example profile for H4N recorder
-     - Key settings: Opus output at 192kbps, -23 LUFS target
-     ```yaml
-     profiles:
-       - name: "h4n"
-         source_folder: "/Volumes/H4N_SD/STEREO"
-         output_format: "opus"
-         opus_bitrate: 192
-     ```
+**Validation**: At execution time, we verify output slots in the config match what the model actually produces. Config errors fail immediately with clear messages.
 
-   - **`/Users/cam/dev/stemset/pyproject.toml`**
-     - Dependencies: litestar, audio-separator, pyloudnorm, soundfile, watchdog, pydantic, pyyaml, uvicorn, onnxruntime, numpy
-     - Python version: ==3.13.*
+**Intermediate Processing**: All intermediate files use lossless WAV format. Only final outputs use the user's configured format (Opus, WAV, etc.).
 
-4. **Errors and Fixes**:
+### Metadata
 
-   - **Infinite Frontend Polling Loop**
-     - Error: Frontend was spamming backend with requests every few milliseconds
-     - Root Cause: `useEffect` had `backendConnected` in dependency array, causing re-runs on every state change
-     - Fix: Removed all dependencies from polling useEffect (empty array `[]`), used closure variables for state tracking
-     - User Quote: "The frontend is now SPAMMING the backend with INFO: 127.0.0.1:57732 - 'GET /api/profiles HTTP/1.1' 200 OK"
+We use Pydantic models for all metadata:
+```python
+class StemMetadata(BaseModel):
+    stem_type: str
+    measured_lufs: float
 
-   - **CPU Nice Not Working**
-     - Error: `os.nice()` call wasn't making system more responsive
-     - Root Cause: os.nice() affects entire process, but using threads (not processes). PyTorch uses same process.
-     - Fix: Used `torch.set_num_threads()` and `torch.set_num_interop_threads()` to limit PyTorch to half of CPU cores
-     - User Quote: "The os.nice thing isn't working. Given what you now know about the audio separator library (and the fact that we're using asyncio here), is there a way to do this?"
+class StemsMetadata(BaseModel):
+    stems: dict[str, StemMetadata]
 
-   - **Profiles Not Loading After Reconnection**
-     - Error: Profile dropdown empty when transitioning from backend down to backend up
-     - Root Cause: Profiles only loaded on initial mount, not on reconnection
-     - Fix: Added reconnection detection logic to reload profiles when backend comes online
-     - User Feedback: Showed screenshot of empty profile dropdown
+    def to_file(self, path: Path) -> None: ...
+    @classmethod
+    def from_file(cls, path: Path) -> StemsMetadata: ...
+```
 
-   - **Temporary WAV Files Littering Directory**
-     - Error: Separator leaving WAV files in current directory
-     - Root Cause: audio-separator default output directory not configured
-     - Fix: Set `output_dir` parameter to `~/.stemset/temp_output`, added cleanup logic
-     - User Quote: "we have a stem WAV that's littering our main folder"
+After separation, we:
+1. Compute LUFS for each final stem using `pyloudnorm`
+2. Create `StemsMetadata` model
+3. Write to `metadata.json` using Pydantic serialization
 
-   - **Duplicate Folders Created**
-     - Error: Two folders created in ./media/h4n/ for same file
-     - Root Cause: Files marked as processed only AFTER completion, so rescanning before completion created duplicates
-     - Fix: Mark files as processed IMMEDIATELY when queued (in `scan_for_new_files()`)
-     - User Quote: "we have... for some reason having *two* folders in our ./media/h4n directory even though we just processed one file"
+The frontend reads this same typed structure.
 
-   - **Queue Not Clearing**
-     - Error: Queue status showing jobs indefinitely
-     - Root Cause: Polling logic not properly updating queue status
-     - Fix: Improved polling logic to track processing state transitions
+### Configuration
 
-   - **Over-Engineered Separator Code**
-     - Error: 280+ lines of complex code with manual WAV metadata embedding, Opus encoding via ffmpeg, temp file management
-     - Root Cause: Not using audio-separator library to its full potential
-     - User Feedback: "I want you to take a step back and think about this problem holistically. We have introduced a lot of complexity in the form of try/excepts and fallbacks, whereas we really 
-want to fail fast"
-     - Fix: Massive refactor to 105 lines by using library's `output_format`, `output_bitrate`, and `custom_output_names` features
-     - User Quote: "Please read the downloaded code (in .venv) and re-write our StemSeparator to use built-in opus encoding (if possible) as well as understanding exactly how to use 
-custom_output_names"
+All configuration uses Pydantic models in `config.py`:
+- `OutputConfig` - Format and bitrate settings
+- `StrategyNode` - Recursive tree node (model + output mappings)
+- `Strategy` - Named strategy with validation
+- `Profile` - User profile linking source folder to strategy
+- `Config` - Top-level config with strategies and profiles
 
-   - **Wrong Model - 2 Stems Instead of 4**
-     - Error: Separation failing with "missing stems {'drums', 'other', 'vocals', 'bass'}" error
-     - Root Cause: Using `model_bs_roformer_ep_317_sdr_12.9755.ckpt` which is a 2-stem model (Vocals/Instrumental only, num_stems: 1 in YAML)
-     - Investigation: Read model config file at `~/.stemset/models/model_bs_roformer_ep_317_sdr_12.9755.yaml` and found `num_stems: 1` and `instruments: [Vocals, Instrumental]`
-     - Fix: Changed to `htdemucs_ft.yaml` (4-stem model)
+We load and validate the entire config at startup. Invalid configs fail immediately with clear error messages.
 
-5. **Problem Solving**:
+### API Responses
 
-   - **Achieved**:
-     - Clean architecture with profile-based configuration
-     - Duplicate prevention via content hashing
-     - Opus compression working via audio-separator's pydub integration
-     - Toast notifications instead of alerts
-     - Backend connection splash screen
-     - Responsive system during processing (PyTorch thread limiting)
-     - Soundfile confirmed to support Opus reading (tested with test_opus.py)
+Every API endpoint returns a Pydantic model. We never return raw dicts from endpoints:
+```python
+class ProfileResponse(BaseModel):
+    name: str
+    source_folder: str
 
-   - **Ongoing**:
-     - Need to test new 4-stem BS-RoFormer viperx model
-     - Verify all 4 stems (vocals, drums, bass, other) are being output correctly
-     - Confirm Opus encoding works with 4-stem model
+@get("/api/profiles")
+async def get_profiles() -> list[ProfileResponse]:
+    ...
+```
+
+Litestar integrates natively with Pydantic for request/response serialization.
+
+We use `NotFoundException` instead of returning error response objects with status codes.
+
+## File Organization
+
+```
+src/
+├── config.py              # Pydantic config models, YAML loading
+├── api.py                 # Litestar API with Pydantic responses
+├── queue.py               # Job queue management
+├── scanner.py             # Directory scanning, content-based deduplication
+├── modern_separator.py    # Public separation interface
+└── models/
+    ├── registry.py        # Frozen MODEL_REGISTRY mapping names to classes
+    ├── audio_separator_base.py  # AudioSeparator ABC
+    ├── atomic_models.py   # Concrete model implementations
+    ├── strategy_executor.py     # Tree execution engine
+    └── metadata.py        # Pydantic metadata models + LUFS analysis
+```
+
+## What We Don't Do
+
+- **No backwards compatibility layers**: We delete old code when we refactor. No `separator.py` alongside `modern_separator.py`.
+- **No validation in multiple places**: Validate once at the boundary (config load, API input). Trust validated data downstream.
+- **No YAML/JSON by hand**: Use Pydantic's `model_dump_json()` and `model_validate_json()`.
+- **No print debugging**: Use proper logging levels when needed. Print statements for user-facing progress only.
+- **No magic**: Explicit is better than implicit. No metaclasses, no dynamic imports, no `__getattr__` tricks.
+
+## Dependencies We Use
+
+- **`audio-separator`**: Core ML separation, handles model loading and PyTorch
+- **`pyloudnorm`**: LUFS measurement per ITU-R BS.1770-4
+- **`soundfile`**: Audio I/O, supports Opus via system libsndfile
+- **`Litestar`**: Modern async web framework with excellent Pydantic integration
+- **`pydantic`**: Data validation, serialization, configuration
+- **`watchdog`**: File system monitoring (for future auto-scanning)
+
+## Testing Philosophy
+
+When testing, create actual files, run actual separation, verify actual outputs. No mocks for core business logic.
+
+Test configuration loading with real YAML files. Test strategy execution with real (small) audio files.
+
+## Performance Considerations
+
+**Thread Limiting**: We limit PyTorch to `(cpu_count - 2)` threads in `AudioSeparator._get_separator()` to keep the system responsive during separation.
+
+**Sequential Processing**: One separation job at a time. Audio separation is CPU/GPU intensive; parallelism doesn't help.
+
+**Temporary Files**: Strategy executor creates a temp directory, executes the tree, moves finals to destination, cleans up intermediates. No manual cleanup needed.
+
+**Content Hashing**: Scanner uses SHA256 of file contents to detect duplicates regardless of filename changes (recording devices rename files).
+
+## Evolution
+
+This codebase values clarity over cleverness. When adding features:
+1. Add the Pydantic model first
+2. Add it to the config if needed
+3. Implement the core logic with proper types
+4. Wire it through the API with Pydantic responses
+5. Delete any code made obsolete by the change
+
+We refactor aggressively. If a pattern emerges three times, abstract it. If an abstraction is only used once, inline it.

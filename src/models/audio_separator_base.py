@@ -20,6 +20,10 @@ class AudioSeparator(ABC):
     - separate: perform separation and return paths
     """
 
+    output_config: OutputConfig
+    _separator: Separator | None
+    _model_loaded: bool
+
     def __init__(self, output_config: OutputConfig):
         """Initialize with output configuration.
 
@@ -27,7 +31,8 @@ class AudioSeparator(ABC):
             output_config: Output format and bitrate settings
         """
         self.output_config = output_config
-        self._separator: Separator | None = None
+        self._separator = None
+        self._model_loaded = False
 
     @property
     @abstractmethod
@@ -96,7 +101,7 @@ class AudioSeparator(ABC):
         return self._separator
 
 
-class AudioSeparatorLibraryModel(AudioSeparator):
+class AudioSeparatorLibraryModel(AudioSeparator, ABC):
     """Base implementation for models using audio-separator library directly.
 
     Subclasses only need to define output_slots and model_filename.
@@ -108,17 +113,18 @@ class AudioSeparatorLibraryModel(AudioSeparator):
 
         # Get separator and load model if needed
         separator = self._get_separator()
-        if not hasattr(separator, '_model_loaded') or not separator._model_loaded:
+        if not self._model_loaded:
             separator.load_model(self.model_filename)
-            separator._model_loaded = True
+            self._model_loaded = True
 
             output_format = self.output_config.format.upper()
             output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
             print(f"Model '{self.model_filename}' loaded (output: {output_format}" +
                   (f" @ {output_bitrate})" if output_bitrate else ")"))
 
-        # Set output directory
-        separator.model_instance.output_dir = str(output_dir.absolute())
+        # Set output directory - model_instance can be None initially but set after load_model
+        if separator.model_instance is not None:
+            separator.model_instance.output_dir = str(output_dir.absolute())  # type: ignore[attr-defined]
 
         print(f"Separating {input_file.name} with {self.model_filename}...")
 
@@ -126,7 +132,7 @@ class AudioSeparatorLibraryModel(AudioSeparator):
         custom_output_names = {slot_name: slot_name for slot_name in self.output_slots.keys()}
 
         # Perform separation
-        output_files = separator.separate(str(input_file), custom_output_names=custom_output_names)
+        output_files: list[str] = separator.separate(str(input_file), custom_output_names=custom_output_names)  # type: ignore[assignment]
 
         # Map output files to slots
         output_paths: dict[str, Path] = {}
