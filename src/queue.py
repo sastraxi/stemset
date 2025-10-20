@@ -1,37 +1,14 @@
 """Processing queue for stem separation jobs."""
 
+from __future__ import annotations
+
 import asyncio
 import time
-from dataclasses import dataclass
+from collections.abc import Callable, Awaitable
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
-from typing import Optional
 
-
-class JobStatus(str, Enum):
-    """Status of a processing job."""
-
-    QUEUED = "queued"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-@dataclass
-class Job:
-    """A stem separation job."""
-
-    id: str
-    profile_name: str
-    input_file: Path
-    output_folder: Path
-    status: JobStatus
-    created_at: datetime
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    error: Optional[str] = None
-    output_files: Optional[dict] = None
+from .config import Job, JobStatus
 
 
 class ProcessingQueue:
@@ -40,9 +17,9 @@ class ProcessingQueue:
     def __init__(self):
         """Initialize the processing queue."""
         self.jobs: dict[str, Job] = {}
-        self.queue: asyncio.Queue = asyncio.Queue()
-        self.current_job: Optional[Job] = None
-        self.processing_task: Optional[asyncio.Task] = None
+        self.queue: asyncio.Queue[Job] = asyncio.Queue()
+        self.current_job: Job | None = None
+        self.processing_task: asyncio.Task[None] | None = None
         self._job_counter = 0
 
     def _generate_job_id(self) -> str:
@@ -75,7 +52,7 @@ class ProcessingQueue:
         self.queue.put_nowait(job)
         return job
 
-    def get_job(self, job_id: str) -> Optional[Job]:
+    def get_job(self, job_id: str) -> Job | None:
         """Get a job by ID.
 
         Args:
@@ -121,12 +98,14 @@ class ProcessingQueue:
         """
         return self.current_job is not None
 
-    async def start_processing(self, processor_callback) -> None:
+    async def start_processing(
+        self, processor_callback: Callable[[Job], Awaitable[dict[str, str]]]
+    ) -> None:
         """Start the queue processor.
 
         Args:
             processor_callback: Async function to call for each job.
-                                Should accept (job, profile) and return dict of output files.
+                                Should accept job and return dict of output files.
         """
         if self.processing_task is not None:
             return  # Already running
@@ -184,7 +163,7 @@ class ProcessingQueue:
 
 
 # Global queue instance
-_queue: Optional[ProcessingQueue] = None
+_queue: ProcessingQueue | None = None
 
 
 def get_queue() -> ProcessingQueue:

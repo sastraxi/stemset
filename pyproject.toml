@@ -15,6 +15,7 @@ dependencies = [
     "opuslib>=3.0.1",
     "onnxruntime>=1.23.1",
     "numpy>=2.3.4",
+    "pillow>=10.0.0",
 ]
 
 [project.scripts]

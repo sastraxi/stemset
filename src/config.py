@@ -4,9 +4,37 @@
 from __future__ import annotations
 
 import yaml
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Any, cast
+
+
+class JobStatus(str, Enum):
+    """Status of a processing job."""
+
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class Job(BaseModel):
+    """A stem separation job."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    profile_name: str
+    input_file: Path
+    output_folder: Path
+    status: JobStatus
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error: str | None = None
+    output_files: dict[str, str] | None = None
 
 
 class OutputConfig(BaseModel):
@@ -111,9 +139,7 @@ class Profile(BaseModel):
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
     strategy: str = Field(..., description="Strategy name to use for separation")
-    output: OutputConfig = Field(
-        default_factory=lambda: OutputConfig(), description="Output format configuration"
-    )
+    output: OutputConfig = Field(default_factory=lambda: OutputConfig(), description="Output format configuration")
 
     @field_validator("source_folder")
     @classmethod

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .config import Profile, get_config
 from .models.strategy_executor import StrategyExecutor
-from .models.metadata import get_metadata_analyzer, StemsMetadata
+from .models.metadata import StemMetadata, get_metadata_analyzer, StemsMetadata
 
 
 class StemSeparator:
@@ -35,7 +35,7 @@ class StemSeparator:
 
     def separate_and_normalize(
         self, input_file: Path, output_folder: Path
-    ) -> tuple[dict[str, Path], dict[str, dict[str, str | float]]]:
+    ) -> tuple[dict[str, Path], dict[str, StemMetadata]]:
         """Separate audio into stems with metadata.
 
         Args:
@@ -53,20 +53,16 @@ class StemSeparator:
         # Execute strategy tree
         stem_paths = self.executor.execute(input_file, output_folder)
 
-        # Compute LUFS metadata for final stems
+        # Generate waveforms and compute LUFS metadata for final stems
         print("Analyzing stem loudness...")
         analyzer = get_metadata_analyzer()
-        stems_metadata: StemsMetadata = analyzer.create_stems_metadata(stem_paths, self.profile)
+        stems_metadata: StemsMetadata = analyzer.create_stems_metadata(
+            stem_paths, self.profile, output_folder
+        )
 
         # Write metadata to JSON file using Pydantic
         metadata_file = output_folder / "metadata.json"
         stems_metadata.to_file(metadata_file)
         print(f"  ✓ Metadata saved to {metadata_file.name}")
 
-        # Convert to dict format for backward compatibility with API
-        metadata_dict: dict[str, dict[str, str | float]] = {
-            stem_name: {"stem_type": stem.stem_type, "measured_lufs": stem.measured_lufs}
-            for stem_name, stem in stems_metadata.stems.items()
-        }
-
-        return stem_paths, metadata_dict
+        return stem_paths, stems_metadata.stems

@@ -1,7 +1,6 @@
 """Litestar API for Stemset."""
 
 import asyncio
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -9,11 +8,12 @@ from litestar import Litestar, get, post
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
 from litestar.exceptions import NotFoundException
+from litestar.response import File
 from litestar.static_files import create_static_files_router
 from pydantic import BaseModel
 
-from .config import get_config
-from .queue import Job, JobStatus, get_queue
+from .config import get_config, Job, JobStatus
+from .queue import get_queue
 from .scanner import FileScanner
 from .modern_separator import StemSeparator
 
@@ -187,9 +187,37 @@ async def get_file_metadata(profile_name: str, file_name: str) -> dict[str, dict
 
     # Convert to dict format for API response
     return {
-        stem_name: {"stem_type": stem.stem_type, "measured_lufs": stem.measured_lufs}
+        stem_name: {
+            "stem_type": stem.stem_type,
+            "measured_lufs": stem.measured_lufs,
+            "waveform_url": stem.waveform_url,
+        }
         for stem_name, stem in stems_metadata.stems.items()
     }
+
+
+@get("/api/profiles/{profile_name:str}/songs/{song_name:str}/stems/{stem_name:str}/waveform")
+async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -> File:
+    """Serve waveform PNG for a specific stem.
+
+    The waveform is rendered as white on transparent background.
+    Frontend should apply color via CSS filters or canvas operations.
+    """
+    config = get_config()
+    profile = config.get_profile(profile_name)
+    if profile is None:
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+
+    waveform_path = Path("media") / profile_name / song_name / f"{stem_name}_waveform.png"
+
+    if not waveform_path.exists():
+        raise NotFoundException(detail=f"Waveform not found for stem '{stem_name}'")
+
+    return File(
+        path=waveform_path,
+        filename=f"{stem_name}_waveform.png",
+        media_type="image/png",
+    )
 
 
 @post("/api/profiles/{profile_name:str}/scan")
@@ -276,15 +304,11 @@ async def process_job(job: Job) -> dict[str, str]:
     separator = StemSeparator(profile)
 
     # Run separation in thread pool (blocking operation)
+    # Metadata and waveforms are saved automatically by separate_and_normalize
     loop = asyncio.get_event_loop()
-    stem_paths, stem_metadata = await loop.run_in_executor(
+    stem_paths, _stem_metadata = await loop.run_in_executor(
         None, separator.separate_and_normalize, job.input_file, job.output_folder
     )
-
-    # Save metadata to JSON file alongside stems
-    metadata_file = job.output_folder / "metadata.json"
-    with open(metadata_file, "w") as f:
-        json.dump(stem_metadata, f, indent=2)
 
     # Convert paths to strings
     return {name: str(path) for name, path in stem_paths.items()}
@@ -324,6 +348,7 @@ app = Litestar(
         get_profile,
         get_profile_files,
         get_file_metadata,
+        get_stem_waveform,
         scan_profile,
         get_queue_status,
         get_jobs,
