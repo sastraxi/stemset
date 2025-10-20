@@ -50,7 +50,7 @@ class BaseModelSeparator:
 
         # Limit CPU threads to be nice to interactive processes
         cpu_count = os.cpu_count() or 4
-        thread_count = max(1, cpu_count // 2)
+        thread_count = max(1, cpu_count - 2)
         torch.set_num_threads(thread_count)
         torch.set_num_interop_threads(thread_count)
         print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
