@@ -149,6 +149,7 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
                   onChange={e => updateLimiter({ release: parseFloat(e.target.value) })}
                 />
               </div>
+              <div style={{ flexGrow: 1 }} />
               <div className="limiter-reduction">
                 <label className="meter-label">Gain Reduction {gainReduction.toFixed(1)} dB</label>
                 <div className="gr-meter" title={`${gainReduction.toFixed(1)} dB`}>

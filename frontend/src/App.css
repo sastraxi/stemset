@@ -461,7 +461,7 @@ button:disabled {
   margin-bottom: 0.25rem;
 }
 
-.limiter-reduction {
+.limiter-controls > * {
   width: 100%;
   display: block;
 }

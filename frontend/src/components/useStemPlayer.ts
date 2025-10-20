@@ -110,15 +110,6 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     try {
       const raw = localStorage.getItem('stemset.master.limiter.v2');
       if (raw) return { ...def, ...JSON.parse(raw) };
-      // legacy migration from v1 (ceiling field)
-      const legacy = localStorage.getItem('stemset.master.limiter.v1');
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (parsed.ceiling) {
-          // Approximate mapping: ceiling ~ makeupGain, threshold default
-          return { ...def, makeupGain: parsed.ceiling, enabled: parsed.enabled ?? true };
-        }
-      }
     } catch {}
     return def;
   });
@@ -182,8 +173,7 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
         compressorRef.current.connect(makeupGainRef.current);
         makeupGainRef.current.connect(ctx.destination);
       } else {
-        node.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(ctx.destination);
+        node.connect(ctx.destination);
       }
     }
     return audioCtxRef.current;
@@ -270,14 +260,6 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
         f.gain.value = b.gain;
         return f;
       });
-      // Reconnect chain masterInput -> filters -> limiter
-      let node: AudioNode = masterInputRef.current;
-      eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
-      if (compressorRef.current && makeupGainRef.current) {
-        node.connect(compressorRef.current);
-        compressorRef.current.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(ctx.destination);
-      }
     } else {
       eqBands.forEach((b, i) => {
         const f = eqFilterRefs.current[i];
@@ -288,24 +270,47 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
         f.gain.setTargetAtTime(b.gain, ctx.currentTime, 0.01);
       });
     }
-    // Bypass or enable EQ: connect masterInput directly to limiter when disabled.
-    if (makeupGainRef.current && compressorRef.current) {
-      // First disconnect any existing connections from masterInput.
-      try { masterInputRef.current.disconnect(); } catch {}
-      if (eqEnabled && eqFilterRefs.current.length) {
-        // Reconnect chain master -> filters -> limiter
-        let node: AudioNode = masterInputRef.current;
-        eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
+  }, [eqBands]);
+
+  // Rewire master chain on EQ enable/disable or limiter enable/disable changes
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || !masterInputRef.current) return;
+    // Disconnect everything first to avoid duplicate parallel paths
+    try { masterInputRef.current.disconnect(); } catch {}
+    eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch {} });
+    if (compressorRef.current) { try { compressorRef.current.disconnect(); } catch {} }
+    if (makeupGainRef.current) { try { makeupGainRef.current.disconnect(); } catch {} }
+
+    if (eqEnabled) {
+      // master -> filters -> (compressor?) -> (makeup?) -> destination
+      let node: AudioNode = masterInputRef.current;
+      eqFilterRefs.current.forEach(f => { node.connect(f); node = f; });
+      if (limiter.enabled && compressorRef.current && makeupGainRef.current) {
         node.connect(compressorRef.current);
         compressorRef.current.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(audioCtxRef.current!.destination);
+        makeupGainRef.current.connect(ctx.destination);
       } else {
+        node.connect(ctx.destination);
+      }
+    } else {
+      // master -> (compressor?) -> destination
+      if (limiter.enabled && compressorRef.current && makeupGainRef.current) {
         masterInputRef.current.connect(compressorRef.current);
         compressorRef.current.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(audioCtxRef.current!.destination);
+        makeupGainRef.current.connect(ctx.destination);
+      } else {
+        masterInputRef.current.connect(ctx.destination);
       }
     }
-  }, [eqBands, eqEnabled, limiter.enabled]);
+    if (!limiter.enabled) {
+      // Ensure visual + gain makeup reset when bypassed
+      setGainReduction(0);
+      if (makeupGainRef.current) {
+        try { makeupGainRef.current.gain.setValueAtTime(1, ctx.currentTime); } catch {}
+      }
+    }
+  }, [eqEnabled, limiter.enabled]);
 
   // Limiter updates (simple: adjust ceiling gain). Real threshold/release processing would need dynamics analysis.
   useEffect(() => {
