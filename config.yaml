@@ -1,57 +1,44 @@
 # Stemset Configuration
 # Multiple profiles allow you to process different recording sources
 
+strategies:
+#################################
+  demucs_ft:
+    _: "htdemucs_ft"
+    vocals: vocals
+    bass: bass
+    drums: drums
+    other: other
+
+  hdemucs_mmi:
+    _: "hdemucs_mmi"
+    vocals: vocals
+    bass: bass
+    drums: drums
+    other: other
+
+  successive:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    not_vocals: 
+      _: "kuielab_b_drums.onnx"
+      drums: drums
+      not_drums:
+        _: "kuielab_a_bass.onnx"
+        bass: bass
+        not_bass: other
+
 profiles:
+#################################
   - name: "h4n"
     source_folder: "/Volumes/H4N_SD/STEREO"
-    model: "demucs"       # Available: "demucs", "hdemucs_mmi", "successive" (experimental multi-model)
-    target_lufs: -23.0
-    stem_gains:
-      vocals: 0.0
-      drums: -2.0
-      bass: 1.0
-      other: -1.0
-    output_format: "opus"  # "opus" or "wav"
-    opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
+    strategy: "htdemucs_ft"
+    output_format: "opus"
+    opus_bitrate: 192
 
   - name: "one"
     source_folder: "./input/one"
-    model: "hdemucs_mmi"       # Available: "demucs", "hdemucs_mmi", "successive" (experimental multi-model)
-    target_lufs: -23.0
-    stem_gains:
-      vocals: 0.0
-      drums: -2.0
-      bass: 1.0
-      other: -1.0
-    output_format: "opus"  # "opus" or "wav"
-    opus_bitrate: 192      # Bitrate in kbps (96-512, recommended: 128-256)
+    strategy: "successive"
+    output_format: "opus"
+    opus_bitrate: 192
 
-# Example profiles for different model types:
-# - name: "experimental-successive"
-#   source_folder: "./input/test"
-#   model: "successive"   # Multi-model approach: vocals→drums→bass extraction  
-#   target_lufs: -23.0
-#   stem_gains:
-#     vocals: 0.0
-#     drums: 0.0
-#     bass: 0.0
-#     other: 0.0
-#   output_format: "opus"
-#   opus_bitrate: 192
-#
-# - name: "hd-demucs-test"
-#   source_folder: "./input/test"
-#   model: "hdemucs_mmi"  # HD-Demucs with Multi-Modal Interaction
-#   target_lufs: -23.0
-#   output_format: "wav"  # Uncompressed for analysis
-#
-# - name: "live-shows"
-#   source_folder: "/path/to/live/recordings"
-#   target_lufs: -20.0
-#   stem_gains:
-#     vocals: 2.0
-#     drums: 0.0
-#     bass: 1.0
-#     other: 0.0
-#   output_format: "opus"
-#   opus_bitrate: 256  # Higher quality for archival

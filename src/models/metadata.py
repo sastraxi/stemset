@@ -51,8 +51,6 @@ class AudioMetadataAnalyzer:
         # Analyze loudness
         loudness_lufs = self.analyze_stem_loudness(audio_file)
         
-        # Get gain adjustment from profile
-        stem_gain_db = getattr(profile.stem_gains, stem_name, 0.0)
         
         # Print loudness info
         print(f"  {stem_name}: {loudness_lufs:.1f} LUFS")
@@ -60,8 +58,6 @@ class AudioMetadataAnalyzer:
         return {
             "stem_type": stem_name,
             "measured_lufs": round(loudness_lufs, 2),
-            "target_lufs": profile.target_lufs,
-            "stem_gain_adjustment_db": stem_gain_db,
         }
     
     def create_stems_metadata(

@@ -46,12 +46,6 @@ Edit `config.yaml` to set up your profiles:
 profiles:
   - name: "band-practice"
     source_folder: "/path/to/recordings"
-    target_lufs: -23.0
-    stem_gains:
-      vocals: 0.0
-      drums: -2.0
-      bass: 1.0
-      other: -1.0
     output_format: "opus"  # "opus" or "wav"
     opus_bitrate: 192      # Bitrate in kbps (recommended: 128-256 for music)
 ```
@@ -76,12 +70,6 @@ Edit `config.yaml` and update the `source_folder` path to point to your audio re
 profiles:
   - name: "my-band"
     source_folder: "/path/to/your/recordings"  # Update this!
-    target_lufs: -23.0
-    stem_gains:
-      vocals: 0.0
-      drums: -2.0
-      bass: 1.0
-      other: -1.0
 ```
 
 ### 2. Start the backend

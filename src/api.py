@@ -28,13 +28,6 @@ async def get_profiles() -> List[dict]:
         {
             "name": p.name,
             "source_folder": p.source_folder,
-            "target_lufs": p.target_lufs,
-            "stem_gains": {
-                "vocals": p.stem_gains.vocals,
-                "drums": p.stem_gains.drums,
-                "bass": p.stem_gains.bass,
-                "other": p.stem_gains.other,
-            },
         }
         for p in config.profiles
     ]
@@ -54,13 +47,6 @@ async def get_profile(profile_name: str) -> dict:
     return {
         "name": profile.name,
         "source_folder": profile.source_folder,
-        "target_lufs": profile.target_lufs,
-        "stem_gains": {
-            "vocals": profile.stem_gains.vocals,
-            "drums": profile.stem_gains.drums,
-            "bass": profile.stem_gains.bass,
-            "other": profile.stem_gains.other,
-        },
     }
 
 

@@ -1,13 +1,6 @@
 export interface Profile {
   name: string;
   source_folder: string;
-  target_lufs: number;
-  stem_gains: {
-    vocals: number;
-    drums: number;
-    bass: number;
-    other: number;
-  };
 }
 
 export interface StemFile {
@@ -24,7 +17,6 @@ export interface StemFile {
 export interface StemMetadata {
   stem_type: string;
   measured_lufs: number | null;
-  target_lufs: number;
   stem_gain_adjustment_db: number;
 }
 

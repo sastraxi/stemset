@@ -1,9 +1,12 @@
 """Configuration management for Stemset."""
 
+from __future__ import annotations
+
 import yaml
 from pathlib import Path
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
+from typing import Any
 
 
 class StemGains(BaseModel):
@@ -18,7 +21,7 @@ class StemGains(BaseModel):
 class ModelType(str, Enum):
     """Enum for available separation model types."""
     
-    DEMUCS = "demucs"
+    HTDEMUCS_FT = "htdemucs_ft"
     HDEMUCS_MMI = "hdemucs_mmi"
     SUCCESSIVE = "successive"
         
@@ -30,7 +33,7 @@ class ModelType(str, Enum):
     @classmethod
     def get_default_model(cls) -> "ModelType":
         """Get the default model type."""
-        return cls.DEMUCS
+        return cls.HTDEMUCS_FT
 
 
 class Profile(BaseModel):
@@ -39,15 +42,8 @@ class Profile(BaseModel):
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
     model: ModelType = Field(
-        default=ModelType.DEMUCS, 
+        default=ModelType.HTDEMUCS_FT, 
         description=f"Separation model to use. Available: {', '.join(ModelType.get_available_models())}"
-    )
-    target_lufs: float = Field(
-        -23.0, description="Target loudness in LUFS for normalization"
-    )
-    stem_gains: StemGains = Field(
-        default_factory=StemGains,
-        description="Per-stem gain adjustments in dB (applied after normalization)",
     )
     output_format: str = Field(
         "opus", description="Output format for stems: 'wav' or 'opus'"
@@ -71,10 +67,6 @@ class Profile(BaseModel):
         """Get the media output path for this profile."""
         return Path("media") / self.name
 
-    def get_stem_gain(self, stem_name: str) -> float:
-        """Get the gain adjustment for a specific stem in dB."""
-        return getattr(self.stem_gains, stem_name, 0.0)
-
 
 class Config(BaseModel):
     """Global configuration."""
@@ -84,14 +76,14 @@ class Config(BaseModel):
     )
 
     @classmethod
-    def load(cls, config_path: str = "config.yaml") -> "Config":
+    def load(cls, config_path: str = "config.yaml") -> Config:
         """Load configuration from YAML file."""
         path = Path(config_path)
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         with open(path, "r") as f:
-            data = yaml.safe_load(f)
+            data: dict[str, Any] = yaml.safe_load(f)
 
         return cls(**data)
 

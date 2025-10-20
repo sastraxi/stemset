@@ -3,45 +3,17 @@
 from pathlib import Path
 
 from .config import Profile, ModelType
-from .models import DemucsModelSeparator, HDemucsMMIModelSeparator, SuccessiveModelSeparator, SeparatorModel
+from .modern_separator import SeparationFactory
 
 
 class StemSeparator:
-    """Factory for creating appropriate separator model based on profile configuration."""
+    """Legacy wrapper for the new separation factory."""
 
     def __init__(self, profile: Profile):
-        """Initialize separator for a specific profile.
-
-        Args:
-            profile: The profile configuration to use
-        """
+        """Initialize separator for a specific profile."""
         self.profile = profile
-        self._model_instance: SeparatorModel | None = None
-
-    def _get_model_instance(self) -> SeparatorModel:
-        """Get or create the appropriate separator model instance."""
-        if self._model_instance is None:
-            match self.profile.model:
-                case ModelType.DEMUCS:
-                    self._model_instance = DemucsModelSeparator(self.profile)
-                case ModelType.HDEMUCS_MMI:
-                    self._model_instance = HDemucsMMIModelSeparator(self.profile)
-                case ModelType.SUCCESSIVE:
-                    self._model_instance = SuccessiveModelSeparator(self.profile)
-        
-        return self._model_instance
+        self.factory = SeparationFactory(profile)
 
     def separate_and_normalize(self, input_file: Path, output_folder: Path) -> tuple[dict[str, Path], dict[str, dict]]:
-        """Separate audio into stems and normalize loudness.
-
-        Args:
-            input_file: Path to input WAV file
-            output_folder: Path to output folder for stems
-
-        Returns:
-            Tuple of (stem_paths, metadata) where:
-            - stem_paths: Dict mapping stem name to output file path
-            - metadata: Dict mapping stem name to metadata dict with LUFS info
-        """
-        model = self._get_model_instance()
-        return model.separate_and_normalize(input_file, output_folder)
+        """Separate audio into stems and normalize loudness."""
+        return self.factory.separate_and_normalize(input_file, output_folder)

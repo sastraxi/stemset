@@ -81,8 +81,6 @@ saves stems with configurable Opus compression
      class Profile(BaseModel):
          name: str
          source_folder: str
-         target_lufs: float = -23.0
-         stem_gains: StemGains = Field(default_factory=StemGains)
          output_format: str = Field("opus")
          opus_bitrate: int = Field(192)
      ```
@@ -191,12 +189,6 @@ saves stems with configurable Opus compression
      profiles:
        - name: "h4n"
          source_folder: "/Volumes/H4N_SD/STEREO"
-         target_lufs: -23.0
-         stem_gains:
-           vocals: 0.0
-           drums: -2.0
-           bass: 1.0
-           other: -1.0
          output_format: "opus"
          opus_bitrate: 192
      ```
