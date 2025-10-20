@@ -23,6 +23,8 @@ services:
         sync: false  # Set manually in Render dashboard
       - key: GOOGLE_CLIENT_SECRET
         sync: false  # Set manually in Render dashboard
+      - key: OAUTH_REDIRECT_URI
+        sync: false  # Set to https://your-app.onrender.com/auth/callback
       - key: JWT_SECRET
         generateValue: true  # Auto-generate a random secret
       - key: STEMSET_MODEL_CACHE_DIR

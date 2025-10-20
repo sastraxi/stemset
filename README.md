@@ -57,14 +57,31 @@ STEMSET_MODEL_CACHE_DIR=~/.stemset/models
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Create a new project or select existing
-3. Enable "Google+ API"
-4. Create OAuth 2.0 Client ID (Application type: Web application)
-5. Add authorized redirect URIs:
-   - `http://localhost:8000/auth/callback` (for local testing with auth)
-   - `https://your-app.onrender.com/auth/callback` (for production)
-6. Copy Client ID and Client Secret to your `.env` file
+3. Configure the OAuth consent screen:
+   - Go to "OAuth consent screen" in the left menu
+   - Select "External" user type
+   - Fill in App name, User support email, and Developer contact
+   - Add scopes: `email`, `profile`, `openid`
+   - Add test users (your band members' Gmail addresses)
+4. Create OAuth 2.0 Client ID:
+   - Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+   - Application type: Web application
+   - Add authorized redirect URIs:
+     - `http://localhost:8000/auth/callback` (for local testing with auth)
+     - `https://your-app.onrender.com/auth/callback` (for production)
+5. Copy the Client ID and Client Secret
 
-**3. Edit `config.yaml`:**
+**3. Add credentials to `.env` file:**
+
+```bash
+GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret-here
+OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
+JWT_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))")
+STEMSET_BYPASS_AUTH=false  # Enable auth
+```
+
+**4. Edit `config.yaml`:**
 
 ```yaml
 # Authentication configuration
@@ -75,7 +92,7 @@ auth:
   google_client_id: ${GOOGLE_CLIENT_ID}
   google_client_secret: ${GOOGLE_CLIENT_SECRET}
   jwt_secret: ${JWT_SECRET}
-  redirect_uri: "https://your-app.onrender.com/auth/callback"
+  redirect_uri: ${OAUTH_REDIRECT_URI}
 
 strategies:
   successive:
@@ -138,6 +155,7 @@ Visit http://localhost:5173 (frontend proxies API requests to port 8000).
 6. Set environment variables in Render dashboard:
    - `GOOGLE_CLIENT_ID`: Your OAuth client ID
    - `GOOGLE_CLIENT_SECRET`: Your OAuth client secret
+   - `OAUTH_REDIRECT_URI`: `https://your-app-name.onrender.com/auth/callback`
    - `JWT_SECRET`: Random secret (generate with `python -c "import secrets; print(secrets.token_hex(32))"`)
    - Render auto-generates other required vars
 7. Click "Create Web Service"
