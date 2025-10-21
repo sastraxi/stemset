@@ -186,6 +186,34 @@ class Config(BaseModel):
     )
 
     @classmethod
+    def _collect_required_env_vars(cls, data: Any, collected: set[str] | None = None) -> set[str]:
+        """Recursively collect all ${VAR_NAME} references from config data.
+
+        Args:
+            data: YAML data structure (dict, list, str, etc.)
+            collected: Set of variable names found so far
+
+        Returns:
+            Set of all environment variable names referenced in config
+        """
+        if collected is None:
+            collected = set()
+
+        if isinstance(data, dict):
+            for v in data.values():
+                cls._collect_required_env_vars(v, collected)
+        elif isinstance(data, list):
+            for item in data:
+                cls._collect_required_env_vars(item, collected)
+        elif isinstance(data, str):
+            # Find all ${VAR_NAME} patterns
+            pattern = r'\$\{([^}]+)\}'
+            matches = re.findall(pattern, data)
+            collected.update(matches)
+
+        return collected
+
+    @classmethod
     def _substitute_env_vars(cls, data: Any) -> Any:
         """Recursively substitute ${VAR_NAME} with environment variables.
 
@@ -221,13 +249,27 @@ class Config(BaseModel):
 
     @classmethod
     def load(cls, config_path: str = "config.yaml") -> Config:
-        """Load configuration from YAML file."""
+        """Load configuration from YAML file.
+
+        Note: Assumes environment variables are already loaded (e.g., via load_dotenv()).
+        """
         path = Path(config_path)
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         with open(path, "r") as f:
             data: dict[str, Any] = yaml.safe_load(f)
+
+        # Validate all required environment variables are set
+        required_vars = cls._collect_required_env_vars(data)
+        missing_vars = [var for var in required_vars if var not in os.environ]
+
+        if missing_vars:
+            raise ValueError(
+                f"Missing required environment variables: {', '.join(sorted(missing_vars))}\n"
+                f"Please set these in your .env file or environment.\n"
+                f"See .env.example for reference."
+            )
 
         # Substitute environment variables
         data = cls._substitute_env_vars(data)

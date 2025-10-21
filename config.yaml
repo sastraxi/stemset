@@ -13,7 +13,7 @@ auth:
 
 strategies:
 #################################
-  demucs_ft:
+  htdemucs_ft:
     _: "htdemucs_ft"
     vocals: vocals
     bass: bass
@@ -49,7 +49,7 @@ profiles:
 
   - name: "one"
     source_folder: "./input/one"
-    strategy: "successive"
+    strategy: "htdemucs_ft"
     output:
       format: "opus"
       bitrate: 192

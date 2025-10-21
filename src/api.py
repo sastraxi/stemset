@@ -1,16 +1,22 @@
 """Litestar API for Stemset."""
 
 import asyncio
+import os
 import secrets
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from litestar import Litestar, Request, get, post
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
 from litestar.exceptions import NotFoundException, NotAuthorizedException
+from litestar.params import Parameter
 from litestar.response import File, Redirect
 from litestar.static_files import create_static_files_router
 from pydantic import BaseModel
@@ -132,12 +138,28 @@ async def get_auth_status(request: Request) -> AuthStatusResponse:
     if is_auth_bypassed():
         return AuthStatusResponse(authenticated=True, email="dev@localhost")
 
-    # Check for user email in request state (set by auth middleware)
-    user_email = getattr(request.state, "user_email", None)
-    if user_email:
-        return AuthStatusResponse(authenticated=True, email=user_email)
+    # Extract and validate token from cookie
+    from .auth import extract_token_from_request, decode_jwt_token, is_email_allowed
 
-    return AuthStatusResponse(authenticated=False)
+    token = extract_token_from_request(request)
+    if not token:
+        return AuthStatusResponse(authenticated=False)
+
+    try:
+        config = get_config()
+        if config.auth is None:
+            return AuthStatusResponse(authenticated=False)
+
+        token_data = decode_jwt_token(token, config.auth.jwt_secret)
+
+        # Verify email is still allowed
+        if not is_email_allowed(token_data.email, config):
+            return AuthStatusResponse(authenticated=False)
+
+        return AuthStatusResponse(authenticated=True, email=token_data.email)
+    except Exception:
+        # Token invalid or expired
+        return AuthStatusResponse(authenticated=False)
 
 
 @get("/auth/login")
@@ -165,16 +187,16 @@ async def auth_login() -> Redirect:
 
 
 @get("/auth/callback")
-async def auth_callback(code: str, state: str) -> Redirect:
+async def auth_callback(code: str, callback_state: str = Parameter(query="state")) -> Redirect:
     """Handle Google OAuth callback."""
     config = get_config()
     if config.auth is None:
         raise NotAuthorizedException(detail="Authentication not configured")
 
     # Validate state
-    if state not in _oauth_states:
+    if callback_state not in _oauth_states:
         raise NotAuthorizedException(detail="Invalid state parameter")
-    _oauth_states.pop(state)
+    _oauth_states.pop(callback_state)
 
     # Exchange code for tokens
     async with httpx.AsyncClient() as client:
@@ -208,15 +230,20 @@ async def auth_callback(code: str, state: str) -> Redirect:
     # Create JWT token
     jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret)
 
+    # Determine frontend URL based on environment
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    is_dev = frontend_url.startswith("http://localhost")
+
     # Redirect to frontend with token in cookie
-    response = Redirect(path="/")
+    response = Redirect(path=frontend_url)
     response.set_cookie(
         key="stemset_token",
         value=jwt_token,
         httponly=True,
-        secure=True,  # Only send over HTTPS in production
+        secure=False if is_dev else True,  # Allow HTTP in development
         samesite="lax",
         max_age=30 * 24 * 60 * 60,  # 30 days
+        domain="localhost" if is_dev else None,  # Cross-port cookies in dev
     )
     return response
 
@@ -224,7 +251,8 @@ async def auth_callback(code: str, state: str) -> Redirect:
 @get("/auth/logout")
 async def auth_logout() -> Redirect:
     """Logout user by clearing token cookie."""
-    response = Redirect(path="/")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    response = Redirect(path=frontend_url)
     response.delete_cookie(key="stemset_token")
     return response
 

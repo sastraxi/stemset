@@ -2,9 +2,10 @@
 
 ## What This Is
 
-Stemset is an AI-powered audio stem separation application with two components:
-1. **Backend**: Python service that monitors directories, separates audio into stems using ML models, and serves results via REST API
-2. **Frontend**: Minimal web player for bandmates to practice with independent stem volume controls
+Stemset is an AI-powered audio stem separation application with Google OAuth authentication:
+1. **Backend**: Python/Litestar service that processes audio locally, serves stems via authenticated REST API, and hosts the frontend
+2. **Frontend**: React/TypeScript web player with Google OAuth for secure access and independent stem volume controls
+3. **Processing**: CLI-based audio separation runs locally; processed stems are uploaded to the backend for streaming
 
 ## Core Principles
 
@@ -100,13 +101,23 @@ The frontend reads this same typed structure.
 ### Configuration
 
 All configuration uses Pydantic models in `config.py`:
+- `AuthConfig` - Google OAuth credentials and email allowlist
 - `OutputConfig` - Format and bitrate settings
 - `StrategyNode` - Recursive tree node (model + output mappings)
 - `Strategy` - Named strategy with validation
 - `Profile` - User profile linking source folder to strategy
-- `Config` - Top-level config with strategies and profiles
+- `Config` - Top-level config with strategies, profiles, and optional auth
 
-We load and validate the entire config at startup. Invalid configs fail immediately with clear error messages.
+**Environment Variable Substitution**: Config supports `${VAR_NAME}` syntax for secrets:
+```yaml
+auth:
+  google_client_id: ${GOOGLE_CLIENT_ID}
+  jwt_secret: ${JWT_SECRET}
+```
+
+**Fail-Fast Validation**: On startup, we scan the config for all `${VAR_NAME}` references and validate they're set in the environment. Missing variables cause immediate failure with a clear error message listing what's needed.
+
+We load and validate the entire config at startup using `dotenv` to load `.env` files. Invalid configs fail immediately with clear error messages.
 
 ### API Responses
 
@@ -129,8 +140,10 @@ We use `NotFoundException` instead of returning error response objects with stat
 
 ```
 src/
-├── config.py              # Pydantic config models, YAML loading
-├── api.py                 # Litestar API with Pydantic responses
+├── auth.py                # Google OAuth, JWT tokens, auth middleware
+├── config.py              # Pydantic config models, YAML loading, env var substitution
+├── api.py                 # Litestar API with Pydantic responses, OAuth routes
+├── cli.py                 # Typer-based CLI for processing audio locally
 ├── queue.py               # Job queue management
 ├── scanner.py             # Directory scanning, content-based deduplication
 ├── modern_separator.py    # Public separation interface
@@ -139,7 +152,17 @@ src/
     ├── audio_separator_base.py  # AudioSeparator ABC
     ├── atomic_models.py   # Concrete model implementations
     ├── strategy_executor.py     # Tree execution engine
-    └── metadata.py        # Pydantic metadata models + LUFS analysis
+    ├── metadata.py        # Pydantic metadata models + LUFS analysis
+    └── manifest.py        # Pydantic models for static manifests (legacy)
+
+frontend/
+└── src/
+    ├── contexts/
+    │   └── AuthContext.tsx  # React context for OAuth state management
+    ├── components/
+    │   ├── LoginPage.tsx    # Google OAuth login UI
+    │   └── StemPlayer.tsx   # Web Audio API player
+    └── api.ts              # Fetch wrappers with credentials: 'include'
 ```
 
 ## What We Don't Do
@@ -152,12 +175,23 @@ src/
 
 ## Dependencies We Use
 
+### Python (Backend)
 - **`audio-separator`**: Core ML separation, handles model loading and PyTorch
 - **`pyloudnorm`**: LUFS measurement per ITU-R BS.1770-4
 - **`soundfile`**: Audio I/O, supports Opus via system libsndfile
 - **`Litestar`**: Modern async web framework with excellent Pydantic integration
 - **`pydantic`**: Data validation, serialization, configuration
+- **`python-dotenv`**: Load `.env` files for environment variables
+- **`PyJWT`**: JWT token generation and validation for authentication
+- **`httpx`**: Async HTTP client for Google OAuth token exchange
+- **`typer`**: CLI framework for audio processing commands
 - **`watchdog`**: File system monitoring (for future auto-scanning)
+
+### TypeScript/JavaScript (Frontend)
+- **React 18**: UI framework
+- **TypeScript**: Type safety
+- **Vite**: Fast dev server with HMR, proxies `/api`, `/auth`, `/media` to backend
+- **Bun**: Package manager and bundler
 
 ## Testing Philosophy
 
@@ -185,4 +219,107 @@ This codebase values clarity over cleverness. When adding features:
 5. Delete any code made obsolete by the change
 
 We refactor aggressively. If a pattern emerges three times, abstract it. If an abstraction is only used once, inline it.
-- We use bun for typescript / react / vite.
+
+## Authentication Architecture
+
+### Google OAuth Flow
+
+**Development (localhost:5173 → localhost:8000)**:
+1. User clicks "Sign in with Google" → Frontend redirects to `/auth/login`
+2. Vite proxies to backend `localhost:8000/auth/login`
+3. Backend redirects to Google with `redirect_uri=http://localhost:8000/auth/callback`
+4. Google redirects back to `localhost:8000/auth/callback` (direct, not proxied)
+5. Backend validates, creates JWT, sets cookie with `domain="localhost"` (works across all ports!)
+6. Backend redirects to `FRONTEND_URL` (http://localhost:5173)
+7. Frontend makes `/auth/status` request with cookie
+8. Vite proxies to backend, cookie sent because `domain="localhost"`
+
+**Production (single origin on Render)**:
+1. User clicks "Sign in with Google" → Redirects to `/auth/login`
+2. Backend redirects to Google with `redirect_uri=https://app.onrender.com/auth/callback`
+3. Google redirects back to backend `/auth/callback`
+4. Backend validates, creates JWT, sets httpOnly cookie with secure flag
+5. Backend redirects to `FRONTEND_URL` (`/` - same origin)
+6. All requests include cookie automatically (same origin)
+
+### Key Implementation Details
+
+**Cookie Settings**:
+- Development: `domain="localhost"`, `secure=False` (allows cross-port on localhost)
+- Production: `domain=None`, `secure=True` (httpOnly cookie on same origin)
+
+**Auth Middleware** (`auth.py`):
+- Bypasses all `/auth/*` routes (allows login/callback without token)
+- Validates JWT on all other routes
+- Checks email against allowlist in `config.yaml`
+- Environment variable `STEMSET_BYPASS_AUTH=true` disables auth for local dev
+
+**Special Case - `/auth/status`**:
+- Allowed through middleware without auth (to check if user is logged in)
+- Manually validates JWT token from cookie and returns auth status
+- Used by frontend to determine whether to show login page or app
+
+### Environment Variables
+
+**Development `.env`**:
+```bash
+STEMSET_BYPASS_AUTH=true  # Or false to test OAuth locally
+OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
+FRONTEND_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+JWT_SECRET=...
+```
+
+**Production (Render)**:
+```bash
+STEMSET_BYPASS_AUTH=false
+OAUTH_REDIRECT_URI=https://your-app.onrender.com/auth/callback
+FRONTEND_URL=/
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+JWT_SECRET=...
+```
+
+### Development Workflow
+
+**Two-server development** (recommended):
+```bash
+# Terminal 1: Backend with auto-reload
+./dev.sh
+
+# Terminal 2: Frontend with HMR
+cd frontend && bun run dev
+```
+
+Visit `http://localhost:5173` - Vite proxies `/api`, `/auth`, `/media` to `:8000`.
+
+**Single-server development** (production-like):
+```bash
+cd frontend && bun run build && cd ..
+./dev.sh
+```
+
+Visit `http://localhost:8000` - Backend serves both API and static frontend.
+
+### Deployment (Render.com)
+
+**Architecture**: Single Python web service serves both API and frontend.
+
+**Build** (in `render.yaml`):
+1. Install Python dependencies with `uv`
+2. Build frontend with `bun run build` → `frontend/dist/`
+3. Start: `uvicorn src.api:app`
+
+**Static Files**:
+- `/api/*` → API routes
+- `/auth/*` → OAuth routes
+- `/media/*` → Audio files from persistent disk
+- `/*` → React app from `frontend/dist/` (catch-all for client-side routing)
+
+**Persistent Disk**:
+- Mounted at `/data`
+- Stores processed audio files (`/data/media`)
+- Stores ML model cache (`/data/models`)
+
+**Media Upload**: Process audio locally, then rsync to `/data/media` on Render.

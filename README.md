@@ -131,10 +131,12 @@ This separates stems, generates waveforms, and computes LUFS metadata. Output go
 
 ### 2. Run Locally for Development
 
+We run the servers separately to allow for hot reload of both backend and frontend code.
+
 ```bash
 # Terminal 1: Run backend (with auth bypass)
 export STEMSET_BYPASS_AUTH=true
-uv run litestar run --reload
+./dev.sh
 
 # Terminal 2: Run frontend dev server
 cd frontend
@@ -142,6 +144,8 @@ bun run dev
 ```
 
 Visit http://localhost:5173 (frontend proxies API requests to port 8000).
+
+> **Note:** The `dev.sh` script is shorthand for `uv run litestar --app src.api:app run --reload`
 
 ### 3. Deploy to Render.com
 
@@ -184,7 +188,7 @@ Just push to GitHub - Render auto-deploys on git push.
 cd frontend && bun run build && cd ..
 
 # Run Litestar (serves both API and built frontend)
-STEMSET_BYPASS_AUTH=true uv run litestar run
+STEMSET_BYPASS_AUTH=true uv run litestar --app src.api:app run
 ```
 
 Visit http://localhost:8000
@@ -195,12 +199,12 @@ Visit http://localhost:8000
 # Set OAuth credentials in .env
 GOOGLE_CLIENT_ID=xxx
 GOOGLE_CLIENT_SECRET=xxx
+OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
 JWT_SECRET=xxx
 STEMSET_BYPASS_AUTH=false
 
-# Update config.yaml redirect_uri to localhost
 # Then run:
-uv run litestar run
+./dev.sh
 ```
 
 ## Project Structure
