@@ -56,7 +56,7 @@ async def auth_status(request: Request[Any, Any, Any]) -> AuthStatusResponse:  #
             authenticated=True,
             user={
                 "id": user_info.email,
-                "name": user_info.email.split("@")[0],  # Use email prefix as name for now
+                "name": user_info.name or user_info.email.split("@")[0],  # Use real name from Google, fallback to email prefix
                 "email": user_info.email,
                 "picture": user_info.picture
             }
@@ -122,7 +122,7 @@ async def auth_callback(code: str, callback_state: Annotated[str, Parameter(quer
     if not is_email_allowed(userinfo.email, config):
         raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
 
-    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret, userinfo.picture)
+    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret, userinfo.name, userinfo.picture)
 
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     is_dev = frontend_url.startswith("http://localhost")

@@ -22,6 +22,7 @@ class TokenData(BaseModel):
     """JWT token payload data."""
 
     email: str
+    name: str | None = None
     picture: str | None = None
     exp: datetime
 
@@ -46,12 +47,13 @@ def is_email_allowed(email: str, config: Config) -> bool:
     return email.lower() in [e.lower() for e in config.auth.allowed_emails]
 
 
-def create_jwt_token(email: str, secret: str, picture: str | None = None, expires_delta: timedelta | None = None) -> str:
+def create_jwt_token(email: str, secret: str, name: str | None = None, picture: str | None = None, expires_delta: timedelta | None = None) -> str:
     """Create a JWT token for the user.
 
     Args:
         email: User's email address
         secret: JWT secret key
+        name: User's display name
         picture: User's profile picture URL
         expires_delta: Token expiration time (default: 30 days)
 
@@ -61,7 +63,7 @@ def create_jwt_token(email: str, secret: str, picture: str | None = None, expire
     if expires_delta is None:
         expires_delta = timedelta(days=30)
     expire = datetime.now(UTC) + expires_delta
-    payload = {"email": email, "picture": picture, "exp": expire}
+    payload = {"email": email, "name": name, "picture": picture, "exp": expire}
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -82,6 +84,7 @@ def decode_jwt_token(token: str, secret: str) -> TokenData:
         payload = jwt.decode(token, secret, algorithms=["HS256"])
         return TokenData(
             email=payload["email"],
+            name=payload.get("name"),
             picture=payload.get("picture"),
             exp=datetime.fromtimestamp(payload["exp"])
         )
