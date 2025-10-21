@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from ..config import Strategy, StrategyNode, OutputConfig
+from ..config import AudioFormat, Strategy, StrategyNode, OutputConfig
 from .registry import get_model_class
 from .audio_separator_base import AudioSeparator
 
@@ -62,7 +62,7 @@ class StrategyExecutor:
             final_paths: dict[str, Path] = {}
             for stem_name, temp_path in final_outputs.items():
                 # Use configured output format extension
-                dest_path = output_dir / f"{stem_name}.{self.output_config.format}"
+                dest_path = output_dir / f"{stem_name}.{self.output_config.format.value}"
                 _ = shutil.move(str(temp_path), str(dest_path))
                 final_paths[stem_name] = dest_path
                 print(f"  → Final stem: {stem_name} ({dest_path.name})")
@@ -121,7 +121,7 @@ class StrategyExecutor:
         if not is_root:
             # Create a temporary WAV config for intermediates
             from ..config import OutputConfig
-            temp_output_config = OutputConfig(format="wav", bitrate=self.output_config.bitrate)
+            temp_output_config = OutputConfig(format=AudioFormat.WAV, bitrate=self.output_config.bitrate)
             # Re-instantiate model with WAV output for intermediates
             model = self._create_model_instance(node.model, temp_output_config)
 

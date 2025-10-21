@@ -99,7 +99,7 @@ class AudioSeparator(ABC):
             print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
             # Configure output format
-            output_format = self.output_config.format.upper()
+            output_format = self.output_config.format.value.upper()
             output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
 
             self._separator = Separator(
@@ -129,7 +129,7 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
             separator.load_model(self.model_filename)
             self._model_loaded = True
 
-            output_format = self.output_config.format.upper()
+            output_format = self.output_config.format.value.upper()
             output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
             print(f"Model '{self.model_filename}' loaded (output: {output_format}" +
                   (f" @ {output_bitrate})" if output_bitrate else ")"))

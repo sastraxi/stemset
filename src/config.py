@@ -39,20 +39,27 @@ class Job(BaseModel):
     output_files: dict[str, str] | None = None
 
 
+class AudioFormat(str, Enum):
+    """Supported audio output formats."""
+
+    WAV = "wav"
+    OPUS = "opus"
+    AAC = "aac"
+
+
 class OutputConfig(BaseModel):
     """Output format configuration."""
 
-    format: str = Field("opus", description="Output format: 'wav' or 'opus'")
-    bitrate: int = Field(192, description="Bitrate in kbps for lossy formats (e.g., Opus)")
+    format: AudioFormat = AudioFormat.OPUS
+    bitrate: int = 192
 
-    @field_validator("format")
+    @field_validator("bitrate")
     @classmethod
-    def validate_format(cls, v: str) -> str:
-        """Validate output format."""
-        allowed = {"wav", "opus"}
-        if v.lower() not in allowed:
-            raise ValueError(f"Invalid format '{v}'. Must be one of: {', '.join(allowed)}")
-        return v.lower()
+    def validate_bitrate(cls, v: int) -> int:
+        """Validate bitrate is within acceptable range."""
+        if not 32 <= v <= 256:
+            raise ValueError(f"Bitrate must be between 32 and 256 kbps, got {v}")
+        return v
 
 
 class StrategyNode(BaseModel):
@@ -154,7 +161,7 @@ class Profile(BaseModel):
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
     strategy: str = Field(..., description="Strategy name to use for separation")
-    output: OutputConfig = Field(default_factory=lambda: OutputConfig(), description="Output format configuration")
+    output: OutputConfig = Field(default_factory=OutputConfig, description="Output format configuration")
 
     @field_validator("source_folder")
     @classmethod

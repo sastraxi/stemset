@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
