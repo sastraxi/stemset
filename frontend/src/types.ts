@@ -21,28 +21,3 @@ export interface StemMetadata {
   stem_gain_adjustment_db: number;
   waveform_url: string;
 }
-
-export interface Job {
-  id: string;
-  profile: string;
-  input_file: string;
-  output_folder: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-  error: string | null;
-  output_files: Record<string, string> | null;
-}
-
-export interface QueueStatus {
-  queue_size: number;
-  is_processing: boolean;
-  current_job: {
-    id: string;
-    profile: string;
-    input_file: string;
-    status: string;
-    started_at: string | null;
-  } | null;
-}

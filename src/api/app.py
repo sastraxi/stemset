@@ -9,31 +9,14 @@ from litestar.config.cors import CORSConfig
 from litestar.static_files import create_static_files_router
 
 from ..auth import auth_middleware
-from ..queue import get_queue
 from .auth_routes import auth_callback, auth_login, auth_logout, get_auth_status
-from .job_routes import get_job, get_jobs, get_queue_status, process_job
 from .profile_routes import (
     get_file_metadata,
     get_profile,
     get_profile_files,
     get_profiles,
     get_stem_waveform,
-    scan_profile,
 )
-
-
-async def on_startup() -> None:
-    """Start the queue processor on app startup."""
-    queue = get_queue()
-    await queue.start_processing(process_job)
-    print("Queue processor started")
-
-
-async def on_shutdown() -> None:
-    """Stop the queue processor on app shutdown."""
-    queue = get_queue()
-    await queue.stop_processing()
-    print("Queue processor stopped")
 
 
 media_router = create_static_files_router(
@@ -70,14 +53,8 @@ app = Litestar(
         get_profile_files,
         get_file_metadata,
         get_stem_waveform,
-        scan_profile,
-        get_queue_status,
-        get_jobs,
-        get_job,
         *static_handlers,
     ],
     middleware=[auth_middleware],
-    on_startup=[on_startup],
-    on_shutdown=[on_shutdown],
     cors_config=cors_config,
 )

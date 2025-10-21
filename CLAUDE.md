@@ -3,9 +3,9 @@
 ## What This Is
 
 Stemset is an AI-powered audio stem separation application with Google OAuth authentication:
-1. **Backend**: Python/Litestar service that processes audio locally, serves stems via authenticated REST API, and hosts the frontend
+1. **Backend**: Python/Litestar service that serves stems via authenticated REST API and hosts the frontend
 2. **Frontend**: React/TypeScript web player with Google OAuth for secure access and independent stem volume controls
-3. **Processing**: CLI-based audio separation runs locally; processed stems are uploaded to the backend for streaming
+3. **Processing**: CLI-based audio separation (`uv run stemset process <profile> [file]`) runs locally; processed stems are stored in `media/` and served by the backend
 
 ## Core Principles
 
@@ -142,18 +142,22 @@ We use `NotFoundException` instead of returning error response objects with stat
 src/
 ├── auth.py                # Google OAuth, JWT tokens, auth middleware
 ├── config.py              # Pydantic config models, YAML loading, env var substitution
-├── api.py                 # Litestar API with Pydantic responses, OAuth routes
-├── cli.py                 # Typer-based CLI for processing audio locally
-├── queue.py               # Job queue management
-├── scanner.py             # Directory scanning, content-based deduplication
 ├── modern_separator.py    # Public separation interface
+├── cli/                   # CLI module
+│   ├── __init__.py        # Main CLI entrypoint (Typer app)
+│   ├── scanner.py         # File scanning and hash tracking
+│   └── processor.py       # Audio processing logic
+├── api/                   # API module
+│   ├── app.py             # Litestar app configuration
+│   ├── models.py          # Pydantic response models
+│   ├── auth_routes.py     # OAuth endpoints
+│   └── profile_routes.py  # Profile and file endpoints
 └── models/
     ├── registry.py        # Frozen MODEL_REGISTRY mapping names to classes
     ├── audio_separator_base.py  # AudioSeparator ABC
     ├── atomic_models.py   # Concrete model implementations
     ├── strategy_executor.py     # Tree execution engine
-    ├── metadata.py        # Pydantic metadata models + LUFS analysis
-    └── manifest.py        # Pydantic models for static manifests (legacy)
+    └── metadata.py        # Pydantic metadata models + LUFS analysis
 
 frontend/
 └── src/
@@ -322,4 +326,9 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 - Stores processed audio files (`/data/media`)
 - Stores ML model cache (`/data/models`)
 
-**Media Upload**: Process audio locally, then rsync to `/data/media` on Render.
+**Processing Workflow**:
+1. Run `uv run stemset process <profile>` locally to process audio files
+2. Outputs are saved to local `media/<profile>/` directory
+3. Use rsync or similar to sync `media/` to `/data/media` on Render
+4. Backend automatically serves new files via `/media/*` static file route
+5. Frontend refresh button reloads file list from `/api/profiles/{name}/files`

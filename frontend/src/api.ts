@@ -1,4 +1,4 @@
-import type { Profile, StemFile, Job, QueueStatus } from './types';
+import type { Profile, StemFile } from './types';
 
 const API_BASE = '/api';
 
@@ -27,34 +27,6 @@ export async function getProfileFiles(name: string): Promise<StemFile[]> {
   const response = await fetch(`${API_BASE}/profiles/${name}/files`, defaultOptions);
   if (!response.ok) {
     throw new Error(`Failed to fetch files: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export async function scanProfile(name: string): Promise<{ scanned: number; jobs: Job[] }> {
-  const response = await fetch(`${API_BASE}/profiles/${name}/scan`, {
-    ...defaultOptions,
-    method: 'POST',
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to scan profile: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export async function getQueueStatus(): Promise<QueueStatus> {
-  const response = await fetch(`${API_BASE}/queue`, defaultOptions);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch queue status: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-export async function getJobs(profile?: string): Promise<{ jobs: Job[] }> {
-  const url = profile ? `${API_BASE}/jobs?profile=${profile}` : `${API_BASE}/jobs`;
-  const response = await fetch(url, defaultOptions);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch jobs: ${response.statusText}`);
   }
   return response.json();
 }

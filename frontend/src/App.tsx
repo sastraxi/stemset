@@ -3,8 +3,8 @@ import { StemPlayer } from './components/StemPlayer';
 import { Toast } from './components/Toast';
 import { LoginPage } from './components/LoginPage';
 import { useAuth } from './contexts/AuthContext';
-import { getProfiles, getProfileFiles, scanProfile, getQueueStatus } from './api';
-import type { Profile, StemFile, QueueStatus } from './types';
+import { getProfiles, getProfileFiles } from './api';
+import type { Profile, StemFile } from './types';
 import './App.css';
 
 interface ToastData {
@@ -33,8 +33,6 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [files, setFiles] = useState<StemFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<StemFile | null>(null);
-  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [toastIdCounter, setToastIdCounter] = useState(0);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
@@ -50,50 +48,32 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
   };
 
   useEffect(() => {
-    // Initial connection check
+    // Initial connection check and load profiles
     checkBackendConnection().then((connected) => {
       if (connected) {
         loadProfiles();
-        loadQueueStatus();
       }
     });
 
-    let wasProcessing = false;
-    let wasConnected = backendConnected;
-
-    // Poll backend connection and queue status every 2 seconds
+    // Poll backend connection every 5 seconds
     const interval = setInterval(async () => {
       try {
-        // Try to fetch queue status - this also serves as a connection check
-        const status = await getQueueStatus();
-        setQueueStatus(status);
+        await getProfiles();
 
-        // Check if we just reconnected
-        const justConnected = !wasConnected && backendConnected !== false;
-        if (justConnected) {
-          // Backend just came online, reload profiles
+        // If we were disconnected and just reconnected, reload profiles
+        if (backendConnected === false) {
           await loadProfiles();
         }
 
         setBackendConnected(true);
-        wasConnected = true;
-
-        // Refresh file list when processing just completed
-        const justFinished = wasProcessing && !status.is_processing && status.queue_size === 0;
-        if (selectedProfile && justFinished) {
-          await loadProfileFiles(selectedProfile);
-        }
-
-        wasProcessing = status.is_processing;
       } catch (error) {
         // Backend not reachable
         setBackendConnected(false);
-        wasConnected = false;
       }
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, []); // Only run once on mount
+  }, [backendConnected]); // Re-run when connection status changes
 
   useEffect(() => {
     if (selectedProfile) {
@@ -103,6 +83,7 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
 
   async function checkBackendConnection(): Promise<boolean> {
     try {
+      // Simple connection check - getProfiles will throw if backend is down
       await getProfiles();
       setBackendConnected(true);
       return true;
@@ -134,35 +115,15 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
     }
   }
 
-  async function loadQueueStatus() {
-    try {
-      const data = await getQueueStatus();
-      setQueueStatus(data);
-    } catch (error) {
-      // Don't log error - it's normal when backend is down
-      // Connection state is handled by the polling interval
-    }
-  }
-
-  async function handleScan() {
+  async function handleRefresh() {
     if (!selectedProfile) return;
 
-    setIsScanning(true);
     try {
-      const result = await scanProfile(selectedProfile);
-      if (result.scanned === 0) {
-        showToast('No new files found', 'info');
-      } else {
-        showToast(`Found ${result.scanned} new file(s), queued for processing`, 'success');
-      }
-      await loadQueueStatus();
-      // Refresh file list after a delay to allow processing
-      setTimeout(() => loadProfileFiles(selectedProfile), 1000);
+      await loadProfileFiles(selectedProfile);
+      showToast('Refreshed file list', 'success');
     } catch (error) {
-      console.error('Error scanning:', error);
-      showToast('Error scanning for new files', 'error');
-    } finally {
-      setIsScanning(false);
+      console.error('Error refreshing files:', error);
+      showToast('Error refreshing file list', 'error');
     }
   }
 
@@ -220,27 +181,15 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
                 </option>
               ))}
             </select>
-            <button onClick={handleScan} disabled={!selectedProfile || isScanning}>
-              {isScanning ? 'Scanning...' : 'Scan for New Files'}
+            <button onClick={handleRefresh} disabled={!selectedProfile}>
+              Refresh Files
             </button>
           </div>
-
-          {queueStatus && (
-            <div className="queue-status">
-              <h3>Queue Status</h3>
-              <p>Queue: {queueStatus.queue_size} job(s)</p>
-              {queueStatus.is_processing && queueStatus.current_job && (
-                <p className="processing">
-                  Processing: {queueStatus.current_job.input_file.split('/').pop()}
-                </p>
-              )}
-            </div>
-          )}
 
           <div className="file-list">
             <h2>Recordings</h2>
             {files.length === 0 ? (
-              <p className="empty-state">No processed files yet. Click "Scan for New Files" to get started.</p>
+              <p className="empty-state">No processed files yet. Use the CLI to process audio files.</p>
             ) : (
               <ul>
                 {files.map((file) => (

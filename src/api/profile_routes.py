@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from litestar import get, post
+from litestar import get
 from litestar.exceptions import NotFoundException
 from litestar.response import File
 
 from ..config import get_config
 from ..models.metadata import StemsMetadata
-from ..queue import get_queue
-from ..scanner import FileScanner
-from .models import FileWithStems, ProfileResponse, ScanResponse
+from .models import FileWithStems, ProfileResponse
 
 
 @get("/api/profiles")
@@ -113,23 +111,3 @@ async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -
     )
 
 
-@post("/api/profiles/{profile_name:str}/scan")
-async def scan_profile(profile_name: str) -> ScanResponse:
-    """Scan a profile for new files and queue them for processing."""
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
-
-    scanner = FileScanner(profile)
-    new_files = scanner.scan_for_new_files()
-
-    queue = get_queue()
-    for input_file, output_name in new_files:
-        output_folder = profile.get_media_path() / output_name
-        _ = queue.add_job(profile_name, input_file, output_folder)
-
-    return ScanResponse(
-        queued=len(new_files),
-        message=f"Queued {len(new_files)} file(s) for processing",
-    )
