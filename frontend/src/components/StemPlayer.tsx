@@ -86,7 +86,7 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
 
   return (
     <>
-      <div className="player-panel stem-player">
+      <div className="stem-player">
         <div className="waveforms-section">
           {/* Ruler row with controls alignment */}
           <div className="waveform-row">
@@ -121,8 +121,8 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
             />
           </div>
 
-          {stemEntries.map((stem) => (
-            <div key={stem.name} className="waveform-row">
+          {stemEntries.map((stem, stemIndex) => (
+            <div key={stem.name} className={"waveform-row"}>
               <div className="waveform-controls">
                 <label className="waveform-stem-label">{stem.name}</label>
                 <div className="waveform-volume-control">
@@ -157,6 +157,7 @@ export function StemPlayer({ stems, profileName, fileName }: StemPlayerProps) {
                 previewTime={previewTime || undefined}
                 onSeek={seek}
                 onPreview={setPreviewTime}
+                waveformClasses={stemIndex === stemEntries.length - 1 ? "rounded-b-lg overflow-hidden" : ""}
               />
             </div>
           ))}

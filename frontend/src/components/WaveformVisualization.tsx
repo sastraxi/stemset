@@ -8,6 +8,8 @@ interface WaveformVisualizationProps {
   previewTime?: number; // Optional preview time for scrubbing visualization
   onSeek?: (seconds: number) => void;
   onPreview?: (seconds: number | null) => void; // Preview callback
+
+  waveformClasses?: string; // Optional additional CSS classes for styling
 }
 
 /** Stem color palette matching the dark theme */
@@ -38,7 +40,8 @@ export function WaveformVisualization({
   duration,
   previewTime,
   onSeek,
-  onPreview
+  onPreview,
+  waveformClasses,
 }: WaveformVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -286,7 +289,7 @@ export function WaveformVisualization({
   }
 
   return (
-    <div ref={containerRef} className="waveform-container">
+    <div ref={containerRef} className={`waveform-container ${waveformClasses || ''}`}>
       <canvas
         ref={canvasRef}
         className="waveform-canvas"
