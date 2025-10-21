@@ -1,0 +1,74 @@
+/* Layout Styles */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: #2a2a2a;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 80px;
+}
+
+.app-header .header-left {
+  flex: 1;
+}
+
+.app-header .header-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.app-header h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  letter-spacing: -0.025em;
+}
+
+.app-header p {
+  color: #a1a1aa;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 320px;
+  background: #242424;
+  border-right: 1px solid #3a3a3a;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.player-area {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.player-area h2 {
+  margin-bottom: 1.5rem;
+  color: #fff;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-size: 1.1rem;
+}

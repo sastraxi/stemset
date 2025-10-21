@@ -7,7 +7,8 @@ import secrets
 from urllib.parse import urlencode
 
 import httpx
-from typing import Any
+
+from typing import Annotated, Any
 
 from litestar import get
 from litestar.connection import Request
@@ -30,26 +31,36 @@ _oauth_states: dict[str, str] = {}
 
 
 @get("/auth/status")
-async def get_auth_status(request: Request[Any, Any, Any]) -> AuthStatusResponse:
-    """Get current authentication status."""
+async def auth_status(request: Request[Any, Any, Any]) -> AuthStatusResponse:  # pyright: ignore[reportExplicitAny]
+    """Get current auth status and user info"""
+    config = get_config()
+    
     if is_auth_bypassed():
-        return AuthStatusResponse(authenticated=True, email="dev@localhost")
-
+        return AuthStatusResponse(
+            authenticated=True,
+            user={
+                "id": "dev-user",
+                "name": "Development User", 
+                "email": "dev@localhost",
+                "picture": None
+            }
+        )
+    
     token = extract_token_from_request(request)
     if not token:
         return AuthStatusResponse(authenticated=False)
-
+    
     try:
-        config = get_config()
-        if config.auth is None:
-            return AuthStatusResponse(authenticated=False)
-
-        token_data = decode_jwt_token(token, config.auth.jwt_secret)
-
-        if not is_email_allowed(token_data.email, config):
-            return AuthStatusResponse(authenticated=False)
-
-        return AuthStatusResponse(authenticated=True, email=token_data.email)
+        user_info = decode_jwt_token(token, config.auth.jwt_secret if config.auth else "")
+        return AuthStatusResponse(
+            authenticated=True,
+            user={
+                "id": user_info.email,
+                "name": user_info.email.split("@")[0],  # Use email prefix as name for now
+                "email": user_info.email,
+                "picture": user_info.picture
+            }
+        )
     except Exception:
         return AuthStatusResponse(authenticated=False)
 
@@ -77,7 +88,7 @@ async def auth_login() -> Redirect:
 
 
 @get("/auth/callback")
-async def auth_callback(code: str, callback_state: str = Parameter(query="state")) -> Redirect:
+async def auth_callback(code: str, callback_state: Annotated[str, Parameter(query="state")]) -> Redirect:
     """Handle Google OAuth callback."""
     config = get_config()
     if config.auth is None:
@@ -85,7 +96,7 @@ async def auth_callback(code: str, callback_state: str = Parameter(query="state"
 
     if callback_state not in _oauth_states:
         raise NotAuthorizedException(detail="Invalid state parameter")
-    _oauth_states.pop(callback_state)
+    _ = _oauth_states.pop(callback_state)
 
     async with httpx.AsyncClient() as client:
         token_response = await client.post(
@@ -111,7 +122,7 @@ async def auth_callback(code: str, callback_state: str = Parameter(query="state"
     if not is_email_allowed(userinfo.email, config):
         raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
 
-    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret)
+    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret, userinfo.picture)
 
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     is_dev = frontend_url.startswith("http://localhost")

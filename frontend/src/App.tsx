@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { StemPlayer } from './components/StemPlayer';
-import { Toast } from './components/Toast';
 import { LoginPage } from './components/LoginPage';
+import { UserNav } from './components/UserNav';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
-import './App.css';
-
-interface ToastData {
-  id: number;
-  message: string;
-  type: 'info' | 'success' | 'error';
-}
+import { Toaster, toast } from 'sonner';
+import './styles/layout.css';
+import './styles/sidebar.css';
+import './styles/splash.css';
+import './styles/player.css';
+import './styles/waveform.css';
+import './styles/effects.css';
 
 function App() {
   const { authStatus, loading: authLoading, logout } = useAuth();
@@ -25,27 +25,20 @@ function App() {
     return <LoginPage />;
   }
 
-  return <AuthenticatedApp userEmail={authStatus.email} onLogout={logout} />;
+  return (
+    <>
+      <Toaster position="bottom-right" />
+      <AuthenticatedApp user={authStatus.user!} onLogout={logout} />
+    </>
+  );
 }
 
-function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; onLogout: () => void }) {
+function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string; email: string; picture?: string }; onLogout: () => void }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [files, setFiles] = useState<StemFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<StemFile | null>(null);
-  const [toasts, setToasts] = useState<ToastData[]>([]);
-  const [toastIdCounter, setToastIdCounter] = useState(0);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
-
-  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
-    const id = toastIdCounter;
-    setToastIdCounter(id + 1);
-    setToasts((prev) => [...prev, { id, message, type }]);
-  };
-
-  const closeToast = (id: number) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
 
   useEffect(() => {
     // Initial connection check and load profiles
@@ -120,10 +113,10 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
 
     try {
       await loadProfileFiles(selectedProfile);
-      showToast('Refreshed file list', 'success');
+      toast.success('Refreshed file list');
     } catch (error) {
       console.error('Error refreshing files:', error);
-      showToast('Error refreshing file list', 'error');
+      toast.error('Error refreshing file list');
     }
   }
 
@@ -159,11 +152,12 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Stemset</h1>
-        <p>AI-powered stem separation for band practice</p>
-        <div className="user-info">
-          <span>{userEmail}</span>
-          <button onClick={onLogout} className="logout-button">Logout</button>
+        <div className="header-left">
+          <h1>Stemset</h1>
+          <p>AI-powered stem separation for band practice</p>
+        </div>
+        <div className="header-right">
+          <UserNav user={user} onLogout={onLogout} />
         </div>
       </header>
 
@@ -222,18 +216,6 @@ function AuthenticatedApp({ userEmail, onLogout }: { userEmail: string | null; o
             </div>
           )}
         </main>
-      </div>
-
-      {/* Toast notifications */}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => closeToast(toast.id)}
-          />
-        ))}
       </div>
     </div>
   );

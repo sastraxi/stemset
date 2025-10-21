@@ -2,7 +2,7 @@
 
 import uvicorn
 
-from .api import app
+from .api.app import app
 from .config import load_config
 
 

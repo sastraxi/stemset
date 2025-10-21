@@ -9,7 +9,7 @@ class AuthStatusResponse(BaseModel):
     """Auth status response."""
 
     authenticated: bool
-    email: str | None = None
+    user: dict[str, str | None] | None = None
 
 
 class ProfileResponse(BaseModel):

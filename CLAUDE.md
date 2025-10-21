@@ -313,7 +313,7 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 **Build** (in `render.yaml`):
 1. Install Python dependencies with `uv`
 2. Build frontend with `bun run build` → `frontend/dist/`
-3. Start: `uvicorn src.api:app`
+3. Start: `uvicorn src.api.app:app`
 
 **Static Files**:
 - `/api/*` → API routes

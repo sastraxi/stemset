@@ -9,7 +9,7 @@ from litestar.config.cors import CORSConfig
 from litestar.static_files import create_static_files_router
 
 from ..auth import auth_middleware
-from .auth_routes import auth_callback, auth_login, auth_logout, get_auth_status
+from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
     get_file_metadata,
     get_profile,
@@ -44,7 +44,7 @@ cors_config = CORSConfig(
 
 app = Litestar(
     route_handlers=[
-        get_auth_status,
+        auth_status,
         auth_login,
         auth_callback,
         auth_logout,

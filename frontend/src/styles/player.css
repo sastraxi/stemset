@@ -1,0 +1,79 @@
+/* Stem Player Styles */
+.player-panel {
+  background: #242424;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.master-effects.player-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.stem-player.loading {
+  padding: 3rem;
+  text-align: center;
+  color: #999;
+}
+
+.waveform-controls.playback-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+.waveform-controls.playback-controls > button {
+  display: block;
+  width: 2rem;
+}
+
+.time-display {
+  margin-right: auto;
+  font-size: 1rem;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-slider {
+  width: 100%;
+}
+
+.volume-label {
+  text-align: right;
+  font-size: 0.9rem;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.reset-gain {
+  width: auto;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: unset;
+}
+
+.reset-gain:hover {
+  background: #3a3a3a;
+  color: #4a9eff;
+  border-color: #4a9eff;
+}
+
+/* Range Input Styling */
+input[type="range"] {
+  cursor: pointer;
+  accent-color: #3a8eef;
+  height: 6px;
+}

@@ -1,8 +1,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  picture?: string;
+}
+
 interface AuthStatus {
   authenticated: boolean;
-  email: string | null;
+  user?: User;
 }
 
 interface AuthContextValue {
@@ -28,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthStatus(status);
     } catch (error) {
       console.error('Failed to check auth status:', error);
-      setAuthStatus({ authenticated: false, email: null });
+      setAuthStatus({ authenticated: false });
     } finally {
       setLoading(false);
     }
@@ -44,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch('/auth/logout', {
         credentials: 'include',
       });
-      setAuthStatus({ authenticated: false, email: null });
+      setAuthStatus({ authenticated: false });
     } catch (error) {
       console.error('Failed to logout:', error);
     }

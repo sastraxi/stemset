@@ -1,0 +1,155 @@
+/* Waveform Display */
+.waveforms-section {
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.waveform-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.waveform-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.waveform-stem-label {
+  font-weight: 500;
+  text-transform: capitalize;
+  color: #fff;
+  font-size: 0.9rem;
+  min-width: 60px;
+}
+
+.waveform-controls .volume-slider {
+  width: 120px;
+  flex-grow: 1;
+}
+
+.waveform-controls .waveform-volume-control {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.waveform-controls .volume-label {
+  font-size: 0.85rem;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
+}
+
+.waveform-controls .reset-gain {
+  width: auto;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: unset;
+  border-radius: 3px;
+}
+
+.waveform-controls .reset-gain:hover {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+/* Playback control buttons in waveform controls */
+.waveform-controls .playback-button {
+  width: auto;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid #4a9eff;
+  color: #4a9eff;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: unset;
+  border-radius: 3px;
+  margin-right: 0.25rem;
+}
+
+.waveform-controls .playback-button:hover:not(:disabled) {
+  background: #4a9eff;
+  color: #fff;
+}
+
+.waveform-controls .playback-button:disabled {
+  border-color: #3a3a3a;
+  color: #666;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.waveform-container {
+  position: relative;
+  width: 100%;
+  background: #1a1a1a;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.waveform-canvas {
+  display: block;
+  width: 100%;
+  height: 128px;
+  cursor: pointer;
+  transition: filter 0.2s;
+
+  /* Smooth image rendering for better waveform display */
+  image-rendering: smooth;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.waveform-canvas:hover {
+  filter: brightness(1.1);
+}
+
+.waveform-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 128px;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Ruler Component */
+.ruler-container {
+  position: relative;
+  width: 100%;
+  background: #1a1a1a;
+  overflow: hidden;
+}
+
+.ruler-canvas {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  transition: filter 0.2s;
+
+  /* Smooth rendering */
+  image-rendering: smooth;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.ruler-canvas:hover {
+  filter: brightness(1.1);
+}

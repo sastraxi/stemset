@@ -265,8 +265,8 @@ class AudioMetadataAnalyzer:
         # Print loudness info
         print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
 
-        # Waveform filename (peer to metadata.json in same directory)
-        waveform_url = f"{stem_name}_waveform.png"
+        # Generate waveform URL
+        waveform_url = f"/api/profiles/{profile.name}/songs/{song_name}/stems/{stem_name}/waveform"
 
         return StemMetadata(
             stem_type=stem_name,
@@ -358,8 +358,8 @@ class AudioMetadataAnalyzer:
             # Print loudness info
             print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
 
-            # Waveform filename (peer to metadata.json in same directory)
-            waveform_url = f"{stem_name}_waveform.png"
+            # Generate waveform URL
+            waveform_url = f"/api/profiles/{profile.name}/songs/{song_name}/stems/{stem_name}/waveform"
 
             stems_dict[stem_name] = StemMetadata(
                 stem_type=stem_name,

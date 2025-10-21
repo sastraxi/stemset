@@ -145,7 +145,7 @@ bun run dev
 
 Visit http://localhost:5173 (frontend proxies API requests to port 8000).
 
-> **Note:** The `dev.sh` script is shorthand for `uv run litestar --app src.api:app run --reload`
+> **Note:** The `dev.sh` script is shorthand for `uv run litestar --app src.api.app:app run --reload`
 
 ### 3. Deploy to Render.com
 
@@ -188,7 +188,7 @@ Just push to GitHub - Render auto-deploys on git push.
 cd frontend && bun run build && cd ..
 
 # Run Litestar (serves both API and built frontend)
-STEMSET_BYPASS_AUTH=true uv run litestar --app src.api:app run
+STEMSET_BYPASS_AUTH=true uv run litestar --app src.api.app:app run
 ```
 
 Visit http://localhost:8000
