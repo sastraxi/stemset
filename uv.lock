@@ -1606,24 +1606,15 @@ name = "stemset"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "audio-separator" },
     { name = "boto3" },
     { name = "httpx" },
     { name = "litestar" },
-    { name = "numpy" },
-    { name = "onnxruntime" },
-    { name = "opuslib" },
-    { name = "pillow" },
     { name = "pydantic" },
     { name = "pyjwt" },
-    { name = "pyloudnorm" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "pyyaml" },
-    { name = "soundfile" },
-    { name = "typer" },
     { name = "uvicorn" },
-    { name = "watchdog" },
 ]
 
 [package.optional-dependencies]
@@ -1637,35 +1628,48 @@ dev = [
 dev = [
     { name = "basedpyright" },
 ]
+processing = [
+    { name = "audio-separator" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "opuslib" },
+    { name = "pillow" },
+    { name = "pyloudnorm" },
+    { name = "soundfile" },
+    { name = "typer" },
+    { name = "watchdog" },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "audio-separator", specifier = ">=0.39.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "boto3", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "litestar", specifier = ">=2.0.0" },
-    { name = "numpy", specifier = ">=2.3.4" },
-    { name = "onnxruntime", specifier = ">=1.23.1" },
-    { name = "opuslib", specifier = ">=3.0.1" },
-    { name = "pillow", specifier = ">=10.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pyjwt", specifier = ">=2.8.0" },
-    { name = "pyloudnorm", specifier = ">=0.1.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "soundfile", specifier = ">=0.12.1" },
-    { name = "typer", specifier = ">=0.20.0" },
     { name = "uvicorn", specifier = ">=0.24.0" },
-    { name = "watchdog", specifier = ">=3.0.0" },
 ]
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "basedpyright", specifier = ">=1.31.7" }]
+processing = [
+    { name = "audio-separator", specifier = ">=0.39.1" },
+    { name = "numpy", specifier = ">=2.3.4" },
+    { name = "onnxruntime", specifier = ">=1.23.1" },
+    { name = "opuslib", specifier = ">=3.0.1" },
+    { name = "pillow", specifier = ">=10.0.0" },
+    { name = "pyloudnorm", specifier = ">=0.1.1" },
+    { name = "soundfile", specifier = ">=0.12.1" },
+    { name = "typer", specifier = ">=0.20.0" },
+    { name = "watchdog", specifier = ">=3.0.0" },
+]
 
 [[package]]
 name = "sympy"

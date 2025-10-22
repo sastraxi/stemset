@@ -40,7 +40,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 ./setup.sh
 ```
 
-This installs all Python and frontend dependencies.
+This installs:
+- **API dependencies** (lightweight - Litestar, Pydantic, boto3, etc.)
+- **Processing dependencies** (heavy ML libraries - audio-separator, onnxruntime, etc.)
+- **Frontend dependencies** (React, Vite, etc.)
+
+**Note**: Koyeb deployment only installs API dependencies (~100MB), not processing dependencies (~2GB+), since audio processing happens locally.
 
 ### Configuration
 

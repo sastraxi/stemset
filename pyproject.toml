@@ -4,19 +4,11 @@ version = "0.1.0"
 description = "AI-powered audio stem separation with web playback interface"
 requires-python = "==3.13.*"
 dependencies = [
+    # API/Web server (lightweight - deployed to Koyeb)
     "litestar>=2.0.0",
-    "audio-separator>=0.39.1",
-    "pyloudnorm>=0.1.1",
-    "soundfile>=0.12.1",
-    "watchdog>=3.0.0",
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
     "uvicorn>=0.24.0",
-    "opuslib>=3.0.1",
-    "onnxruntime>=1.23.1",
-    "numpy>=2.3.4",
-    "pillow>=10.0.0",
-    "typer>=0.20.0",
     "python-dotenv>=1.1.1",
     "pyjwt>=2.8.0",
     "httpx>=0.27.0",
@@ -45,6 +37,18 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     "basedpyright>=1.31.7",
+]
+processing = [
+    # Heavy ML/audio processing dependencies (local use only, not deployed)
+    "audio-separator>=0.39.1",
+    "pyloudnorm>=0.1.1",
+    "soundfile>=0.12.1",
+    "watchdog>=3.0.0",
+    "opuslib>=3.0.1",
+    "onnxruntime>=1.23.1",
+    "numpy>=2.3.4",
+    "pillow>=10.0.0",
+    "typer>=0.20.0",
 ]
 
 [tool.black]

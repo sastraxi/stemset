@@ -58,7 +58,9 @@ If you want direct public access to audio files (faster, but less secure):
 ### 2.1 Prepare Your Repository
 
 1. Ensure your code is pushed to GitHub
-2. Make sure `pyproject.toml` includes `boto3>=1.28.0` (already added)
+2. The `pyproject.toml` is configured to only install lightweight API dependencies by default
+   - Heavy ML/audio processing dependencies are in the `processing` group (local dev only)
+   - This keeps Koyeb deployment fast and lightweight (~100MB vs ~2GB+)
 
 ### 2.2 Create Koyeb App
 

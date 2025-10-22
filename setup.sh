@@ -30,7 +30,9 @@ echo "✓ Dependencies check passed"
 # Install Python dependencies
 echo ""
 echo "📦 Installing Python dependencies..."
-uv sync
+echo "   - API dependencies (lightweight)"
+echo "   - Processing dependencies (ML models, audio libraries)"
+uv sync --group processing
 
 # Install frontend dependencies
 echo ""
