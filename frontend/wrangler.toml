@@ -1,0 +1,16 @@
+# Cloudflare Pages configuration
+name = "stemset-frontend"
+compatibility_date = "2025-01-01"
+
+[build]
+command = "bun install && bun run build"
+cwd = "."
+
+[build.upload]
+format = "service-worker"
+dir = "dist"
+
+# Environment variables for production
+[env.production]
+# API_URL will be set in Cloudflare Pages dashboard to point to Koyeb backend
+# e.g., API_URL = "https://stemset-api.koyeb.app"

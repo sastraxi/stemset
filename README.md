@@ -14,14 +14,17 @@ Stemset processes audio recordings locally and separates them into individual in
 - **Waveform visualization** - Auto-generated waveforms with perceptual scaling
 - **Content-based deduplication** - SHA256 hashing prevents reprocessing renamed files
 - **Web playback interface** - Independent volume control with master EQ and limiter
-- **Render.com deployment** - Free hosting with persistent storage for media files
+- **Flexible deployment** - Free hosting options with Cloudflare Pages + Koyeb + R2
 
 ## Architecture
 
-- **Backend:** Python/Litestar API with Google OAuth, serves both API and frontend
+- **Backend:** Python/Litestar API with Google OAuth
 - **Frontend:** React/TypeScript single-page application with Web Audio API
-- **Processing:** Local CLI for stem separation (upload media files to server)
-- **Deployment:** Render.com web service with persistent disk for media storage
+- **Storage:** Local filesystem or Cloudflare R2 (zero egress fees!)
+- **Processing:** Local CLI for stem separation (CPU/GPU intensive)
+- **Deployment:** Hybrid cloud (Cloudflare Pages + Koyeb + R2) or traditional (Render)
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
 ## Quick Start
 
@@ -147,37 +150,37 @@ Visit http://localhost:5173 (frontend proxies API requests to port 8000).
 
 > **Note:** The `dev.sh` script is shorthand for `uv run litestar --app src.api.app:app run --reload`
 
-### 3. Deploy to Render.com
+### 3. Deploy to Production
 
-**Initial Setup:**
+**Recommended: Cloudflare + Koyeb + R2 (FREE)**
 
-1. Push your code to GitHub
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click "New +" → "Web Service"
-4. Connect your GitHub repository
-5. Render will detect `render.yaml` automatically
-6. Set environment variables in Render dashboard:
-   - `GOOGLE_CLIENT_ID`: Your OAuth client ID
-   - `GOOGLE_CLIENT_SECRET`: Your OAuth client secret
-   - `OAUTH_REDIRECT_URI`: `https://your-app-name.onrender.com/auth/callback`
-   - `JWT_SECRET`: Random secret (generate with `python -c "import secrets; print(secrets.token_hex(32))"`)
-   - Render auto-generates other required vars
-7. Click "Create Web Service"
-
-**Deploying Media Files:**
-
-After processing audio locally, upload to Render:
+The recommended deployment uses a hybrid cloud architecture for zero-cost hosting:
 
 ```bash
-# Sync media directory to Render persistent disk
-rsync -avz --progress media/ your-render-ssh:/ data/media/
+# Check configuration
+python scripts/check_deployment.py
+
+# Follow deployment guide
+# See DEPLOYMENT.md for complete step-by-step instructions
 ```
 
-Alternatively, process audio on Render directly (requires paid plan for sufficient CPU/memory).
+- **Frontend**: Cloudflare Pages (unlimited bandwidth, global CDN)
+- **Backend API**: Koyeb (free tier, no spin-down)
+- **Audio Storage**: Cloudflare R2 (10GB free, zero egress fees!)
 
-**Subsequent Deploys:**
+**Benefits over traditional hosting:**
+- ✅ $0/month (vs $7+/month for alternatives)
+- ✅ Zero egress fees for audio streaming
+- ✅ Global CDN for faster loading
+- ✅ No cold starts
 
-Just push to GitHub - Render auto-deploys on git push.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guide.
+See [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md) for migration from Render.
+
+**Alternative: Render.com (Traditional)**
+
+If you prefer a single-server deployment, see the Render configuration in `render.yaml`.
+Note: Free tier doesn't support persistent disks; requires paid plan (~$7/month).
 
 ## Local Development
 
@@ -272,12 +275,19 @@ uv run stemset --help
 
 ## Deployment Costs
 
-**Render.com Free Tier:**
-- Web service: Free (spins down after inactivity)
-- Persistent disk: Free for first 1GB, then $0.25/GB/month
-- Bandwidth: 100GB/month free
+**Recommended (Cloudflare + Koyeb + R2):**
+- **$0/month** for most use cases
+- Cloudflare Pages: Unlimited bandwidth (free)
+- Koyeb: 100GB bandwidth/month (free tier)
+- R2 Storage: 10GB + zero egress fees (free tier)
+- Scales cost-effectively as you grow
 
-For a small band (< 10 members, < 50 tracks), free tier is sufficient.
+**Alternative (Render.com):**
+- Free tier: Spins down after 15min, no persistent disk
+- Paid tier: ~$7/month + storage costs
+- Bandwidth: 100GB included, then $0.10/GB
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed cost comparison.
 
 ## License
 

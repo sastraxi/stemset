@@ -6,9 +6,10 @@ from pathlib import Path
 
 from litestar import get
 from litestar.exceptions import NotFoundException
-from litestar.response import File
+from litestar.response import File, Redirect
 
 from ..config import get_config
+from ..storage import get_storage
 from ..models.metadata import StemsMetadata
 from .models import FileWithStems, ProfileResponse
 
@@ -42,29 +43,33 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
     if profile is None:
         raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-    media_path = profile.get_media_path()
-    if not media_path.exists():
-        return []
+    storage = get_storage(config)
+    file_names = storage.list_files(profile_name)
 
     files = []
-    for folder in media_path.iterdir():
-        if folder.is_dir() and not folder.name.startswith("."):
-            stems = {}
-            for stem_name in ["vocals", "drums", "bass", "other"]:
-                for ext in [".opus", ".wav"]:
-                    stem_path = folder / f"{stem_name}{ext}"
-                    if stem_path.exists():
-                        stems[stem_name] = f"/media/{profile_name}/{folder.name}/{stem_name}{ext}"
-                        break
+    for file_name in file_names:
+        stems = {}
+        # Try to find stems in both opus and wav formats
+        for stem_name in ["vocals", "drums", "bass", "other"]:
+            for ext in [".opus", ".wav"]:
+                # For local storage, verify file exists before creating URL
+                if not config.r2:
+                    stem_path = Path("media") / profile_name / file_name / f"{stem_name}{ext}"
+                    if not stem_path.exists():
+                        continue
 
-            if stems:
-                files.append(
-                    FileWithStems(
-                        name=folder.name,
-                        path=str(folder),
-                        stems=stems,
-                    )
+                # Generate URL (works for both local and R2)
+                stems[stem_name] = storage.get_file_url(profile_name, file_name, stem_name, ext)
+                break
+
+        if stems:
+            files.append(
+                FileWithStems(
+                    name=file_name,
+                    path=f"media/{profile_name}/{file_name}",
+                    stems=stems,
                 )
+            )
 
     return files
 
@@ -77,6 +82,13 @@ async def get_file_metadata(profile_name: str, file_name: str) -> StemsMetadata:
     if profile is None:
         raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
+    # For R2, redirect to the metadata URL
+    if config.r2:
+        storage = get_storage(config)
+        metadata_url = storage.get_metadata_url(profile_name, file_name)
+        return Redirect(path=metadata_url)
+
+    # For local storage, read and return the file
     media_path = profile.get_media_path()
     metadata_file = media_path / file_name / "metadata.json"
 
@@ -87,7 +99,7 @@ async def get_file_metadata(profile_name: str, file_name: str) -> StemsMetadata:
 
 
 @get("/api/profiles/{profile_name:str}/songs/{song_name:str}/stems/{stem_name:str}/waveform")
-async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -> File:
+async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -> File | Redirect:
     """Serve waveform PNG for a specific stem.
 
     The waveform is rendered as white on transparent background.
@@ -99,6 +111,13 @@ async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -
     if profile is None:
         raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
+    # For R2, redirect to the waveform URL
+    if config.r2:
+        storage = get_storage(config)
+        waveform_url = storage.get_waveform_url(profile_name, song_name, stem_name)
+        return Redirect(path=waveform_url)
+
+    # For local storage, serve the file
     waveform_path = Path("media") / profile_name / song_name / f"{stem_name}_waveform.png"
 
     if not waveform_path.exists():

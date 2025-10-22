@@ -102,11 +102,12 @@ The frontend reads this same typed structure.
 
 All configuration uses Pydantic models in `config.py`:
 - `AuthConfig` - Google OAuth credentials and email allowlist
+- `R2Config` - Cloudflare R2 storage credentials (optional)
 - `OutputConfig` - Format and bitrate settings
 - `StrategyNode` - Recursive tree node (model + output mappings)
 - `Strategy` - Named strategy with validation
 - `Profile` - User profile linking source folder to strategy
-- `Config` - Top-level config with strategies, profiles, and optional auth
+- `Config` - Top-level config with strategies, profiles, optional auth, and optional R2
 
 **Environment Variable Substitution**: Config supports `${VAR_NAME}` syntax for secrets:
 ```yaml
@@ -142,6 +143,7 @@ We use `NotFoundException` instead of returning error response objects with stat
 src/
 ├── auth.py                # Google OAuth, JWT tokens, auth middleware
 ├── config.py              # Pydantic config models, YAML loading, env var substitution
+├── storage.py             # Storage abstraction (local filesystem or Cloudflare R2)
 ├── modern_separator.py    # Public separation interface
 ├── cli/                   # CLI module
 │   ├── __init__.py        # Main CLI entrypoint (Typer app)
@@ -167,6 +169,10 @@ frontend/
     │   ├── LoginPage.tsx    # Google OAuth login UI
     │   └── StemPlayer.tsx   # Web Audio API player
     └── api.ts              # Fetch wrappers with credentials: 'include'
+
+scripts/
+├── upload_to_r2.py        # Helper script for uploading media files to R2
+└── check_deployment.py    # Deployment configuration checker
 ```
 
 ## What We Don't Do
@@ -190,6 +196,7 @@ frontend/
 - **`httpx`**: Async HTTP client for Google OAuth token exchange
 - **`typer`**: CLI framework for audio processing commands
 - **`watchdog`**: File system monitoring (for future auto-scanning)
+- **`boto3`**: S3-compatible client for Cloudflare R2 storage
 
 ### TypeScript/JavaScript (Frontend)
 - **React 18**: UI framework
@@ -238,19 +245,20 @@ We refactor aggressively. If a pattern emerges three times, abstract it. If an a
 7. Frontend makes `/auth/status` request with cookie
 8. Vite proxies to backend, cookie sent because `domain="localhost"`
 
-**Production (single origin on Render)**:
-1. User clicks "Sign in with Google" → Redirects to `/auth/login`
-2. Backend redirects to Google with `redirect_uri=https://app.onrender.com/auth/callback`
+**Production (split frontend/backend on Cloudflare + Koyeb)**:
+1. User clicks "Sign in with Google" → Frontend redirects to backend `/auth/login`
+2. Backend redirects to Google with `redirect_uri=https://stemset-api.koyeb.app/auth/callback`
 3. Google redirects back to backend `/auth/callback`
-4. Backend validates, creates JWT, sets httpOnly cookie with secure flag
-5. Backend redirects to `FRONTEND_URL` (`/` - same origin)
-6. All requests include cookie automatically (same origin)
+4. Backend validates, creates JWT, sets httpOnly cookie with `secure=True`, `SameSite=None`
+5. Backend redirects to `FRONTEND_URL` (https://stemset.pages.dev)
+6. Frontend makes API requests to backend with `credentials: 'include'`
+7. Browser sends cookie with cross-origin requests (due to CORS configuration)
 
 ### Key Implementation Details
 
 **Cookie Settings**:
 - Development: `domain="localhost"`, `secure=False` (allows cross-port on localhost)
-- Production: `domain=None`, `secure=True` (httpOnly cookie on same origin)
+- Production: `domain=None`, `secure=True`, `SameSite=None` (httpOnly cookie for cross-origin)
 
 **Auth Middleware** (`auth.py`):
 - Bypasses all `/auth/*` routes (allows login/callback without token)
@@ -275,14 +283,19 @@ GOOGLE_CLIENT_SECRET=...
 JWT_SECRET=...
 ```
 
-**Production (Render)**:
+**Production (Cloudflare + Koyeb)**:
 ```bash
 STEMSET_BYPASS_AUTH=false
-OAUTH_REDIRECT_URI=https://your-app.onrender.com/auth/callback
-FRONTEND_URL=/
+OAUTH_REDIRECT_URI=https://stemset-api.koyeb.app/auth/callback
+FRONTEND_URL=https://stemset.pages.dev
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 JWT_SECRET=...
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=stemset-media
+R2_PUBLIC_URL=...  # Optional
 ```
 
 ### Development Workflow
@@ -306,29 +319,39 @@ cd frontend && bun run build && cd ..
 
 Visit `http://localhost:8000` - Backend serves both API and static frontend.
 
-### Deployment (Render.com)
+### Deployment (Hybrid Cloud - Recommended)
 
-**Architecture**: Single Python web service serves both API and frontend.
+**Architecture**: Split frontend, backend, and storage across optimized platforms.
 
-**Build** (in `render.yaml`):
-1. Install Python dependencies with `uv`
-2. Build frontend with `bun run build` → `frontend/dist/`
-3. Start: `uvicorn src.api.app:app`
+**Components**:
+1. **Frontend** (Cloudflare Pages): Serves static React app from global CDN
+2. **Backend API** (Koyeb): Python/Litestar service with OAuth and API endpoints
+3. **Storage** (Cloudflare R2): S3-compatible object storage for audio files
 
-**Static Files**:
-- `/api/*` → API routes
-- `/auth/*` → OAuth routes
-- `/media/*` → Audio files from persistent disk
-- `/*` → React app from `frontend/dist/` (catch-all for client-side routing)
+**Build** (automated via git push):
+- **Cloudflare Pages**: `cd frontend && bun install && bun run build` → serves `dist/`
+- **Koyeb**: Buildpack auto-detects Python, runs `uv sync`, starts uvicorn
 
-**Persistent Disk**:
-- Mounted at `/data`
-- Stores processed audio files (`/data/media`)
-- Stores ML model cache (`/data/models`)
+**Storage Abstraction** (`storage.py`):
+- Protocol-based interface supports both local filesystem and R2
+- `LocalStorage`: Serves files from `media/` directory (development)
+- `R2Storage`: Generates presigned URLs or public URLs for R2 (production)
+- Switched via `r2` config section in `config.yaml`
+
+**API Routes**:
+- `/api/profiles` → List all profiles
+- `/api/profiles/{name}/files` → List files with R2 URLs for stems
+- `/api/profiles/{name}/files/{file}/metadata` → Redirect to R2 metadata.json
+- `/api/profiles/{name}/songs/{song}/stems/{stem}/waveform` → Redirect to R2 waveform PNG
+- `/auth/*` → OAuth endpoints
 
 **Processing Workflow**:
 1. Run `uv run stemset process <profile>` locally to process audio files
 2. Outputs are saved to local `media/<profile>/` directory
-3. Use rsync or similar to sync `media/` to `/data/media` on Render
-4. Backend automatically serves new files via `/media/*` static file route
-5. Frontend refresh button reloads file list from `/api/profiles/{name}/files`
+3. Upload to R2: `python scripts/upload_to_r2.py <profile>`
+4. Backend generates URLs pointing to R2
+5. Frontend streams audio directly from R2 (zero egress fees!)
+
+**Alternative: Single-Server (Render.com)**:
+See `render.yaml` for traditional deployment where backend serves both API and static files.
+Note: Render free tier doesn't support persistent disks; requires paid plan (~$7/month).

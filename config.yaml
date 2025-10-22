@@ -11,6 +11,14 @@ auth:
   jwt_secret: ${JWT_SECRET}
   redirect_uri: ${OAUTH_REDIRECT_URI}
 
+# Cloudflare R2 Storage (optional - comment out to use local storage)
+# r2:
+#   account_id: ${R2_ACCOUNT_ID}
+#   access_key_id: ${R2_ACCESS_KEY_ID}
+#   secret_access_key: ${R2_SECRET_ACCESS_KEY}
+#   bucket_name: ${R2_BUCKET_NAME}
+#   public_url: ${R2_PUBLIC_URL}  # Optional: if bucket has public access
+
 strategies:
 #################################
   htdemucs_ft:

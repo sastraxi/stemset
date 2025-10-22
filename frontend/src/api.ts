@@ -1,6 +1,7 @@
 import type { Profile, StemFile } from './types';
 
-const API_BASE = '/api';
+// Use environment variable for API URL in production, fallback to /api for local dev
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 // Default fetch options to include credentials (cookies)
 const defaultOptions: RequestInit = {

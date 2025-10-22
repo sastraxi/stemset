@@ -128,6 +128,19 @@ class AuthConfig(BaseModel):
     )
 
 
+class R2Config(BaseModel):
+    """Cloudflare R2 storage configuration."""
+
+    account_id: str = Field(..., description="Cloudflare account ID")
+    access_key_id: str = Field(..., description="R2 access key ID")
+    secret_access_key: str = Field(..., description="R2 secret access key")
+    bucket_name: str = Field(..., description="R2 bucket name for media files")
+    public_url: str | None = Field(
+        default=None,
+        description="Public R2 bucket URL (if configured for public access)"
+    )
+
+
 class Profile(BaseModel):
     """A processing profile with source folder and settings."""
 
@@ -163,6 +176,9 @@ class Config(BaseModel):
     )
     auth: AuthConfig | None = Field(
         default=None, description="Authentication configuration (optional)"
+    )
+    r2: R2Config | None = Field(
+        default=None, description="Cloudflare R2 storage configuration (optional)"
     )
 
     @classmethod

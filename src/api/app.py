@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from litestar import Litestar
@@ -35,8 +36,19 @@ if frontend_dist.exists():
 else:
     static_handlers = [media_router]
 
+# Allow CORS from development origins and production frontend
+allowed_origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost:3000",  # Alternative dev port
+]
+
+# Add production frontend URL from environment if set
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url and frontend_url not in ["/", ""]:
+    allowed_origins.append(frontend_url)
+
 cors_config = CORSConfig(
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
     allow_credentials=True,
