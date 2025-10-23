@@ -15,6 +15,7 @@ Note: This script ignores STEMSET_LOCAL_STORAGE and always uses R2.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -31,6 +32,18 @@ os.environ['STEMSET_LOCAL_STORAGE'] = 'false'
 from src.config import get_config
 from src.storage import get_storage, R2Storage
 
+
+def compute_etag(file_path: Path) -> str:
+    """Compute MD5 hash (ETag) for a file.
+
+    S3/R2 uses MD5 hash as the ETag for single-part uploads.
+    """
+    md5 = hashlib.md5()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b''):
+            md5.update(chunk)
+    return md5.hexdigest()
+
 def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
     """Upload all files for a profile to R2."""
     print(f"\n📤 Uploading profile: {profile_name}")
@@ -40,7 +53,9 @@ def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
         print(f"⚠️  Media folder not found: {media_path}")
         return
 
-    file_count = 0
+    uploaded_count = 0
+    skipped_count = 0
+
     for folder in media_path.iterdir():
         if not folder.is_dir() or folder.name.startswith("."):
             continue
@@ -51,6 +66,27 @@ def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
         # Upload all files in this folder
         for file_path in folder.iterdir():
             if file_path.is_file():
+                # Compute local file hash
+                local_etag = compute_etag(file_path)
+
+                # Get R2 object key
+                object_key = f"{profile_name}/{file_name}/{file_path.name}"
+
+                # Check if file exists in R2 with same hash
+                try:
+                    response = r2_storage.s3_client.head_object(
+                        Bucket=r2_storage.config.bucket_name,
+                        Key=object_key
+                    )
+                    remote_etag = response['ETag'].strip('"')
+
+                    if local_etag == remote_etag:
+                        print(f"    ⏭️  {file_path.name} (unchanged)")
+                        skipped_count += 1
+                        continue
+                except r2_storage.s3_client.exceptions.NoSuchKey:
+                    pass  # File doesn't exist, upload it
+
                 print(f"    ⬆️  {file_path.name}...", end="", flush=True)
                 r2_storage.upload_file(
                     file_path,
@@ -59,9 +95,9 @@ def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
                     file_path.name
                 )
                 print(" ✅")
-                file_count += 1
+                uploaded_count += 1
 
-    print(f"✨ Uploaded {file_count} files for {profile_name}")
+    print(f"✨ Uploaded {uploaded_count} files, skipped {skipped_count} unchanged for {profile_name}")
 
 
 def main() -> None:
