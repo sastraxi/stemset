@@ -300,7 +300,7 @@ R2_PUBLIC_URL=...  # Optional
 VITE_API_URL=
 
 # Production (set in Cloudflare Pages)
-VITE_API_URL=https://stemset-api-yourname.koyeb.app/api
+VITE_API_URL=https://stemset-api-yourname.koyeb.app
 ```
 
 ## Deployment Workflow

@@ -52,3 +52,14 @@ app:
         http:
           path: /api/profiles
           port: 8000
+
+# Paths to monitor (only redeploy if these change)
+build:
+  watch_paths:
+    - src/**
+    - pyproject.toml
+    - uv.lock
+    - Dockerfile
+    - .dockerignore
+    - config.yaml
+    - .koyeb/**

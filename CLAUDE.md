@@ -290,6 +290,8 @@ R2_PUBLIC_URL=...  # Optional
 ```
 
 **Production (Cloudflare + Koyeb)**:
+
+Backend (Koyeb):
 ```bash
 STEMSET_BYPASS_AUTH=false
 # STEMSET_LOCAL_STORAGE not set (or =false) → use R2
@@ -304,6 +306,28 @@ R2_SECRET_ACCESS_KEY=...
 R2_BUCKET_NAME=stemset-media
 R2_PUBLIC_URL=...  # Optional
 ```
+
+Frontend (Cloudflare Pages - set in `wrangler.toml`):
+```toml
+[vars]
+VITE_API_URL = "https://stemset-api.koyeb.app"  # No /api or /auth suffix
+```
+
+Note: Frontend code adds `/api` and `/auth` prefixes as needed. Don't include them in `VITE_API_URL`.
+
+### Build Optimization (Monorepo)
+
+Both Cloudflare Pages and Koyeb support path-based build triggers to avoid unnecessary deployments:
+
+**Cloudflare Pages** (frontend):
+- Watches: `frontend/**` (configured in dashboard)
+- Changes to backend code won't trigger frontend rebuilds
+
+**Koyeb** (backend):
+- Watches: `src/`, `Dockerfile`, `pyproject.toml`, etc. (configured in `.koyeb/config.yaml`)
+- Changes to frontend code won't trigger backend rebuilds
+
+This means you can push frontend and backend changes independently without rebuilding everything!
 
 ### Development Workflow
 
