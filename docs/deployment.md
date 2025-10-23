@@ -58,9 +58,10 @@ If you want direct public access to audio files (faster, but less secure):
 ### 2.1 Prepare Your Repository
 
 1. Ensure your code is pushed to GitHub
-2. The `pyproject.toml` is configured to only install lightweight API dependencies by default
-   - Heavy ML/audio processing dependencies are in the `processing` group (local dev only)
-   - This keeps Koyeb deployment fast and lightweight (~100MB vs ~2GB+)
+2. The repository includes a multi-stage `Dockerfile`:
+   - `api` target: Lightweight API dependencies only (~100MB)
+   - `processing` target: Full ML/audio processing stack (~2GB+)
+   - Koyeb will use the `api` target for fast, lightweight deployment
 
 ### 2.2 Create Koyeb App
 
@@ -69,8 +70,9 @@ If you want direct public access to audio files (faster, but less secure):
 3. Choose **GitHub** as deployment source
 4. Select your `stemset` repository
 5. Configure:
-   - **Build**: Automatically detected (Python/Buildpack)
-   - **Run command**: `uvicorn src.api.app:app --host 0.0.0.0 --port $PORT`
+   - **Builder**: Docker
+   - **Dockerfile**: `Dockerfile`
+   - **Target**: `api`
    - **Port**: `8000`
    - **Instance type**: Free (512MB RAM, 0.1 vCPU)
    - **Region**: Choose closest to your users
@@ -80,9 +82,6 @@ If you want direct public access to audio files (faster, but less secure):
 Add these environment variables in Koyeb dashboard:
 
 ```bash
-# Python
-PYTHON_VERSION=3.13
-
 # Authentication
 STEMSET_BYPASS_AUTH=false
 GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
@@ -353,6 +352,41 @@ If you're currently on Render:
 3. Test everything works
 4. Update DNS/OAuth to point to new URLs
 5. Delete Render app once confirmed working
+
+---
+
+## Docker Usage (Optional)
+
+### Build Locally
+
+```bash
+# Build API image
+docker build --target api -t stemset-api .
+
+# Build processing image
+docker build --target processing -t stemset-processing .
+```
+
+### Run API Locally
+
+```bash
+docker run -p 8000:8000 \
+  -e STEMSET_BYPASS_AUTH=true \
+  -e STEMSET_LOCAL_STORAGE=true \
+  -v $(pwd)/media:/app/media \
+  stemset-api
+```
+
+### Run Processing Locally
+
+```bash
+# Process files using Docker
+docker run --rm \
+  -v $(pwd)/media:/app/media \
+  -v $(pwd)/input:/app/input \
+  -v $(pwd)/.models:/app/.models \
+  stemset-processing process h4n
+```
 
 ---
 

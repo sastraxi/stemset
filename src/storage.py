@@ -3,49 +3,10 @@
 from __future__ import annotations
 
 import os
-import re
 import boto3
 from pathlib import Path
 from typing import Protocol
 from .config import Config, R2Config
-import botocore.config
-
-# import ssl
-
-# import warnings
-
-# warnings.warn(
-#     "Disabling VERIFY_X509_STRICT in SSL context. "
-#     "This reverts Python 3.13's stricter SSL checks."
-# )
-
-# # Save original function
-# _original_create_default_context = ssl.create_default_context
-
-# def relaxed_create_default_context(
-#     purpose=ssl.Purpose.SERVER_AUTH,
-#     *,
-#     cafile=None,
-#     capath=None,
-#     cadata=None
-# ):
-#     ctx = _original_create_default_context(
-#         purpose=purpose, 
-#         cafile=cafile, 
-#         capath=capath, 
-#         cadata=cadata
-#     )
-    
-#     # Disable Python 3.13 strict flags
-#     if hasattr(ssl, "VERIFY_X509_STRICT"):
-#         ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
-#     if hasattr(ssl, "VERIFY_X509_PARTIAL_CHAIN"):
-#         ctx.verify_flags &= ~ssl.VERIFY_X509_PARTIAL_CHAIN
-    
-#     return ctx
-
-# # Apply monkey-patch
-# ssl.create_default_context = relaxed_create_default_context
 
 
 
@@ -102,16 +63,7 @@ class R2Storage:
 
     def __init__(self, r2_config: R2Config):
         """Initialize R2 storage with configuration."""
-
         self.config = r2_config
-
-        # boto_config = botocore.config.Config(
-        #     signature_version='s3v4',
-        #     retries={'max_attempts': 3, 'mode': 'standard'},
-        # )
-
-        print(r2_config.access_key_id)
-
         self.s3_client = boto3.client(
             "s3",
             endpoint_url=f"https://{r2_config.account_id}.r2.cloudflarestorage.com",

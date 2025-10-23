@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Mac
+.DS_Store
+
+# Environment files (secrets should be passed via env vars, not copied)
+.env
+.env.*
+!.env.example
+
+# Local data
+media/
+.models/
+input/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!ARCHITECTURE.md
+docs/
+
+# Frontend (not needed for backend container)
+frontend/
+
+# Scripts (not needed in production)
+scripts/
+
+# Development files
+dev.sh
+render.yaml
+
+# Cache
+.cache/
