@@ -133,7 +133,7 @@ async def auth_callback(code: str, callback_state: Annotated[str, Parameter(quer
         value=jwt_token,
         httponly=True,
         secure=False if is_dev else True,
-        samesite="lax",
+        samesite="lax" if is_dev else "none",  # Cross-site cookies need SameSite=None
         max_age=30 * 24 * 60 * 60,
         domain="localhost" if is_dev else None,
     )
