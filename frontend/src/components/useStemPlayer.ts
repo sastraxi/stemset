@@ -32,7 +32,6 @@ interface LoadedStem {
 interface UseStemPlayerOptions {
   profileName: string;
   fileName: string;
-  stems: StemSources;
   metadataUrl: string;
   sampleRate?: number; // default 44100
 }
@@ -100,7 +99,7 @@ export interface UseStemPlayerResult {
   gainReduction: number; // positive dB amount of current gain reduction
 }
 
-export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
+export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
   // Public state
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMetrics, setLoadingMetrics] = useState<LoadingMetrics | null>(null);
@@ -152,6 +151,7 @@ export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampl
   const endedRef = useRef<boolean>(false);
   const isPlayingRef = useRef<boolean>(false); // authoritative play state for RAF closure
   const manualEndModeRef = useRef<'none' | 'pause' | 'stop'>('none'); // differentiate natural end vs user action
+  const metadataBaseUrlRef = useRef<string>(''); // Base URL for resolving relative paths in metadata
   const masterInputRef = useRef<GainNode | null>(null); // stems connect to this instead of context.destination
   const eqFilterRefs = useRef<BiquadFilterNode[]>([]);
   const compressorRef = useRef<DynamicsCompressorNode | null>(null);
@@ -219,8 +219,13 @@ export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampl
       // Handle both old format (flat) and new format (nested under "stems")
       const metadata: Record<string, StemMetadata> = response.stems || response;
       const metaEnd = performance.now();
+
+      // Compute base URL for stems (metadata URL without the filename)
+      const metadataBaseUrl = metadataUrl.substring(0, metadataUrl.lastIndexOf('/') + 1);
+      metadataBaseUrlRef.current = metadataBaseUrl;
+
       const newMap = new Map<string, LoadedStem>();
-      const stemEntries = Object.entries(stems).filter(([, url]) => !!url);
+      const stemEntries = Object.entries(metadata).map(([name, meta]) => [name, metadataBaseUrl + meta.stem_url]);
       const timingAccumulator: StemTiming[] = [];
       await Promise.all(stemEntries.map(async ([name, url]) => {
         if (aborted || !url) return;
@@ -270,7 +275,7 @@ export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampl
         name: n,
         gain: s.gain.gain.value,
         initialGain: s.initialGain,
-        waveformUrl: s.metadata?.waveform_url || null
+        waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null
       }));
       console.log('[useStemPlayer] Setting stem state:', stemStateArray);
       setStemState(stemStateArray);
@@ -291,7 +296,7 @@ export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampl
     return () => {
       aborted = true;
     };
-  }, [profileName, fileName, stems, metadataUrl, ensureContext]);
+  }, [profileName, fileName, metadataUrl, ensureContext]);
 
   // Persist settings
   useEffect(() => { try { localStorage.setItem('stemset.master.eq.v1', JSON.stringify(eqBands)); } catch {} }, [eqBands]);
@@ -409,7 +414,7 @@ export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampl
       name,
       gain: s.gain.gain.value,
       initialGain: s.initialGain,
-      waveformUrl: s.metadata?.waveform_url || null
+      waveformUrl: s.metadata ? metadataBaseUrlRef.current + s.metadata.waveform_url : null
     })));
   }, []);
 

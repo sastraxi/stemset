@@ -205,7 +205,6 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
             <>
               <h2>{selectedFile.name}</h2>
               <StemPlayer
-                stems={selectedFile.stems}
                 profileName={selectedProfile}
                 fileName={selectedFile.name}
                 metadataUrl={selectedFile.metadata_url}

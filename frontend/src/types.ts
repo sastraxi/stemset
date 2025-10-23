@@ -5,13 +5,6 @@ export interface Profile {
 
 export interface StemFile {
   name: string;
-  path: string;
-  stems: {
-    vocals?: string;
-    drums?: string;
-    bass?: string;
-    other?: string;
-  };
   metadata_url: string;
 }
 
@@ -20,5 +13,6 @@ export interface StemMetadata {
   measured_lufs: number | null;
   peak_amplitude: number;
   stem_gain_adjustment_db: number;
-  waveform_url: string;
+  stem_url: string;  // Relative URL to audio file
+  waveform_url: string;  // Relative URL to waveform PNG
 }

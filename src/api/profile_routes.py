@@ -48,63 +48,8 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
 
     files = []
     for file_name in file_names:
-        stems = {}
-        # Try to find stems in both opus and wav formats
-        for stem_name in ["vocals", "drums", "bass", "other"]:
-            for ext in [".opus", ".wav"]:
-                # For local storage, verify file exists before creating URL
-                if not config.r2:
-                    stem_path = Path("media") / profile_name / file_name / f"{stem_name}{ext}"
-                    if not stem_path.exists():
-                        continue
-
-                # Generate URL (works for both local and R2)
-                stems[stem_name] = storage.get_file_url(profile_name, file_name, stem_name, ext)
-                break
-
-        if stems:
-            metadata_url = storage.get_metadata_url(profile_name, file_name)
-            files.append(
-                FileWithStems(
-                    name=file_name,
-                    path=f"media/{profile_name}/{file_name}",
-                    stems=stems,
-                    metadata_url=metadata_url,
-                )
-            )
+        metadata_url = storage.get_metadata_url(profile_name, file_name)
+        files.append(FileWithStems(name=file_name, metadata_url=metadata_url))
 
     return files
-
-
-@get("/api/profiles/{profile_name:str}/songs/{song_name:str}/stems/{stem_name:str}/waveform")
-async def get_stem_waveform(profile_name: str, song_name: str, stem_name: str) -> File | Redirect:
-    """Serve waveform PNG for a specific stem.
-
-    The waveform is rendered as white on transparent background.
-    Frontend should apply color via CSS filters or canvas operations.
-    """
-    print(f"Fetching waveform for profile='{profile_name}', song='{song_name}', stem='{stem_name}'")
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
-
-    # For R2, redirect to the waveform URL
-    if config.r2:
-        storage = get_storage(config)
-        waveform_url = storage.get_waveform_url(profile_name, song_name, stem_name)
-        return Redirect(path=waveform_url)
-
-    # For local storage, serve the file
-    waveform_path = Path("media") / profile_name / song_name / f"{stem_name}_waveform.png"
-
-    if not waveform_path.exists():
-        raise NotFoundException(detail=f"Waveform not found for stem '{stem_name}'")
-
-    return File(
-        path=waveform_path,
-        filename=f"{stem_name}_waveform.png",
-        media_type="image/png",
-    )
-
 

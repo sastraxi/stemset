@@ -20,9 +20,7 @@ class ProfileResponse(BaseModel):
 
 
 class FileWithStems(BaseModel):
-    """File with stem paths."""
+    """File with metadata URL."""
 
     name: str
-    path: str
-    stems: dict[str, str]
     metadata_url: str

@@ -15,7 +15,6 @@ from .profile_routes import (
     get_profile,
     get_profile_files,
     get_profiles,
-    get_stem_waveform,
 )
 
 
@@ -62,7 +61,6 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
-        get_stem_waveform,
         *static_handlers,
     ],
     middleware=[auth_middleware],

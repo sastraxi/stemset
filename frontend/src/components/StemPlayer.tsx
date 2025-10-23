@@ -1,11 +1,9 @@
 import { useStemPlayer } from './useStemPlayer';
-import type { StemSources } from './useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { useState } from 'react';
 
 interface StemPlayerProps {
-  stems: StemSources;
   profileName: string;
   fileName: string;
   metadataUrl: string;
@@ -16,7 +14,7 @@ interface StemPlayerProps {
  * - UI rendering & user interaction only.
  * - Delegates all audio graph & timing logic to hook.
  */
-export function StemPlayer({ stems, profileName, fileName, metadataUrl }: StemPlayerProps) {
+export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerProps) {
   const [previewTime, setPreviewTime] = useState<number | null>(null);
   
   const {
@@ -42,7 +40,7 @@ export function StemPlayer({ stems, profileName, fileName, metadataUrl }: StemPl
     eqEnabled,
     setEqEnabled,
     gainReduction,
-  } = useStemPlayer({ profileName, fileName, stems, metadataUrl });
+  } = useStemPlayer({ profileName, fileName, metadataUrl });
 
   // Dump profile info once after load completes
   const hasLoggedRef = (window as any).__stemPlayerLoggedRef || ((window as any).__stemPlayerLoggedRef = { current: new Set<string>() });

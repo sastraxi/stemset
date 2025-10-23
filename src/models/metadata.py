@@ -20,7 +20,8 @@ class StemMetadata(BaseModel):
     measured_lufs: float
     peak_amplitude: float
     stem_gain_adjustment_db: float
-    waveform_url: str
+    stem_url: str  # Relative path to audio file (e.g., "vocals.opus")
+    waveform_url: str  # Relative path to waveform PNG (e.g., "vocals_waveform.png")
 
 
 class StemsMetadata(BaseModel):
@@ -280,14 +281,16 @@ class AudioMetadataAnalyzer:
         # Print loudness info
         print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
 
-        # Generate waveform URL
-        waveform_url = f"/api/profiles/{profile.name}/songs/{song_name}/stems/{stem_name}/waveform"
+        # Use relative paths (metadata.json sits next to the audio files)
+        stem_url = audio_file.name  # e.g., "vocals.opus"
+        waveform_url = f"{stem_name}_waveform.png"
 
         return StemMetadata(
             stem_type=stem_name,
             measured_lufs=round(loudness_lufs, 2),
             peak_amplitude=round(peak_amplitude, 4),
             stem_gain_adjustment_db=round(stem_gain_adjustment_db, 2),
+            stem_url=stem_url,
             waveform_url=waveform_url,
         )
 
@@ -373,14 +376,16 @@ class AudioMetadataAnalyzer:
             # Print loudness info
             print(f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB")
 
-            # Generate waveform URL
-            waveform_url = f"/api/profiles/{profile.name}/songs/{song_name}/stems/{stem_name}/waveform"
+            # Use relative paths (metadata.json sits next to the audio files)
+            stem_url = audio_file.name  # e.g., "vocals.opus"
+            waveform_url = f"{stem_name}_waveform.png"
 
             stems_dict[stem_name] = StemMetadata(
                 stem_type=stem_name,
                 measured_lufs=round(loudness_lufs, 2),
                 peak_amplitude=round(peak_amplitude, 4),
                 stem_gain_adjustment_db=round(stem_gain_adjustment_db, 2),
+                stem_url=stem_url,
                 waveform_url=waveform_url,
             )
 
