@@ -208,6 +208,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
                 stems={selectedFile.stems}
                 profileName={selectedProfile}
                 fileName={selectedFile.name}
+                metadataUrl={selectedFile.metadata_url}
               />
             </>
           ) : (

@@ -1,0 +1,12 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://stemset.pages.dev",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ]
+  }
+]

@@ -32,8 +32,8 @@ export async function getProfileFiles(name: string): Promise<StemFile[]> {
   return response.json();
 }
 
-export async function getFileMetadata(profileName: string, fileName: string): Promise<Record<string, any>> {
-  const response = await fetch(`${API_BASE}/api/profiles/${profileName}/files/${fileName}/metadata`, defaultOptions);
+export async function getFileMetadata(metadataUrl: string): Promise<Record<string, any>> {
+  const response = await fetch(metadataUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch metadata: ${response.statusText}`);
   }

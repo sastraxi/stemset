@@ -63,39 +63,17 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
                 break
 
         if stems:
+            metadata_url = storage.get_metadata_url(profile_name, file_name)
             files.append(
                 FileWithStems(
                     name=file_name,
                     path=f"media/{profile_name}/{file_name}",
                     stems=stems,
+                    metadata_url=metadata_url,
                 )
             )
 
     return files
-
-
-@get("/api/profiles/{profile_name:str}/files/{file_name:str}/metadata")
-async def get_file_metadata(profile_name: str, file_name: str) -> StemsMetadata:
-    """Get metadata for a specific processed file."""
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
-
-    # For R2, redirect to the metadata URL
-    if config.r2:
-        storage = get_storage(config)
-        metadata_url = storage.get_metadata_url(profile_name, file_name)
-        return Redirect(path=metadata_url)
-
-    # For local storage, read and return the file
-    media_path = profile.get_media_path()
-    metadata_file = media_path / file_name / "metadata.json"
-
-    if not metadata_file.exists():
-        raise NotFoundException(detail=f"Metadata not found for '{file_name}'")
-
-    return StemsMetadata.from_file(metadata_file)
 
 
 @get("/api/profiles/{profile_name:str}/songs/{song_name:str}/stems/{stem_name:str}/waveform")

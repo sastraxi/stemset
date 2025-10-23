@@ -12,6 +12,7 @@ export interface StemFile {
     bass?: string;
     other?: string;
   };
+  metadata_url: string;
 }
 
 export interface StemMetadata {

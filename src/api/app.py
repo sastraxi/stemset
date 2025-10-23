@@ -12,7 +12,6 @@ from litestar.static_files import create_static_files_router
 from ..auth import auth_middleware
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
-    get_file_metadata,
     get_profile,
     get_profile_files,
     get_profiles,
@@ -63,7 +62,6 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
-        get_file_metadata,
         get_stem_waveform,
         *static_handlers,
     ],

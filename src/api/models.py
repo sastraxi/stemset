@@ -25,3 +25,4 @@ class FileWithStems(BaseModel):
     name: str
     path: str
     stems: dict[str, str]
+    metadata_url: str

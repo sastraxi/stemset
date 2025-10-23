@@ -33,6 +33,7 @@ interface UseStemPlayerOptions {
   profileName: string;
   fileName: string;
   stems: StemSources;
+  metadataUrl: string;
   sampleRate?: number; // default 44100
 }
 
@@ -99,7 +100,7 @@ export interface UseStemPlayerResult {
   gainReduction: number; // positive dB amount of current gain reduction
 }
 
-export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
+export function useStemPlayer({ profileName, fileName, stems, metadataUrl, sampleRate = 44100 }: UseStemPlayerOptions): UseStemPlayerResult {
   // Public state
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMetrics, setLoadingMetrics] = useState<LoadingMetrics | null>(null);
@@ -211,17 +212,12 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
       loadedStemsRef.current.forEach((ls) => { try { ls.gain.disconnect(); } catch {}; });
       loadedStemsRef.current.clear();
       setDuration(0);
-      let metadata: Record<string, StemMetadata> = {};
       const t0 = performance.now();
       const metaStart = performance.now();
-      try {
-        const response = await getFileMetadata(profileName, fileName);
-        console.log('[useStemPlayer] Fetched metadata:', response);
-        // Handle both old format (flat) and new format (nested under "stems")
-        metadata = response.stems || response;
-      } catch (err) {
-        console.error('[useStemPlayer] Failed to fetch metadata:', err);
-      }
+      const response = await getFileMetadata(metadataUrl);
+      console.log('[useStemPlayer] Fetched metadata:', response);
+      // Handle both old format (flat) and new format (nested under "stems")
+      const metadata: Record<string, StemMetadata> = response.stems || response;
       const metaEnd = performance.now();
       const newMap = new Map<string, LoadedStem>();
       const stemEntries = Object.entries(stems).filter(([, url]) => !!url);
@@ -295,7 +291,7 @@ export function useStemPlayer({ profileName, fileName, stems, sampleRate = 44100
     return () => {
       aborted = true;
     };
-  }, [profileName, fileName, stems, ensureContext]);
+  }, [profileName, fileName, stems, metadataUrl, ensureContext]);
 
   // Persist settings
   useEffect(() => { try { localStorage.setItem('stemset.master.eq.v1', JSON.stringify(eqBands)); } catch {} }, [eqBands]);
