@@ -6,5 +6,5 @@ pages_build_output_dir = "./dist"
 compatibility_date = "2025-01-01"
 
 [vars]
-VITE_API_URL = "innovative-carmelita-sastraxi-8c766ce1.koyeb.app/api"
+VITE_API_URL = "https://innovative-carmelita-sastraxi-8c766ce1.koyeb.app"
 
