@@ -1,16 +1,12 @@
 # Cloudflare Pages configuration
+# Build command and working directory are configured in the Pages dashboard, not here.
+# This file only configures the output directory and environment variables.
+
 name = "stemset-frontend"
+pages_build_output_dir = "./dist"
 compatibility_date = "2025-01-01"
 
-[build]
-command = "bun install && bun run build"
-cwd = "."
-
-[build.upload]
-format = "service-worker"
-dir = "dist"
-
-# Environment variables for production
-[env.production]
-# API_URL will be set in Cloudflare Pages dashboard to point to Koyeb backend
-# e.g., API_URL = "https://stemset-api.koyeb.app"
+# Environment variables (use dashboard for secrets)
+[vars]
+# VITE_API_URL will be set in Cloudflare Pages dashboard
+# Production: https://stemset-api.koyeb.app/api
