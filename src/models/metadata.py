@@ -1,13 +1,13 @@
-"""Utilities for audio metadata analysis and stem metadata creation."""
+"""Utilities for audio metadata analysis and stem metadata creation.
+
+This module is split into two parts:
+1. Pydantic models (StemMetadata, StemsMetadata) - lightweight, no processing deps
+2. Processing utilities (imported lazily) - require numpy, pyloudnorm, etc.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-
-import numpy as np
-import pyloudnorm as pyln
-import soundfile as sf
-from PIL import Image, ImageDraw
 from pydantic import BaseModel
 
 from ..config import Profile
@@ -45,6 +45,8 @@ class WaveformGenerator:
 
     Waveforms are rendered in grayscale so the frontend can apply color via CSS filters
     or canvas compositing operations.
+
+    Note: This class requires processing dependencies (numpy, soundfile, PIL).
     """
 
     DEFAULT_WIDTH: int = 1920
@@ -53,7 +55,7 @@ class WaveformGenerator:
 
     def _compute_waveform_data(
         self, audio_path: Path, target_width: int, max_peak: float = 1.0
-    ) -> np.ndarray:
+    ):
         """Compute min/max envelope for waveform visualization.
 
         Args:
@@ -64,6 +66,9 @@ class WaveformGenerator:
         Returns:
             Array of shape (target_width, 2) with (min, max) values per pixel
         """
+        import numpy as np
+        import soundfile as sf
+
         audio, _sr = sf.read(str(audio_path))
 
         # Convert to mono if stereo
@@ -131,7 +136,7 @@ class WaveformGenerator:
 
     def _render_grayscale_png(
         self,
-        waveform_data: np.ndarray,
+        waveform_data,
         output_path: Path,
         width: int,
         height: int
@@ -147,6 +152,8 @@ class WaveformGenerator:
             width: Image width in pixels
             height: Image height in pixels
         """
+        from PIL import Image, ImageDraw
+
         # Create transparent image
         img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img, 'RGBA')
@@ -198,27 +205,35 @@ class WaveformGenerator:
 
 
 class AudioMetadataAnalyzer:
-    """Utility class for analyzing audio metadata and creating stem metadata."""
+    """Utility class for analyzing audio metadata and creating stem metadata.
+
+    Note: This class requires processing dependencies (numpy, pyloudnorm, soundfile).
+    """
 
     SAMPLE_RATE: int = 44100
 
     def __init__(self):
         """Initialize the metadata analyzer."""
+        import pyloudnorm as pyln
+
         self.loudness_meter = pyln.Meter(self.SAMPLE_RATE)
         self.waveform_generator = WaveformGenerator()
     
     def analyze_stem_loudness(self, audio_file: Path) -> tuple[float, float]:
         """Analyze the loudness (LUFS) and peak amplitude of an audio file.
-        
+
         Args:
             audio_file: Path to the audio file to analyze
-            
+
         Returns:
             Tuple of (loudness_lufs, peak_amplitude)
         """
+        import numpy as np
+        import soundfile as sf
+
         audio_data, _rate = sf.read(str(audio_file))
         loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)
-        
+
         # Calculate peak amplitude (absolute max value)
         if len(audio_data.shape) > 1:
             # Stereo/multi-channel: take max across all channels
