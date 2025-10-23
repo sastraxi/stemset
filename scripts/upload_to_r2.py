@@ -5,10 +5,17 @@ Usage:
     python scripts/upload_to_r2.py [profile_name]
 
 If no profile name is given, uploads all profiles.
+
+Requires:
+- R2 section uncommented in config.yaml
+- R2_* environment variables set in .env
+
+Note: This script ignores STEMSET_LOCAL_STORAGE and always uses R2.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -18,8 +25,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
+# Force R2 storage for this script
+os.environ['STEMSET_LOCAL_STORAGE'] = 'false'
+
 from src.config import get_config
-from src.storage import R2Storage
+from src.storage import get_storage, R2Storage
 
 def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
     """Upload all files for a profile to R2."""
@@ -57,14 +67,17 @@ def upload_profile(r2_storage: R2Storage, profile_name: str) -> None:
 def main() -> None:
     """Main entry point."""
     config = get_config()
+    storage = get_storage(config)
 
-    if config.r2 is None:
-        print("❌ R2 configuration not found in config.yaml")
-        print("Please uncomment the r2 section and set environment variables.")
+    # Verify we got R2 storage (not local)
+    if not isinstance(storage, R2Storage):
+        print("❌ R2 storage is not configured")
+        print("\nTo upload to R2, you need:")
+        print("1. Uncomment the r2 section in config.yaml")
+        print("2. Set R2_* environment variables in .env")
         sys.exit(1)
 
-    r2_storage = R2Storage(config.r2)
-    print(f"🪣 Connected to R2 bucket: {config.r2.bucket_name}")
+    print(f"🪣 Connected to R2 bucket: {storage.config.bucket_name}")
 
     # Get profile name from command line or upload all
     if len(sys.argv) > 1:
@@ -75,11 +88,11 @@ def main() -> None:
             print(f"Available profiles: {', '.join(config.get_profile_names())}")
             sys.exit(1)
 
-        upload_profile(r2_storage, profile_name)
+        upload_profile(storage, profile_name)
     else:
         print(f"📋 Uploading all profiles: {', '.join(config.get_profile_names())}")
         for profile in config.profiles:
-            upload_profile(r2_storage, profile.name)
+            upload_profile(storage, profile.name)
 
     print("\n✅ Done!")
 

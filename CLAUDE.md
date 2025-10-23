@@ -276,16 +276,23 @@ We refactor aggressively. If a pattern emerges three times, abstract it. If an a
 **Development `.env`**:
 ```bash
 STEMSET_BYPASS_AUTH=true  # Or false to test OAuth locally
+STEMSET_LOCAL_STORAGE=true  # Use local media/ even if R2 is configured
 OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
 FRONTEND_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 JWT_SECRET=...
+R2_ACCOUNT_ID=...  # For upload script
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=stemset-media
+R2_PUBLIC_URL=...  # Optional
 ```
 
 **Production (Cloudflare + Koyeb)**:
 ```bash
 STEMSET_BYPASS_AUTH=false
+# STEMSET_LOCAL_STORAGE not set (or =false) → use R2
 OAUTH_REDIRECT_URI=https://stemset-api.koyeb.app/auth/callback
 FRONTEND_URL=https://stemset.pages.dev
 GOOGLE_CLIENT_ID=...
@@ -336,7 +343,10 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 - Protocol-based interface supports both local filesystem and R2
 - `LocalStorage`: Serves files from `media/` directory (development)
 - `R2Storage`: Generates presigned URLs or public URLs for R2 (production)
-- Switched via `r2` config section in `config.yaml`
+- Selection logic:
+  - If `STEMSET_LOCAL_STORAGE=true` → always use local storage
+  - If `STEMSET_LOCAL_STORAGE=false` → always use R2 (fails if not configured)
+  - If not set → use R2 if `config.yaml` has `r2` section, otherwise local
 
 **API Routes**:
 - `/api/profiles` → List all profiles
@@ -349,8 +359,16 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 1. Run `uv run stemset process <profile>` locally to process audio files
 2. Outputs are saved to local `media/<profile>/` directory
 3. Upload to R2: `python scripts/upload_to_r2.py <profile>`
+   - Requires `r2` section in `config.yaml` and R2_* env vars
+   - Script automatically forces R2 storage (ignores `STEMSET_LOCAL_STORAGE`)
 4. Backend generates URLs pointing to R2
 5. Frontend streams audio directly from R2 (zero egress fees!)
+
+**Local Development with R2 Configured**:
+- Keep `r2` section uncommented in `config.yaml` (needed for upload script)
+- Set `STEMSET_LOCAL_STORAGE=true` in `.env`
+- API will serve from local `media/` directory
+- Upload script still works: `python scripts/upload_to_r2.py`
 
 **Alternative: Single-Server (Render.com)**:
 See `render.yaml` for traditional deployment where backend serves both API and static files.

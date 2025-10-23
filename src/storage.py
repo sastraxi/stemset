@@ -2,10 +2,51 @@
 
 from __future__ import annotations
 
+import os
+import re
 import boto3
 from pathlib import Path
 from typing import Protocol
 from .config import Config, R2Config
+import botocore.config
+
+# import ssl
+
+# import warnings
+
+# warnings.warn(
+#     "Disabling VERIFY_X509_STRICT in SSL context. "
+#     "This reverts Python 3.13's stricter SSL checks."
+# )
+
+# # Save original function
+# _original_create_default_context = ssl.create_default_context
+
+# def relaxed_create_default_context(
+#     purpose=ssl.Purpose.SERVER_AUTH,
+#     *,
+#     cafile=None,
+#     capath=None,
+#     cadata=None
+# ):
+#     ctx = _original_create_default_context(
+#         purpose=purpose, 
+#         cafile=cafile, 
+#         capath=capath, 
+#         cadata=cadata
+#     )
+    
+#     # Disable Python 3.13 strict flags
+#     if hasattr(ssl, "VERIFY_X509_STRICT"):
+#         ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+#     if hasattr(ssl, "VERIFY_X509_PARTIAL_CHAIN"):
+#         ctx.verify_flags &= ~ssl.VERIFY_X509_PARTIAL_CHAIN
+    
+#     return ctx
+
+# # Apply monkey-patch
+# ssl.create_default_context = relaxed_create_default_context
+
 
 
 class StorageBackend(Protocol):
@@ -61,12 +102,22 @@ class R2Storage:
 
     def __init__(self, r2_config: R2Config):
         """Initialize R2 storage with configuration."""
+
         self.config = r2_config
+
+        # boto_config = botocore.config.Config(
+        #     signature_version='s3v4',
+        #     retries={'max_attempts': 3, 'mode': 'standard'},
+        # )
+
+        print(r2_config.access_key_id)
+
         self.s3_client = boto3.client(
             "s3",
             endpoint_url=f"https://{r2_config.account_id}.r2.cloudflarestorage.com",
             aws_access_key_id=r2_config.access_key_id,
             aws_secret_access_key=r2_config.secret_access_key,
+            region_name="auto",
         )
 
     def get_file_url(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> str:
@@ -145,7 +196,13 @@ _storage: StorageBackend | None = None
 
 
 def get_storage(config: Config | None = None) -> StorageBackend:
-    """Get the configured storage backend."""
+    """Get the configured storage backend.
+
+    Storage selection:
+    - If STEMSET_LOCAL_STORAGE=true, use local storage
+    - If STEMSET_LOCAL_STORAGE=false, require R2 config and use R2 storage
+    - If STEMSET_LOCAL_STORAGE not set, use R2 if configured, otherwise local
+    """
     global _storage
 
     if _storage is not None:
@@ -156,10 +213,25 @@ def get_storage(config: Config | None = None) -> StorageBackend:
         from .config import get_config
         config = get_config()
 
-    # Initialize appropriate storage backend
-    if config.r2 is not None:
+    # Check for explicit storage backend selection
+    local_storage_env = os.getenv("STEMSET_LOCAL_STORAGE", "").lower()
+
+    if local_storage_env == "true":
+        # Explicitly use local storage
+        _storage = LocalStorage()
+    elif local_storage_env == "false":
+        # Explicitly use R2 storage (require config)
+        if config.r2 is None:
+            raise ValueError(
+                "STEMSET_LOCAL_STORAGE=false but R2 is not configured in config.yaml. "
+                "Either set STEMSET_LOCAL_STORAGE=true or uncomment the r2 section in config.yaml."
+            )
         _storage = R2Storage(config.r2)
     else:
-        _storage = LocalStorage()
+        # No explicit preference - use R2 if configured, otherwise local
+        if config.r2 is not None:
+            _storage = R2Storage(config.r2)
+        else:
+            _storage = LocalStorage()
 
     return _storage
