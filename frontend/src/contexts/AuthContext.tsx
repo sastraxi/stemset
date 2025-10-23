@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+// Use environment variable for API URL in production, fallback to root for local dev
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 interface User {
   id: string;
   name: string;
@@ -28,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/auth/status', {
+      const response = await fetch(`${API_BASE}/auth/status`, {
         credentials: 'include', // Include cookies
       });
       const status: AuthStatus = await response.json();
@@ -43,12 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = () => {
     // Redirect to Google OAuth login
-    window.location.href = '/auth/login';
+    window.location.href = `${API_BASE}/auth/login`;
   };
 
   const logout = async () => {
     try {
-      await fetch('/auth/logout', {
+      await fetch(`${API_BASE}/auth/logout`, {
         credentials: 'include',
       });
       setAuthStatus({ authenticated: false });
