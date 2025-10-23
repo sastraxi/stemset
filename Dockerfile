@@ -18,7 +18,7 @@ COPY pyproject.toml uv.lock ./
 # ============================================================================
 FROM base AS api
 
-# Install only API dependencies (no processing group)
+# Install only API dependencies (no processing group, no dev group)
 RUN uv sync --frozen --no-dev
 
 # Copy source code
@@ -28,8 +28,8 @@ COPY config.yaml ./
 # Expose port
 EXPOSE 8000
 
-# Run uvicorn
-CMD ["uv", "run", "uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run uvicorn directly from the venv (don't use `uv run` which re-syncs)
+CMD [".venv/bin/uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # ============================================================================
 # Processing Target - Full environment with ML dependencies
