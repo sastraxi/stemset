@@ -27,7 +27,8 @@ r2:
   bucket_name: ${R2_BUCKET_NAME}
   public_url: ${R2_PUBLIC_URL}  # Optional: if bucket has public access
 
-# GPU Worker URL (required for GPU processing, which is the default)
+# GPU Worker URL (required for remote GPU processing)
+# Modal endpoint format: https://<workspace>--stemset-gpu-process.modal.run
 # Set GPU_WORKER_URL environment variable or use --local flag for local processing
 gpu_worker_url: ${GPU_WORKER_URL}
 

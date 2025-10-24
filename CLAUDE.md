@@ -7,7 +7,7 @@ Stemset is an AI-powered audio stem separation application with Google OAuth aut
 2. **Frontend**: React/TypeScript web player with Google OAuth for secure access and independent stem volume controls
 3. **Processing**: Audio separation can run either:
    - **Locally**: `uv run stemset process <profile>` (default)
-   - **Remotely**: On-demand Koyeb GPU instances (configurable per profile)
+   - **Remotely**: On-demand Modal serverless GPU functions (pay-per-second, no idle charges)
    - Processed stems stored in R2 and optionally downloaded to local `media/`
 
 ## Core Principles
@@ -121,10 +121,10 @@ auth:
 
 **Remote Processing**: Enable GPU processing per profile:
 ```yaml
-gpu_worker_url: https://stemset-gpu.koyeb.app
+gpu_worker_url: ${GPU_WORKER_URL}  # Modal endpoint
 profiles:
   - name: "h4n"
-    remote: true  # Use GPU worker instead of local processing
+    remote: true  # Use Modal GPU worker instead of local processing
     strategy: "hdemucs_mmi"
 ```
 
@@ -168,9 +168,12 @@ src/
 │   ├── auth_routes.py     # OAuth endpoints
 │   ├── profile_routes.py  # Profile and file endpoints
 │   └── job_routes.py      # Job callbacks and processing triggers
-├── gpu_worker/            # GPU worker service (deployed to Koyeb)
-│   ├── app.py             # Litestar HTTP endpoint for processing
-│   └── models.py          # Job payload and result models
+├── modal_worker/          # Modal serverless GPU worker
+│   ├── app.py             # Modal function with R2 mount and GPU processing
+│   └── __init__.py
+├── gpu_worker/            # Shared models (used by CLI, API, and Modal worker)
+│   ├── models.py          # Job payload and result models (ProcessingJob, ProcessingResult)
+│   └── __init__.py
 └── models/
     ├── registry.py        # Frozen MODEL_REGISTRY mapping names to classes
     ├── audio_separator_base.py  # AudioSeparator ABC
@@ -192,8 +195,7 @@ scripts/
 └── check_deployment.py    # Deployment configuration checker
 
 docs/
-├── ondemand-gpu.md        # Research on GPU processing architecture
-└── gpu-worker-deployment.md # Deployment guide for GPU worker
+└── modal-deployment.md    # Modal GPU worker deployment guide
 ```
 
 ## What We Don't Do
@@ -378,13 +380,13 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 **Components**:
 1. **Frontend** (Cloudflare Pages): Serves static React app from global CDN
 2. **Backend API** (Koyeb free tier): Python/Litestar service with OAuth and API endpoints
-3. **GPU Worker** (Koyeb GPU, scale-to-zero): On-demand audio processing with A100 GPU
+3. **GPU Worker** (Modal): Serverless GPU functions with pay-per-second billing, R2 mount
 4. **Storage** (Cloudflare R2): S3-compatible object storage for audio files
 
 **Build** (automated via git push):
 - **Cloudflare Pages**: `cd frontend && bun install && bun run build` → serves `dist/`
 - **Koyeb API**: Buildpack auto-detects Python, runs `uv sync`, starts uvicorn (target: `api`)
-- **Koyeb GPU Worker**: Docker build with `--target gpu-worker`, CUDA support, scale-to-zero
+- **Modal GPU Worker**: `modal deploy src/modal_worker/app.py` → creates HTTPS endpoint
 
 **Storage Abstraction** (`storage.py`):
 - Protocol-based interface supports both local filesystem and R2
@@ -414,21 +416,21 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 2. Outputs saved to local `media/<profile>/`
 3. Upload to R2: `python scripts/upload_to_r2.py <profile>`
 
-**Remote GPU Processing**:
+**Remote GPU Processing** (Modal):
 1. Set `remote: true` in profile config
 2. Run `uv run stemset process <profile>`
 3. CLI uploads input to R2 (`inputs/<profile>/`)
-4. CLI triggers GPU worker via HTTP
-5. GPU worker processes on A100 GPU (scale-to-zero, 200ms cold start)
-6. GPU worker uploads stems to R2
+4. CLI triggers Modal worker via HTTP
+5. Modal worker processes with GPU (pay-per-second, <1s cold start)
+6. Modal uploads stems to R2
 7. CLI downloads results to local `media/<profile>/`
 
-**Web Upload Processing**:
+**Web Upload Processing** (Modal):
 1. Frontend uploads file to backend
 2. Backend uploads to R2 (`inputs/<profile>/`)
-3. Backend triggers GPU worker
-4. GPU worker processes and uploads stems
-5. GPU worker calls back to API
+3. Backend triggers Modal worker
+4. Modal processes and uploads stems
+5. Modal calls back to API
 6. Frontend polls for completion
 7. Frontend streams stems from R2
 
@@ -438,11 +440,12 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 - Can test remote processing: set `remote: true` in profile config
 - Upload script still works: `python scripts/upload_to_r2.py`
 
-**GPU Worker Dockerfile**:
-- Target: `gpu-worker` (nvidia/cuda base image)
-- Includes all processing dependencies
-- Exposes HTTP endpoint on port 8000
-- See `docs/gpu-worker-deployment.md` for full deployment guide
+**Modal Worker Deployment**:
+- Deploy with: `modal deploy src/modal_worker/app.py`
+- Creates serverless HTTPS endpoint automatically
+- Mounts R2 bucket via CloudBucketMount (no egress fees)
+- Pay-per-second billing with no idle charges
+- See `docs/modal-deployment.md` for full deployment guide
 
 **Alternative: Single-Server (Render.com)**:
 See `render.yaml` for traditional deployment where backend serves both API and static files.

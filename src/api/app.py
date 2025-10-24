@@ -8,7 +8,7 @@ from pathlib import Path
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
-from litestar.static_files import create_static_files_router
+from litestar.static_files import create_static_files_router  # pyright: ignore[reportUnknownVariableType]
 
 from ..auth import auth_middleware
 from ..config import get_config

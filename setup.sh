@@ -31,8 +31,9 @@ echo "✓ Dependencies check passed"
 echo ""
 echo "📦 Installing Python dependencies..."
 echo "   - API dependencies (lightweight)"
+echo "   - Shared dependencies (pydantic, boto3, httpx, pyyaml)"
 echo "   - Processing dependencies (ML models, audio libraries)"
-uv sync --group processing
+uv sync  # Installs default-groups: shared + processing
 
 # Install frontend dependencies
 echo ""

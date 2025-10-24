@@ -10,7 +10,7 @@ Stemset processes audio recordings locally and separates them into individual in
 
 - **Google OAuth Authentication** - Secure access control with email allowlist
 - **Multiple separation strategies** - Configure successive or parallel model pipelines
-- **On-Demand GPU Processing** - Optional remote processing using Koyeb scale-to-zero GPU instances
+- **On-Demand GPU Processing** - Optional remote processing using Modal serverless GPUs (pay-per-second)
 - **LUFS normalization** - ITU-R BS.1770-4 compliant loudness analysis with per-stem gain control
 - **Waveform visualization** - Auto-generated waveforms with perceptual scaling
 - **Content-based deduplication** - SHA256 hashing prevents reprocessing renamed files
@@ -22,15 +22,15 @@ Stemset processes audio recordings locally and separates them into individual in
 - **Backend:** Python/Litestar API with Google OAuth
 - **Frontend:** React/TypeScript single-page application with Web Audio API
 - **Storage:** Local filesystem or Cloudflare R2 (zero egress fees!)
-- **Processing:** Local CLI (CPU/GPU) or remote GPU worker (Koyeb scale-to-zero)
-- **Deployment:** Hybrid cloud (Cloudflare Pages + Koyeb + R2) or traditional (Render)
+- **Processing:** Local CLI (CPU/GPU) or remote GPU worker (Modal serverless)
+- **Deployment:** Hybrid cloud (Cloudflare Pages + Koyeb API + Modal GPU + R2) or traditional (Render)
 
 ### On-Demand GPU Processing (Default when configured)
 
-Stemset can use Koyeb's scale-to-zero GPU instances for fast processing:
+Stemset can use Modal's serverless GPUs for cost-effective processing:
 
-- **Auto-detects GPU availability** - Uses GPU if `GPU_WORKER_URL` is set, otherwise processes locally
-- **Pay only for processing time** - ~$0.0007 per 5-second job (99% idle = ~$2/month)
+- **Auto-detects GPU availability** - Uses remote GPU if `GPU_WORKER_URL` is set, otherwise processes locally
+- **Pay-per-second billing** - ~$0.021 per 30-second job with A100 GPU, no idle charges
 - **Works everywhere** - CLI uploads to R2, processes on GPU, results available in web UI
 - **Web upload support** - Drag-and-drop files directly in the web interface
 - **Force local** - Use `--local` flag to override GPU and process locally
@@ -38,7 +38,7 @@ Stemset can use Koyeb's scale-to-zero GPU instances for fast processing:
 **Configuration:**
 
 ```yaml
-gpu_worker_url: ${GPU_WORKER_URL}  # Optional: set to enable GPU processing
+gpu_worker_url: ${GPU_WORKER_URL}  # Optional: Modal endpoint URL
 
 profiles:
   - name: "h4n"
@@ -46,11 +46,11 @@ profiles:
 ```
 
 **Behavior:**
-- `GPU_WORKER_URL` set → uses GPU worker automatically
+- `GPU_WORKER_URL` set → uses Modal GPU worker automatically
 - `GPU_WORKER_URL` not set → processes locally
 - `--local` flag → always processes locally (even if GPU_WORKER_URL is set)
 
-See [docs/gpu-worker-deployment.md](docs/gpu-worker-deployment.md) for deployment guide and cost optimization.
+See [docs/modal-deployment.md](docs/modal-deployment.md) for deployment guide and cost optimization.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
@@ -73,7 +73,7 @@ This installs:
 - **Processing dependencies** (heavy ML libraries - audio-separator, onnxruntime, etc.)
 - **Frontend dependencies** (React, Vite, etc.)
 
-**Note**: Koyeb API deployment only installs API dependencies (~100MB), not processing dependencies (~2GB+). If using remote GPU processing, the GPU worker service installs full processing dependencies with CUDA support.
+**Note**: Koyeb API deployment only installs API dependencies (~100MB), not processing dependencies (~2GB+). If using remote GPU processing, the Modal worker installs full processing dependencies with GPU support automatically.
 
 ### Configuration
 
@@ -337,17 +337,17 @@ uv run stemset --help
 
 ## Deployment Costs
 
-**Recommended (Cloudflare + Koyeb + R2):**
-- **$0-2/month** for most use cases
+**Recommended (Cloudflare + Koyeb + Modal + R2):**
+- **$0-1/month** for most use cases
 - Cloudflare Pages: Unlimited bandwidth (free)
 - Koyeb API: 100GB bandwidth/month (free tier)
-- Koyeb GPU Worker: Scale-to-zero A100 GPU (~$0.0007/job, ~$2/month for 100 jobs/day)
+- Modal GPU: Pay-per-second A100 GPU (~$0.021/job, ~$0.60/month for 100 jobs @ 30s each)
 - R2 Storage: 10GB + zero egress fees (free tier)
-- Scales cost-effectively as you grow
+- Scales cost-effectively as you grow (Modal's $30 free credits cover ~1,400 jobs)
 
 **GPU Processing Costs (Optional):**
-- GPU processing (when configured): ~$0.50/hour when active, $0 when sleeping
-- Example: 100 five-second jobs/day = ~$2/month
+- Modal GPU (when configured): Pay only for compute seconds, no idle charges
+- Example: 100 jobs/month @ 30s each = ~$0.60/month
 - Local processing (default or --local flag): $0/month (uses your CPU/GPU)
 
 **Alternative (Render.com):**
@@ -357,7 +357,7 @@ uv run stemset --help
 - No GPU support
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed cost comparison.
-See [docs/gpu-worker-deployment.md](docs/gpu-worker-deployment.md) for GPU worker setup.
+See [docs/modal-deployment.md](docs/modal-deployment.md) for Modal GPU worker setup.
 
 ## License
 
