@@ -7,15 +7,18 @@ from pathlib import Path
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
+from litestar.datastructures import State
 from litestar.static_files import create_static_files_router
 
 from ..auth import auth_middleware
+from ..config import get_config
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
     get_profile,
     get_profile_files,
     get_profiles,
 )
+from .job_routes import job_complete, job_status, trigger_processing, upload_file
 
 
 media_router = create_static_files_router(
@@ -52,6 +55,12 @@ cors_config = CORSConfig(
     allow_credentials=True,
 )
 
+# Load configuration and set up state
+config = get_config()
+
+# Get base URL for callbacks (defaults to localhost:8000 if not set)
+base_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 app = Litestar(
     route_handlers=[
         auth_status,
@@ -61,8 +70,13 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
+        job_complete,
+        job_status,
+        trigger_processing,
+        upload_file,
         *static_handlers,
     ],
     middleware=[auth_middleware],
     cors_config=cors_config,
+    state=State({"config": config, "base_url": base_url}),
 )

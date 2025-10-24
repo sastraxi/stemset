@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StemPlayer } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
+import { Upload } from './components/Upload';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
@@ -180,10 +181,17 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
             </button>
           </div>
 
+          {selectedProfile && (
+            <Upload
+              profileName={selectedProfile}
+              onUploadComplete={handleRefresh}
+            />
+          )}
+
           <div className="file-list">
             <h2>Recordings</h2>
             {files.length === 0 ? (
-              <p className="empty-state">No processed files yet. Use the CLI to process audio files.</p>
+              <p className="empty-state">No processed files yet. Upload a file above or use the CLI.</p>
             ) : (
               <ul>
                 {files.map((file) => (

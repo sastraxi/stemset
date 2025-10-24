@@ -2,28 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
+from ..utils import compute_file_hash
+
 AUDIO_EXTENSIONS = {".wav", ".wave"}
-
-
-def compute_file_hash(file_path: Path) -> str:
-    """Compute SHA256 hash of file contents.
-
-    Args:
-        file_path: Path to the file
-
-    Returns:
-        Hex digest of the file hash
-    """
-    sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        # Read in chunks to handle large files
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256.update(chunk)
-    return sha256.hexdigest()
 
 
 def derive_output_name(file_path: Path) -> str:
@@ -53,7 +37,7 @@ def derive_output_name(file_path: Path) -> str:
     return name or "unnamed"
 
 
-def scan_for_new_files(profile_name: str, source_path: Path, media_path: Path) -> list[tuple[Path, str]]:
+def scan_for_new_files(source_path: Path, media_path: Path) -> list[tuple[Path, str]]:
     """Scan source folder for new audio files that haven't been processed.
 
     Args:

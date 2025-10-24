@@ -15,9 +15,10 @@ auth:
   jwt_secret: ${JWT_SECRET}
   redirect_uri: ${OAUTH_REDIRECT_URI}
 
-# Cloudflare R2 Storage (required for upload script and production)
+# Cloudflare R2 Storage (required for upload script, production, and remote processing)
 # For local dev: Keep this uncommented, but set STEMSET_LOCAL_STORAGE=true in .env
 # For production: Keep uncommented and don't set STEMSET_LOCAL_STORAGE (or set to false)
+# For remote processing: Required for GPU worker to access files
 # Environment variables will be substituted: ${VAR_NAME}
 r2:
   account_id: ${R2_ACCOUNT_ID}
@@ -25,6 +26,10 @@ r2:
   secret_access_key: ${R2_SECRET_ACCESS_KEY}
   bucket_name: ${R2_BUCKET_NAME}
   public_url: ${R2_PUBLIC_URL}  # Optional: if bucket has public access
+
+# GPU Worker URL (required for GPU processing, which is the default)
+# Set GPU_WORKER_URL environment variable or use --local flag for local processing
+gpu_worker_url: ${GPU_WORKER_URL}
 
 strategies:
 #################################

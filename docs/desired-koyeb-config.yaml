@@ -1,7 +1,30 @@
 # Koyeb deployment configuration for Stemset backend
-app:
+# This is not an official Koyeb file, but a recommended setup for deploying Stemset.
+# See https://www.koyeb.com/docs/reference/services
+app:  
   name: stemset-api
   services:
+    - name: gpu-worker
+      regions:
+        - was  # Washington D.C.
+      instance_types:
+        - gpu-nvidia-a100  # A100 GPU
+      autoscaling:
+        min: 0  # Scale to zero
+        max: 1
+      ports:
+        - port: 8000
+          protocol: http
+      env:
+        - name: R2_ACCOUNT_ID
+          scope: secret
+        - name: R2_ACCESS_KEY_ID
+          scope: secret
+        - name: R2_SECRET_ACCESS_KEY
+          scope: secret
+        - name: R2_BUCKET_NAME
+          scope: secret
+
     - name: api
       type: web
       instance_type: free  # Free tier: 512MB RAM, 0.1 vCPU

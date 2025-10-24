@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import boto3
 from pathlib import Path
 from typing import Protocol
@@ -27,6 +28,18 @@ class StorageBackend(Protocol):
 
     def list_files(self, profile_name: str) -> list[str]:
         """List all processed files for a profile."""
+        ...
+
+    def upload_input_file(self, local_path: Path, profile_name: str, filename: str) -> str:
+        """Upload an input file and return its URL/key."""
+        ...
+
+    def get_input_url(self, profile_name: str, filename: str) -> str:
+        """Get URL for accessing an input file."""
+        ...
+
+    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
+        """Download an input file to local destination."""
         ...
 
 
@@ -56,6 +69,25 @@ class LocalStorage:
             if folder.is_dir() and not folder.name.startswith("."):
                 files.append(folder.name)
         return files
+
+    def upload_input_file(self, local_path: Path, profile_name: str, filename: str) -> str:
+        """Copy input file to local inputs directory and return path."""
+        inputs_dir = Path("inputs") / profile_name
+        inputs_dir.mkdir(parents=True, exist_ok=True)
+
+        dest_path = inputs_dir / filename
+        shutil.copy2(local_path, dest_path)
+
+        return str(dest_path)
+
+    def get_input_url(self, profile_name: str, filename: str) -> str:
+        """Get path for accessing an input file (local filesystem)."""
+        return str(Path("inputs") / profile_name / filename)
+
+    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
+        """Copy input file from inputs directory to destination."""
+        source_path = Path("inputs") / profile_name / filename
+        shutil.copy2(source_path, dest_path)
 
 
 class R2Storage:
@@ -140,6 +172,40 @@ class R2Storage:
             str(local_path),
             self.config.bucket_name,
             key,
+        )
+
+    def upload_input_file(self, local_path: Path, profile_name: str, filename: str) -> str:
+        """Upload an input file to R2 and return its key."""
+        key = f"inputs/{profile_name}/{filename}"
+        self.s3_client.upload_file(
+            str(local_path),
+            self.config.bucket_name,
+            key,
+        )
+        return key
+
+    def get_input_url(self, profile_name: str, filename: str) -> str:
+        """Get presigned URL or public URL for accessing an input file."""
+        key = f"inputs/{profile_name}/{filename}"
+
+        # If public URL is configured, use it directly
+        if self.config.public_url:
+            return f"{self.config.public_url}/{key}"
+
+        # Otherwise generate presigned URL (valid for 1 hour)
+        return self.s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self.config.bucket_name, "Key": key},
+            ExpiresIn=3600,
+        )
+
+    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
+        """Download an input file from R2 to local destination."""
+        key = f"inputs/{profile_name}/{filename}"
+        self.s3_client.download_file(
+            self.config.bucket_name,
+            key,
+            str(dest_path),
         )
 
 

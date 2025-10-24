@@ -5,29 +5,26 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from ..config import get_config
+from ..config import Profile, get_config
+from ..utils import compute_file_hash
 from ..modern_separator import StemSeparator
-from .scanner import AUDIO_EXTENSIONS, compute_file_hash, derive_output_name, scan_for_new_files
+from .scanner import AUDIO_EXTENSIONS, derive_output_name, scan_for_new_files
+from .remote_processor import process_file_remotely
 
 
-def process_single_file(profile_name: str, file_path: Path) -> int:
+def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int:
     """Process a single file using a profile, ignoring hash tracking.
 
     Args:
-        profile_name: Name of the profile to use
+        profile: Profile object to use
         file_path: Path to the audio file to process
+        use_local: If True, force local; if False, force GPU; if None, auto-detect
 
     Returns:
         Exit code (0 for success, 1 for error)
     """
     try:
-        # Load config and get profile
         config = get_config()
-        profile = config.get_profile(profile_name)
-        if not profile:
-            print(f"Error: Profile '{profile_name}' not found in config.yaml", file=sys.stderr)
-            print(f"Available profiles: {', '.join(p.name for p in config.profiles)}", file=sys.stderr)
-            return 1
 
         # Validate file exists and is an audio file
         if not file_path.exists():
@@ -56,53 +53,92 @@ def process_single_file(profile_name: str, file_path: Path) -> int:
         print(f"Output folder: {output_folder}")
         print()
 
-        # Run separation
-        separator = StemSeparator(profile)
+        if use_gpu:
+            print("Using GPU worker for processing (use --local to process locally)")
+            try:
+                stem_paths, _stem_metadata = process_file_remotely(
+                    config,
+                    profile,
+                    file_path,
+                    output_folder_name,
+                    output_folder
+                )
 
-        try:
-            # Run separation (blocking operation)
-            # Metadata and waveforms are saved automatically
-            stem_paths, _stem_metadata = separator.separate_and_normalize(
-                file_path,
-                output_folder
-            )
+                print()
+                print("=" * 60)
+                print(f"✓ Success! Created {len(stem_paths)} stems")
+                for stem_name, stem_path in stem_paths.items():
+                    print(f"  - {stem_name}: {stem_path.name}")
+                print(f"Output folder: {output_folder}")
 
-            print()
-            print("=" * 60)
-            print(f"✓ Success! Created {len(stem_paths)} stems")
-            for stem_name, stem_path in stem_paths.items():
-                print(f"  - {stem_name}: {stem_path.name}")
-            print(f"Output folder: {output_folder}")
+                return 0
 
-            return 0
+            except Exception as e:
+                print(f"✗ Failed: {e}", file=sys.stderr)
+                return 1
+        else:
+            # Local processing
+            print("Processing locally")
+            separator = StemSeparator(profile)
 
-        except Exception as e:
-            print(f"✗ Failed: {e}", file=sys.stderr)
-            return 1
+            try:
+                # Run separation (blocking operation)
+                # Metadata and waveforms are saved automatically
+                stem_paths, _stem_metadata = separator.separate_and_normalize(
+                    file_path,
+                    output_folder
+                )
+
+                print()
+                print("=" * 60)
+                print(f"✓ Success! Created {len(stem_paths)} stems")
+                for stem_name, stem_path in stem_paths.items():
+                    print(f"  - {stem_name}: {stem_path.name}")
+                print(f"Output folder: {output_folder}")
+
+                # Upload to R2 if configured
+                if config.r2 is not None:
+                    print()
+                    print("Uploading results to R2...")
+                    from ..storage import R2Storage
+                    r2_storage = R2Storage(config.r2)
+
+                    # Upload all files in output folder
+                    for file in output_folder.iterdir():
+                        if file.is_file():
+                            print(f"  Uploading {file.name}...")
+                            r2_storage.upload_file(
+                                file,
+                                profile.name,
+                                output_folder_name,
+                                file.name
+                            )
+                    print("✓ Upload complete!")
+
+                return 0
+
+            except Exception as e:
+                print(f"✗ Failed: {e}", file=sys.stderr)
+                return 1
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
 
-def process_profile(profile_name: str) -> int:
+def process_profile(profile: Profile, use_gpu: bool) -> int:
     """Process all files for a given profile.
 
     Args:
-        profile_name: Name of the profile to process
+        profile: Profile object to process
+        use_local: If True, force local; if False, force GPU; if None, auto-detect
 
     Returns:
         Exit code (0 for success, 1 for error)
     """
     try:
-        # Load config and get profile
         config = get_config()
-        profile = config.get_profile(profile_name)
-        if not profile:
-            print(f"Error: Profile '{profile_name}' not found in config.yaml", file=sys.stderr)
-            print(f"Available profiles: {', '.join(p.name for p in config.profiles)}", file=sys.stderr)
-            return 1
-
+        
         print(f"Processing profile: {profile.name}")
         print(f"Source folder: {profile.source_folder}")
         print(f"Output format: {profile.output.format} @ {profile.output.bitrate}kbps")
@@ -112,7 +148,7 @@ def process_profile(profile_name: str) -> int:
         print("Scanning for new files...")
         source_path = profile.get_source_path()
         media_path = profile.get_media_path()
-        new_files = scan_for_new_files(profile_name, source_path, media_path)
+        new_files = scan_for_new_files(source_path, media_path)
 
         if not new_files:
             print("No new files found.")
@@ -124,35 +160,89 @@ def process_profile(profile_name: str) -> int:
         print()
 
         # Process all files sequentially
-        separator = StemSeparator(profile)
         processed_count = 0
         failed_count = 0
 
-        for i, (input_file, output_name) in enumerate(new_files):
-            output_folder = media_path / output_name
+        if use_gpu:
+            print("Using GPU worker for processing (use --local to process locally)")
+            print()
 
-            print(f"[{i + 1}/{len(new_files)}] Processing: {input_file.name}")
-            print(f"  Output folder: {output_folder}")
+            for i, (input_file, output_name) in enumerate(new_files):
+                output_folder = media_path / output_name
 
-            try:
-                # Run separation (blocking operation)
-                # Metadata and waveforms are saved automatically
-                stem_paths, _stem_metadata = separator.separate_and_normalize(
-                    input_file,
-                    output_folder
-                )
+                print(f"[{i + 1}/{len(new_files)}] Processing: {input_file.name}")
+                print(f"  Output folder: {output_folder}")
 
-                processed_count += 1
+                try:
+                    stem_paths, _stem_metadata = process_file_remotely(
+                        config,
+                        profile,
+                        input_file,
+                        output_name,
+                        output_folder
+                    )
 
-                print(f"  ✓ Success! Created {len(stem_paths)} stems")
-                for stem_name, stem_path in stem_paths.items():
-                    print(f"    - {stem_name}: {stem_path.name}")
-                print()
+                    processed_count += 1
 
-            except Exception as e:
-                failed_count += 1
-                print(f"  ✗ Failed: {e}", file=sys.stderr)
-                print()
+                    print(f"  ✓ Success! Created {len(stem_paths)} stems")
+                    for stem_name, stem_path in stem_paths.items():
+                        print(f"    - {stem_name}: {stem_path.name}")
+                    print()
+
+                except Exception as e:
+                    failed_count += 1
+                    print(f"  ✗ Failed: {e}", file=sys.stderr)
+                    print()
+
+        else:
+            # Local processing
+            print("Processing locally")
+            print()
+            separator = StemSeparator(profile)
+
+            for i, (input_file, output_name) in enumerate(new_files):
+                output_folder = media_path / output_name
+
+                print(f"[{i + 1}/{len(new_files)}] Processing: {input_file.name}")
+                print(f"  Output folder: {output_folder}")
+
+                try:
+                    # Run separation (blocking operation)
+                    # Metadata and waveforms are saved automatically
+                    stem_paths, _stem_metadata = separator.separate_and_normalize(
+                        input_file,
+                        output_folder
+                    )
+
+                    processed_count += 1
+
+                    print(f"  ✓ Success! Created {len(stem_paths)} stems")
+                    for stem_name, stem_path in stem_paths.items():
+                        print(f"    - {stem_name}: {stem_path.name}")
+
+                    # Upload to R2 if configured
+                    if config.r2 is not None:
+                        print(f"  Uploading to R2...")
+                        from ..storage import R2Storage
+                        r2_storage = R2Storage(config.r2)
+
+                        # Upload all files in output folder
+                        for file in output_folder.iterdir():
+                            if file.is_file():
+                                r2_storage.upload_file(
+                                    file,
+                                    profile.name,
+                                    output_name,
+                                    file.name
+                                )
+                        print(f"  ✓ Upload complete!")
+
+                    print()
+
+                except Exception as e:
+                    failed_count += 1
+                    print(f"  ✗ Failed: {e}", file=sys.stderr)
+                    print()
 
         # Summary
         print("=" * 60)

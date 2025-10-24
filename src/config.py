@@ -180,6 +180,9 @@ class Config(BaseModel):
     r2: R2Config | None = Field(
         default=None, description="Cloudflare R2 storage configuration (optional)"
     )
+    gpu_worker_url: str | None = Field(
+        default=None, description="URL of GPU worker service for remote processing (optional)"
+    )
 
     @classmethod
     def _collect_required_env_vars(cls, data: Any, collected: set[str] | None = None) -> set[str]:

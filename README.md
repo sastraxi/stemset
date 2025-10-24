@@ -10,6 +10,7 @@ Stemset processes audio recordings locally and separates them into individual in
 
 - **Google OAuth Authentication** - Secure access control with email allowlist
 - **Multiple separation strategies** - Configure successive or parallel model pipelines
+- **On-Demand GPU Processing** - Optional remote processing using Koyeb scale-to-zero GPU instances
 - **LUFS normalization** - ITU-R BS.1770-4 compliant loudness analysis with per-stem gain control
 - **Waveform visualization** - Auto-generated waveforms with perceptual scaling
 - **Content-based deduplication** - SHA256 hashing prevents reprocessing renamed files
@@ -21,8 +22,35 @@ Stemset processes audio recordings locally and separates them into individual in
 - **Backend:** Python/Litestar API with Google OAuth
 - **Frontend:** React/TypeScript single-page application with Web Audio API
 - **Storage:** Local filesystem or Cloudflare R2 (zero egress fees!)
-- **Processing:** Local CLI for stem separation (CPU/GPU intensive)
+- **Processing:** Local CLI (CPU/GPU) or remote GPU worker (Koyeb scale-to-zero)
 - **Deployment:** Hybrid cloud (Cloudflare Pages + Koyeb + R2) or traditional (Render)
+
+### On-Demand GPU Processing (Default when configured)
+
+Stemset can use Koyeb's scale-to-zero GPU instances for fast processing:
+
+- **Auto-detects GPU availability** - Uses GPU if `GPU_WORKER_URL` is set, otherwise processes locally
+- **Pay only for processing time** - ~$0.0007 per 5-second job (99% idle = ~$2/month)
+- **Works everywhere** - CLI uploads to R2, processes on GPU, results available in web UI
+- **Web upload support** - Drag-and-drop files directly in the web interface
+- **Force local** - Use `--local` flag to override GPU and process locally
+
+**Configuration:**
+
+```yaml
+gpu_worker_url: ${GPU_WORKER_URL}  # Optional: set to enable GPU processing
+
+profiles:
+  - name: "h4n"
+    strategy: "hdemucs_mmi"
+```
+
+**Behavior:**
+- `GPU_WORKER_URL` set → uses GPU worker automatically
+- `GPU_WORKER_URL` not set → processes locally
+- `--local` flag → always processes locally (even if GPU_WORKER_URL is set)
+
+See [docs/gpu-worker-deployment.md](docs/gpu-worker-deployment.md) for deployment guide and cost optimization.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
@@ -45,7 +73,7 @@ This installs:
 - **Processing dependencies** (heavy ML libraries - audio-separator, onnxruntime, etc.)
 - **Frontend dependencies** (React, Vite, etc.)
 
-**Note**: Koyeb deployment only installs API dependencies (~100MB), not processing dependencies (~2GB+), since audio processing happens locally.
+**Note**: Koyeb API deployment only installs API dependencies (~100MB), not processing dependencies (~2GB+). If using remote GPU processing, the GPU worker service installs full processing dependencies with CUDA support.
 
 ### Configuration
 
@@ -122,6 +150,21 @@ profiles:
       format: "opus"
       bitrate: 192
 ```
+
+**Configure R2 storage and GPU worker (optional - enables GPU processing):**
+
+```yaml
+r2:
+  account_id: ${R2_ACCOUNT_ID}
+  access_key_id: ${R2_ACCESS_KEY_ID}
+  secret_access_key: ${R2_SECRET_ACCESS_KEY}
+  bucket_name: stemset-media
+  public_url: ${R2_PUBLIC_URL}  # Optional
+
+gpu_worker_url: ${GPU_WORKER_URL}  # Optional: enables GPU processing
+```
+
+If `gpu_worker_url` is not set, processing happens locally on your machine.
 
 ## Workflow
 
@@ -255,8 +298,22 @@ stemset/
 ## CLI Commands
 
 ```bash
-# Process audio files
+# Process audio files (auto-detects GPU vs local based on GPU_WORKER_URL)
 uv run stemset process <profile> [file]
+
+# Process all new files (uses GPU if configured, otherwise local)
+uv run stemset process band-practice
+
+# Force local processing (even if GPU is configured)
+uv run stemset process band-practice --local
+
+# Process a specific file
+uv run stemset process band-practice path/to/recording.wav
+
+# Process a specific file locally
+uv run stemset process band-practice path/to/recording.wav --local
+
+# Note: Local processing (--local) automatically uploads results to R2 if configured
 
 # Help
 uv run stemset --help
@@ -281,18 +338,26 @@ uv run stemset --help
 ## Deployment Costs
 
 **Recommended (Cloudflare + Koyeb + R2):**
-- **$0/month** for most use cases
+- **$0-2/month** for most use cases
 - Cloudflare Pages: Unlimited bandwidth (free)
-- Koyeb: 100GB bandwidth/month (free tier)
+- Koyeb API: 100GB bandwidth/month (free tier)
+- Koyeb GPU Worker: Scale-to-zero A100 GPU (~$0.0007/job, ~$2/month for 100 jobs/day)
 - R2 Storage: 10GB + zero egress fees (free tier)
 - Scales cost-effectively as you grow
+
+**GPU Processing Costs (Optional):**
+- GPU processing (when configured): ~$0.50/hour when active, $0 when sleeping
+- Example: 100 five-second jobs/day = ~$2/month
+- Local processing (default or --local flag): $0/month (uses your CPU/GPU)
 
 **Alternative (Render.com):**
 - Free tier: Spins down after 15min, no persistent disk
 - Paid tier: ~$7/month + storage costs
 - Bandwidth: 100GB included, then $0.10/GB
+- No GPU support
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed cost comparison.
+See [docs/gpu-worker-deployment.md](docs/gpu-worker-deployment.md) for GPU worker setup.
 
 ## License
 

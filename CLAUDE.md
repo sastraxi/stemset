@@ -5,7 +5,10 @@
 Stemset is an AI-powered audio stem separation application with Google OAuth authentication:
 1. **Backend**: Python/Litestar service that serves stems via authenticated REST API and hosts the frontend
 2. **Frontend**: React/TypeScript web player with Google OAuth for secure access and independent stem volume controls
-3. **Processing**: CLI-based audio separation (`uv run stemset process <profile> [file]`) runs locally; processed stems are stored in `media/` and served by the backend
+3. **Processing**: Audio separation can run either:
+   - **Locally**: `uv run stemset process <profile>` (default)
+   - **Remotely**: On-demand Koyeb GPU instances (configurable per profile)
+   - Processed stems stored in R2 and optionally downloaded to local `media/`
 
 ## Core Principles
 
@@ -102,18 +105,27 @@ The frontend reads this same typed structure.
 
 All configuration uses Pydantic models in `config.py`:
 - `AuthConfig` - Google OAuth credentials and email allowlist
-- `R2Config` - Cloudflare R2 storage credentials (optional)
+- `R2Config` - Cloudflare R2 storage credentials (optional, required for remote processing)
 - `OutputConfig` - Format and bitrate settings
 - `StrategyNode` - Recursive tree node (model + output mappings)
 - `Strategy` - Named strategy with validation
-- `Profile` - User profile linking source folder to strategy
-- `Config` - Top-level config with strategies, profiles, optional auth, and optional R2
+- `Profile` - User profile linking source folder to strategy, with optional `remote: bool` flag
+- `Config` - Top-level config with strategies, profiles, optional auth, R2, and `gpu_worker_url`
 
 **Environment Variable Substitution**: Config supports `${VAR_NAME}` syntax for secrets:
 ```yaml
 auth:
   google_client_id: ${GOOGLE_CLIENT_ID}
   jwt_secret: ${JWT_SECRET}
+```
+
+**Remote Processing**: Enable GPU processing per profile:
+```yaml
+gpu_worker_url: https://stemset-gpu.koyeb.app
+profiles:
+  - name: "h4n"
+    remote: true  # Use GPU worker instead of local processing
+    strategy: "hdemucs_mmi"
 ```
 
 **Fail-Fast Validation**: On startup, we scan the config for all `${VAR_NAME}` references and validate they're set in the environment. Missing variables cause immediate failure with a clear error message listing what's needed.
@@ -148,12 +160,17 @@ src/
 ├── cli/                   # CLI module
 │   ├── __init__.py        # Main CLI entrypoint (Typer app)
 │   ├── scanner.py         # File scanning and hash tracking
-│   └── processor.py       # Audio processing logic
+│   ├── processor.py       # Audio processing logic (local or remote)
+│   └── remote_processor.py # Remote GPU processing implementation
 ├── api/                   # API module
 │   ├── app.py             # Litestar app configuration
 │   ├── models.py          # Pydantic response models
 │   ├── auth_routes.py     # OAuth endpoints
-│   └── profile_routes.py  # Profile and file endpoints
+│   ├── profile_routes.py  # Profile and file endpoints
+│   └── job_routes.py      # Job callbacks and processing triggers
+├── gpu_worker/            # GPU worker service (deployed to Koyeb)
+│   ├── app.py             # Litestar HTTP endpoint for processing
+│   └── models.py          # Job payload and result models
 └── models/
     ├── registry.py        # Frozen MODEL_REGISTRY mapping names to classes
     ├── audio_separator_base.py  # AudioSeparator ABC
@@ -173,6 +190,10 @@ frontend/
 scripts/
 ├── upload_to_r2.py        # Helper script for uploading media files to R2
 └── check_deployment.py    # Deployment configuration checker
+
+docs/
+├── ondemand-gpu.md        # Research on GPU processing architecture
+└── gpu-worker-deployment.md # Deployment guide for GPU worker
 ```
 
 ## What We Don't Do
@@ -352,47 +373,76 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 
 ### Deployment (Hybrid Cloud - Recommended)
 
-**Architecture**: Split frontend, backend, and storage across optimized platforms.
+**Architecture**: Split frontend, backend, storage, and GPU processing across optimized platforms.
 
 **Components**:
 1. **Frontend** (Cloudflare Pages): Serves static React app from global CDN
-2. **Backend API** (Koyeb): Python/Litestar service with OAuth and API endpoints
-3. **Storage** (Cloudflare R2): S3-compatible object storage for audio files
+2. **Backend API** (Koyeb free tier): Python/Litestar service with OAuth and API endpoints
+3. **GPU Worker** (Koyeb GPU, scale-to-zero): On-demand audio processing with A100 GPU
+4. **Storage** (Cloudflare R2): S3-compatible object storage for audio files
 
 **Build** (automated via git push):
 - **Cloudflare Pages**: `cd frontend && bun install && bun run build` → serves `dist/`
-- **Koyeb**: Buildpack auto-detects Python, runs `uv sync`, starts uvicorn
+- **Koyeb API**: Buildpack auto-detects Python, runs `uv sync`, starts uvicorn (target: `api`)
+- **Koyeb GPU Worker**: Docker build with `--target gpu-worker`, CUDA support, scale-to-zero
 
 **Storage Abstraction** (`storage.py`):
 - Protocol-based interface supports both local filesystem and R2
 - `LocalStorage`: Serves files from `media/` directory (development)
-- `R2Storage`: Generates presigned URLs or public URLs for R2 (production)
+- `R2Storage`: Generates presigned URLs or public URLs for R2 (production/remote processing)
 - Selection logic:
   - If `STEMSET_LOCAL_STORAGE=true` → always use local storage
   - If `STEMSET_LOCAL_STORAGE=false` → always use R2 (fails if not configured)
   - If not set → use R2 if `config.yaml` has `r2` section, otherwise local
+- **Input storage**: `inputs/<profile>/<filename>` for source files
+- **Output storage**: `<profile>/<output_name>/` for processed stems
 
 **API Routes**:
 - `/api/profiles` → List all profiles
 - `/api/profiles/{name}/files` → List files with R2 URLs for stems
 - `/api/profiles/{name}/files/{file}/metadata` → Redirect to R2 metadata.json
 - `/api/profiles/{name}/songs/{song}/stems/{stem}/waveform` → Redirect to R2 waveform PNG
+- `/api/process` → Trigger remote GPU processing (web uploads)
+- `/api/jobs/{job_id}/status` → Poll job status
+- `/api/jobs/{job_id}/complete` → Callback from GPU worker
 - `/auth/*` → OAuth endpoints
 
-**Processing Workflow**:
-1. Run `uv run stemset process <profile>` locally to process audio files
-2. Outputs are saved to local `media/<profile>/` directory
+**Processing Workflows**:
+
+**Local Processing (default)**:
+1. Run `uv run stemset process <profile>` locally
+2. Outputs saved to local `media/<profile>/`
 3. Upload to R2: `python scripts/upload_to_r2.py <profile>`
-   - Requires `r2` section in `config.yaml` and R2_* env vars
-   - Script automatically forces R2 storage (ignores `STEMSET_LOCAL_STORAGE`)
-4. Backend generates URLs pointing to R2
-5. Frontend streams audio directly from R2 (zero egress fees!)
+
+**Remote GPU Processing**:
+1. Set `remote: true` in profile config
+2. Run `uv run stemset process <profile>`
+3. CLI uploads input to R2 (`inputs/<profile>/`)
+4. CLI triggers GPU worker via HTTP
+5. GPU worker processes on A100 GPU (scale-to-zero, 200ms cold start)
+6. GPU worker uploads stems to R2
+7. CLI downloads results to local `media/<profile>/`
+
+**Web Upload Processing**:
+1. Frontend uploads file to backend
+2. Backend uploads to R2 (`inputs/<profile>/`)
+3. Backend triggers GPU worker
+4. GPU worker processes and uploads stems
+5. GPU worker calls back to API
+6. Frontend polls for completion
+7. Frontend streams stems from R2
 
 **Local Development with R2 Configured**:
-- Keep `r2` section uncommented in `config.yaml` (needed for upload script)
-- Set `STEMSET_LOCAL_STORAGE=true` in `.env`
-- API will serve from local `media/` directory
+- Keep `r2` section uncommented in `config.yaml` (needed for remote processing)
+- Set `STEMSET_LOCAL_STORAGE=true` in `.env` (serves from local for API)
+- Can test remote processing: set `remote: true` in profile config
 - Upload script still works: `python scripts/upload_to_r2.py`
+
+**GPU Worker Dockerfile**:
+- Target: `gpu-worker` (nvidia/cuda base image)
+- Includes all processing dependencies
+- Exposes HTTP endpoint on port 8000
+- See `docs/gpu-worker-deployment.md` for full deployment guide
 
 **Alternative: Single-Server (Render.com)**:
 See `render.yaml` for traditional deployment where backend serves both API and static files.
