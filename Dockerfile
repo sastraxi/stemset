@@ -64,7 +64,7 @@ CMD ["--help"]
 # ============================================================================
 # GPU Worker Target - GPU processing worker with CUDA support
 # ============================================================================
-FROM nvidia/cuda:12.4.0-base-ubuntu22.04 AS gpu-worker
+FROM nvidia/cuda:12.6.1-runtime-ubuntu24.04 AS gpu-worker
 
 # Install Python 3.13 and system dependencies
 RUN apt-get update && apt-get install -y \
