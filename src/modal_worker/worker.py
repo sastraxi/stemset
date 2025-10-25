@@ -54,7 +54,7 @@ image = (
     # app (added last to optimize build caching)
     .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
     .env(dummy_required_vars)
-    .add_local_dir("src", "/root/src")
+    .add_local_dir("src", "/root/src", ignore=modal.FilePatternMatcher("**/__pycache__/**"))
     .add_local_file("config.yaml", "/root/config.yaml")
 )
 
