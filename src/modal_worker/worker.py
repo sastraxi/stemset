@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-from botocore.client import ClientError
 import httpx
 import os
 from pathlib import Path
@@ -91,6 +90,7 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
         ProcessingResult dict with status, stems list, or error message
     """
     import sys
+    from botocore.client import ClientError
 
     sys.path.insert(0, "/root")
 
@@ -176,8 +176,8 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                     if size_ratio > 10:
                         raise ValueError(
                             f"Output size mismatch: new={new_stem_size} bytes, "
-                            f"existing={existing_size} bytes (ratio: {size_ratio:.1f}x). "
-                            f"Refusing to overwrite - something may be wrong."
+                            + f"existing={existing_size} bytes (ratio: {size_ratio:.1f}x). "
+                            + "Refusing to overwrite - something may be wrong."
                         )
                     else:
                         print(f"Overwriting existing output (size ratio: {size_ratio:.1f}x)")
