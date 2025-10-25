@@ -14,20 +14,26 @@ import modal
 # Load .env file for build-time configuration
 _ = load_dotenv()
 
-# Define modal app and secret
+# Define modal app
 app = modal.App("stemset-gpu")
-r2_secret = modal.Secret.from_name("r2-secret")  # pyright: ignore[reportUnknownMemberType]
 
 # Container image with all processing dependencies
 # R2 configuration for runtime (Modal worker only needs R2, not OAuth/JWT)
-r2_env_vars = {
+# Our CI/CD runner (i.e. Github) is the source-of-truth for these env vars and secrets
+required_env_vars = {
     "R2_ACCOUNT_ID": os.environ.get("R2_ACCOUNT_ID", ""),
     "R2_ACCESS_KEY_ID": os.environ.get("R2_ACCESS_KEY_ID", ""),
     "R2_SECRET_ACCESS_KEY": os.environ.get("R2_SECRET_ACCESS_KEY", ""),
     "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", "stemset-media"),
     "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
+    "BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", ""),
 }
 
+missing_vars = [k for k, v in required_env_vars.items() if not v]
+if missing_vars:
+    raise RuntimeError(f"Missing required environment variables for Modal worker: {missing_vars}")
+
+# These variables are not used by the worker but are required to load the config
 dummy_required_vars = {
     "GOOGLE_CLIENT_ID": "dummy",
     "GOOGLE_CLIENT_SECRET": "dummy",
@@ -39,10 +45,8 @@ dummy_required_vars = {
 image = (
     modal.Image.debian_slim(python_version="3.13")
     .apt_install("libsndfile1", "libopus0", "ffmpeg")
-    # Set all env vars before adding local files
-    .env({"STEMSET_MODEL_CACHE_DIR": "/root/.models"})
-    .env(r2_env_vars)
     # preload known models
+    .env({"STEMSET_MODEL_CACHE_DIR": "/root/.models"})
     .uv_sync(groups=["preload_models", "processing"], frozen=True)
     .add_local_file("scripts/preload_models.py", "/root/preload_models.py", copy=True)
     .run_commands("uv run python /root/preload_models.py")
@@ -51,21 +55,18 @@ image = (
     .add_local_file("pyproject.toml", "/root/pyproject.toml", copy=True)
     .uv_sync(groups=["shared", "processing", "modal"], frozen=True)
     # app (added last to optimize build caching)
-    .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
+    .env(required_env_vars)
     .env(dummy_required_vars)
     .add_local_dir("src", "/root/src", ignore=modal.FilePatternMatcher("**/__pycache__/**"))
     .add_local_file("config.yaml", "/root/config.yaml")
 )
 
 # Mount R2 bucket for direct file access
-# R2_ACCOUNT_ID and R2_BUCKET_NAME are read from the r2-secret at runtime (dotenv)
-# Create the secret with: ./scripts/setup_modal_secret.sh
 r2_account_id = os.environ.get("R2_ACCOUNT_ID", "")
 r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "stemset-media")
 r2_mount = modal.CloudBucketMount(
     bucket_name=r2_bucket_name,
     bucket_endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-    secret=r2_secret,
 )
 
 
@@ -74,7 +75,6 @@ r2_mount = modal.CloudBucketMount(
     gpu="A100-40GB",
     timeout=180,
     volumes={"/r2": r2_mount},
-    secrets=[r2_secret],
 )
 @modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
 def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
