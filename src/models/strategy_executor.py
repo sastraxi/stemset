@@ -99,14 +99,14 @@ class StrategyExecutor:
         # Get or create model instance
         model = self._get_model_instance(node.model)
 
-        # Validate output slots match config
-        expected_slots = set(model.output_slots.keys())
-        actual_slots = set(node.outputs.keys())
-        if expected_slots != actual_slots:
+        # Validate config keys match actual model output slots
+        model_output_slots = model.get_output_slots()
+        configured_slots = set(node.outputs.keys())
+        if model_output_slots != configured_slots:
             raise ValueError(
                 f"Model '{node.model}' output mismatch. " +
-                f"Expected slots: {expected_slots}, " +
-                f"Config specifies: {actual_slots}"
+                f"Model produces: {sorted(model_output_slots)}, " +
+                f"Config maps: {sorted(configured_slots)}"
             )
 
         # Create step-specific temp directory

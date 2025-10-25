@@ -34,18 +34,24 @@ class AudioSeparator(ABC):
         self._separator = None
         self._model_loaded = False
 
-    @property
-    @abstractmethod
-    def output_slots(self) -> dict[str, str]:
-        """Get output slot names and descriptions.
+    def get_output_slots(self) -> set[str]:
+        """Get actual output slot names from audio-separator model registry.
 
         Returns:
-            Dict mapping slot_name -> description
+            Set of output slot names this model produces
 
-        Example:
-            {"vocals": "Vocal track", "no_vocals": "Instrumental track"}
+        Raises:
+            ValueError: If model not found in registry
         """
-        ...
+        separator = self._get_separator()
+        model_list = separator.get_simplified_model_list()
+
+        if self.model_filename not in model_list:
+            raise ValueError(
+                f"Model '{self.model_filename}' not found in audio-separator model list"
+            )
+
+        return set(model_list[self.model_filename]["SDR"].keys())
 
     @property
     @abstractmethod
@@ -72,6 +78,17 @@ class AudioSeparator(ABC):
             RuntimeError: If separation fails or outputs are missing
         """
         ...
+
+    def _log_model_outputs(self, separator: Separator) -> None:
+        """Log the model's output slots after loading.
+
+        Args:
+            separator: Loaded separator instance
+        """
+        model_list = separator.get_simplified_model_list()
+        model_info = model_list[self.model_filename]
+        actual_outputs = sorted(model_info["SDR"].keys())
+        print(f"Model outputs: {actual_outputs}")
 
     def _get_separator(self) -> Separator:
         """Get or create audio separator instance with configured output format."""
@@ -130,6 +147,9 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
             separator.load_model(self.model_filename)
             self._model_loaded = True
 
+            # Log model outputs for debugging
+            self._log_model_outputs(separator)
+
             output_format = self.output_config.format.value.upper()
             output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
             print(
@@ -143,8 +163,12 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
 
         print(f"Separating {input_file.name} with {self.model_filename}...")
 
-        # Build custom output names matching our slot names
-        custom_output_names = {slot_name: slot_name for slot_name in self.output_slots.keys()}
+        # Get actual model outputs from audio-separator
+        model_list = separator.get_simplified_model_list()
+        actual_outputs = list(model_list[self.model_filename]["SDR"].keys())
+
+        # Build custom output names - keep model output names as-is
+        custom_output_names = {output_name: output_name for output_name in actual_outputs}
 
         # Perform separation
         output_files: list[str] = separator.separate(
@@ -156,15 +180,6 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
         for output_file_str in output_files:
             output_file = output_dir / output_file_str
             slot_name = output_file.stem
-            if slot_name in self.output_slots:
-                output_paths[slot_name] = output_file
-
-        # Verify we got all expected outputs
-        expected_slots = set(self.output_slots.keys())
-        missing = expected_slots - set(output_paths.keys())
-        if missing:
-            raise RuntimeError(
-                f"Model '{self.model_filename}' separation incomplete: missing outputs {missing}"
-            )
+            output_paths[slot_name] = output_file
 
         return output_paths
