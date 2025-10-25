@@ -36,3 +36,9 @@ class JobStatusResponse(BaseModel):
     status: str  # "processing", "complete", or "error"
     stems: list[str] | None = None
     error: str | None = None
+
+
+class LogoutResponse(BaseModel):
+    """Logout response."""
+
+    success: bool

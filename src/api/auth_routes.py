@@ -14,7 +14,7 @@ from litestar import get
 from litestar.connection import Request
 from litestar.exceptions import NotAuthorizedException
 from litestar.params import Parameter
-from litestar.response import Redirect
+from litestar.response import Redirect, Response
 
 from ..auth import (
     UserInfo,
@@ -25,7 +25,7 @@ from ..auth import (
     is_email_allowed,
 )
 from ..config import get_config
-from .models import AuthStatusResponse
+from .models import AuthStatusResponse, LogoutResponse
 
 _oauth_states: dict[str, str] = {}
 
@@ -176,9 +176,41 @@ async def auth_callback(
 
 
 @get("/auth/logout")
-async def auth_logout() -> Redirect:
-    """Logout user by clearing token cookie."""
+async def auth_logout() -> Response[LogoutResponse]:
+    """Logout user by clearing token cookie.
+
+    Returns a JSON response instead of redirecting to avoid CORS issues
+    with redirect chains when credentials are included.
+    """
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    response = Redirect(path=frontend_url)
-    response.delete_cookie(key="stemset_token")
+    is_dev = frontend_url.startswith("http://localhost")
+
+    # To delete a cookie, we need to set it with Max-Age=0 and the same attributes
+    # that were used when setting it (especially Path, Domain, Secure, SameSite, Partitioned)
+    if is_dev:
+        cookie_parts = [
+            "stemset_token=",
+            "Path=/",
+            "Max-Age=0",
+            "Domain=localhost",
+            "HttpOnly",
+            "SameSite=Lax",
+        ]
+    else:
+        cookie_parts = [
+            "stemset_token=",
+            "Path=/",
+            "Max-Age=0",
+            "Secure",
+            "HttpOnly",
+            "SameSite=None",
+            "Partitioned",
+        ]
+
+    cookie_header = "; ".join(cookie_parts)
+
+    # Create response with cookie deletion
+    response = Response(content=LogoutResponse(success=True))
+    response.headers["set-cookie"] = cookie_header
+
     return response

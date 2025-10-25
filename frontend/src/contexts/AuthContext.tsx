@@ -55,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include',
       });
       setAuthStatus({ authenticated: false });
+      // Navigate to home page after logout
+      window.location.href = '/';
     } catch (error) {
       console.error('Failed to logout:', error);
     }
