@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Play } from 'lucide-react';
 import { StemPlayer, type StemPlayerHandle } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
@@ -231,7 +231,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
                 {files.map((file) => (
                   <li
                     key={file.name}
-                    className={`py-2.5 px-3 m-0 bg-transparent border-none border-l-2 cursor-pointer transition-all text-sm rounded-r
+                    className={`py-2.5 px-3 m-0 bg-transparent select-none border-none border-l-2 cursor-pointer transition-all text-sm rounded-r flex items-center justify-between gap-2
                       ${selectedFile?.name === file.name
                         ? 'bg-blue-400/10 border-l-blue-400 text-white'
                         : 'border-l-transparent hover:bg-white/5 hover:border-l-gray-700 text-gray-300'
@@ -242,7 +242,10 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
                       setTimeout(() => stemPlayerRef.current?.focus(), 100);
                     }}
                   >
-                    {file.name}
+                    <span className="truncate">{file.name}</span>
+                    {selectedFile?.name === file.name && (
+                      <Play className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" fill="currentColor" />
+                    )}
                   </li>
                 ))}
               </ul>

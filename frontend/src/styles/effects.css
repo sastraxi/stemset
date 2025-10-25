@@ -1,27 +1,55 @@
 /* Master Effects Styles */
-.master-effects h3 {
-  font-size: 0.7rem;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-}
-
 .master-effects-row {
   display: flex;
   flex-direction: row;
-  gap: 4rem;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0.5rem;
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.master-effects-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.master-effects-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.master-effects-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.master-effects-row::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.eq-section,
+.limiter-section {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.85rem 1rem 1rem;
+  transition: border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.eq-section:hover,
+.limiter-section:hover {
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .eq-section {
-  flex: 1 1 400px;
+  width: auto;
 }
 
 .limiter-section {
-  flex: 1 1 280px;
+  width: 300px;
 }
 
 /* EQ Vertical Sliders */
@@ -33,37 +61,43 @@
 
 .eq-bands.vertical {
   display: flex;
-  gap: 1.25rem;
+  gap: 0.9rem;
   align-items: flex-end;
-  padding: 0.75rem 0 0.25rem;
-  min-height: 160px; /* ensure space even before slider renders */
+  padding: 0.5rem 0 0.25rem;
+  min-height: 140px;
 }
 
 .eq-band-vertical {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  min-width: 60px;
+  gap: 0.35rem;
+  min-width: 50px;
 }
 
 .eq-band-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #888;
   text-align: center;
+  line-height: 1.3;
+}
+
+.eq-band-label small {
+  font-size: 0.55rem;
+  color: #666;
 }
 
 .eq-slider-vertical {
-  writing-mode: bt-lr; /* fallback for some browsers */
+  writing-mode: bt-lr;
   -webkit-appearance: slider-vertical;
   appearance: slider-vertical;
-  width: 8px;
-  height: 140px;
+  width: 6px;
+  height: 110px;
   padding: 0;
   cursor: pointer;
-  opacity: 0.7;
+  opacity: 0.8;
   transition: opacity 0.2s;
 }
 
@@ -74,31 +108,69 @@
 @supports not (-webkit-appearance: slider-vertical) {
   .eq-slider-vertical {
     transform: rotate(-90deg);
-    width: 140px;
-    height: 8px;
-    margin-top: 60px; /* shift rotated slider down */
+    width: 110px;
+    height: 6px;
+    margin-top: 50px;
   }
 }
 
 .eq-band-value {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #888;
   font-variant-numeric: tabular-nums;
 }
 
-.eq-header, .limiter-header {
+.eq-header,
+.limiter-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.75rem;
-  font-weight: 500;
+  margin-bottom: 0.2rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eq-header h4,
+.limiter-header h4 {
+  font-size: 0.7rem;
+  font-weight: 600;
   color: #e8e8e8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.effect-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.effect-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.6rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.effect-toggle input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: #4a9eff;
 }
 
 .eq-header .reset-gain,
 .limiter-header .reset-gain {
-  opacity: 0.5;
+  opacity: 0.3;
   transition: opacity 0.2s;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.35rem;
 }
 
 .eq-section:hover .reset-gain,
@@ -115,44 +187,57 @@
 
 .limiter-controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  align-items: center;
-}
-
-.gr-meter {
-  position: relative;
-  width: 100%;
-  height: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-top: 6px;
-}
-
-.gr-fill {
+  flex-direction: column;
+  gap: 1rem;
   height: 100%;
-  background: linear-gradient(90deg, #ff9800, #f44336);
-}
-
-.limiter-controls label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: #888;
-  margin-bottom: 0.25rem;
-}
-
-.limiter-controls > * {
-  width: 100%;
-  display: block;
 }
 
 .limiter-ceiling {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  min-width: 160px;
+  gap: 0.5rem;
+}
+
+.limiter-ceiling label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.limiter-ceiling input[type="range"] {
+  width: 100%;
+}
+
+.limiter-reduction {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+
+.meter-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.gr-meter {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.gr-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff 0%, #ff9800 50%, #f44336 100%);
 }
 
 .limiter-enabled {
@@ -165,11 +250,13 @@
 
 /* Override generic range styling for vertical EQ sliders */
 .eq-slider-vertical {
-  height: 140px !important; /* ensure vertical dimension */
+  height: 140px !important;
+  /* ensure vertical dimension */
 }
 
 @supports not (-webkit-appearance: slider-vertical) {
   .eq-slider-vertical {
-    height: 10px !important; /* rotated variant height */
+    height: 10px !important;
+    /* rotated variant height */
   }
 }
