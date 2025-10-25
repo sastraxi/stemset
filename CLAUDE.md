@@ -299,7 +299,7 @@ We refactor aggressively. If a pattern emerges three times, abstract it. If an a
 **Development `.env`**:
 ```bash
 STEMSET_BYPASS_AUTH=true  # Or false to test OAuth locally
-STEMSET_LOCAL_STORAGE=true  # Use local media/ even if R2 is configured
+STEMSET_SYNC=true  # Sync local media/ with R2 before/after processing (default: true)
 OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
 FRONTEND_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=...
@@ -317,7 +317,7 @@ R2_PUBLIC_URL=...  # Optional
 Backend (Koyeb):
 ```bash
 STEMSET_BYPASS_AUTH=false
-# STEMSET_LOCAL_STORAGE not set (or =false) → use R2
+STEMSET_SYNC=false  # No local sync in production - R2 only
 OAUTH_REDIRECT_URI=https://stemset-api.koyeb.app/auth/callback
 FRONTEND_URL=https://stemset.pages.dev
 GOOGLE_CLIENT_ID=...
@@ -392,19 +392,19 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 - Protocol-based interface supports both local filesystem and R2
 - `LocalStorage`: Serves files from `media/` directory (development)
 - `R2Storage`: Generates presigned URLs or public URLs for R2 (production/remote processing)
-- Selection logic:
-  - If `STEMSET_LOCAL_STORAGE=true` → always use local storage
-  - If `STEMSET_LOCAL_STORAGE=false` → always use R2 (fails if not configured)
-  - If not set → use R2 if `config.yaml` has `r2` section, otherwise local
+- Always uses R2 if `config.yaml` has `r2` section configured
 - **Input storage**: `inputs/<profile>/<filename>` for source files
 - **Output storage**: `<profile>/<output_name>/` for processed stems
+- **Sync behavior** (`STEMSET_SYNC` environment variable):
+  - Default: `true` - CLI syncs local `media/` with R2 before/after processing
+  - Set to `false` to disable bidirectional sync (production API servers)
 
 **API Routes**:
 - `/api/profiles` → List all profiles
 - `/api/profiles/{name}/files` → List files with R2 URLs for stems
 - `/api/profiles/{name}/files/{file}/metadata` → Redirect to R2 metadata.json
 - `/api/profiles/{name}/songs/{song}/stems/{stem}/waveform` → Redirect to R2 waveform PNG
-- `/api/process` → Trigger remote GPU processing (web uploads)
+- `/api/upload` → Upload file and trigger remote GPU processing (returns job_id for polling)
 - `/api/jobs/{job_id}/status` → Poll job status
 - `/api/jobs/{job_id}/complete` → Callback from GPU worker
 - `/auth/*` → OAuth endpoints
@@ -436,9 +436,9 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 
 **Local Development with R2 Configured**:
 - Keep `r2` section uncommented in `config.yaml` (needed for remote processing)
-- Set `STEMSET_LOCAL_STORAGE=true` in `.env` (serves from local for API)
+- Set `STEMSET_SYNC=true` in `.env` (default) to sync local media with R2
 - Can test remote processing: set `remote: true` in profile config
-- Upload script still works: `python scripts/upload_to_r2.py`
+- Sync happens automatically before/after CLI processing
 
 **Modal Worker Deployment**:
 - Deploy with: `modal deploy src/modal_worker/app.py`

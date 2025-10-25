@@ -135,26 +135,15 @@ uv run stemset process h4n
 const formData = new FormData();
 formData.append('file', audioFile);
 
-// 1. Upload to R2 (via backend API)
-const uploadResponse = await fetch('/api/upload', {
+// 1. Upload to R2 and trigger processing (single endpoint)
+const uploadResponse = await fetch('/api/upload?profile_name=h4n', {
   method: 'POST',
   body: formData,
 });
 
-// 2. Trigger processing
-const jobResponse = await fetch('/api/process', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    profile_name: 'h4n',
-    filename: 'my-track.wav',
-    output_name: 'my-track_abc12345',
-  }),
-});
+const { job_id } = await uploadResponse.json();
 
-const { job_id } = await jobResponse.json();
-
-// 3. Poll for completion
+// 2. Poll for completion
 const pollStatus = async () => {
   const statusResponse = await fetch(`/api/jobs/${job_id}/status`);
   const { status, stems } = await statusResponse.json();

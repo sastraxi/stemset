@@ -33,11 +33,3 @@ class JobStatusResponse(BaseModel):
     status: str  # "processing", "complete", or "error"
     stems: list[str] | None = None
     error: str | None = None
-
-
-class TriggerProcessingRequest(BaseModel):
-    """Request to trigger remote processing."""
-
-    profile_name: str
-    filename: str
-    output_name: str  # Output folder name (e.g., song_abc12345)
