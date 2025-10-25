@@ -134,37 +134,43 @@ async def auth_callback(
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     is_dev = frontend_url.startswith("http://localhost")
 
-    response = Redirect(path=frontend_url)
-
     # For production cross-site cookies, we need:
     # 1. secure=True (HTTPS only)
     # 2. samesite="none" (allow cross-origin)
     # 3. httponly=True (security)
     # 4. Partitioned attribute (Chrome requirement for CHIPS)
-    cookie_settings = {
-        "key": "stemset_token",
-        "value": jwt_token,
-        "httponly": True,
-        "secure": not is_dev,
-        "samesite": "lax" if is_dev else "none",
-        "max_age": 30 * 24 * 60 * 60,
-    }
 
-    # In development, set domain to localhost so cookie works across ports
-    # In production, leave domain unset so it defaults to backend domain
+    # Build cookie value manually to include Partitioned attribute
+    # Litestar's Cookie class doesn't support Partitioned, so we set it via raw header
+    max_age = 30 * 24 * 60 * 60  # 30 days
+
     if is_dev:
-        cookie_settings["domain"] = "localhost"
+        # Development: standard cookie with domain=localhost
+        cookie_parts = [
+            f"stemset_token={jwt_token}",
+            "Path=/",
+            f"Max-Age={max_age}",
+            "Domain=localhost",
+            "HttpOnly",
+            "SameSite=Lax",
+        ]
+    else:
+        # Production: cross-site cookie with Partitioned attribute
+        cookie_parts = [
+            f"stemset_token={jwt_token}",
+            "Path=/",
+            f"Max-Age={max_age}",
+            "Secure",
+            "HttpOnly",
+            "SameSite=None",
+            "Partitioned",  # Chrome CHIPS requirement
+        ]
 
-    response.set_cookie(**cookie_settings)  # pyright: ignore[reportCallIssue, reportArgumentType]
+    cookie_header = "; ".join(cookie_parts)
 
-    # Add Partitioned attribute for Chrome's CHIPS (Cookies Having Independent Partitioned State)
-    # This is required for cross-site cookies in Chrome 115+
-    # Litestar doesn't support this directly, so we need to modify the Set-Cookie header
-    if not is_dev:
-        set_cookie_header = response.headers.get("set-cookie")
-        if set_cookie_header:
-            # Append ;Partitioned to the Set-Cookie header
-            response.headers["set-cookie"] = f"{set_cookie_header}; Partitioned"
+    response = Redirect(path=frontend_url)
+    # Set cookie via raw header instead of set_cookie() to support Partitioned
+    response.headers["set-cookie"] = cookie_header
 
     return response
 
