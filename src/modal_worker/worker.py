@@ -15,6 +15,7 @@ import modal
 _ = load_dotenv()
 
 # Define modal app
+# FIXME: using modal secrets prevents logging secrets at build-time
 app = modal.App("stemset-gpu")
 
 # Container image with all processing dependencies
