@@ -30,35 +30,3 @@ EXPOSE 8000
 
 # Run uvicorn directly from the venv (don't use `uv run` which re-syncs)
 CMD [".venv/bin/uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
-
-###################!
-# FIXME: NOW USING MODAL!
-################!
-# # ============================================================================
-# # Processing Target - Full environment with ML dependencies
-# # ============================================================================
-# FROM base AS processing
-
-# # Install system dependencies for audio processing
-# RUN apt-get update && apt-get install -y \
-#     libsndfile1 \
-#     libopus0 \
-#     ffmpeg \
-#     && rm -rf /var/lib/apt/lists/*
-
-# # Install all dependencies including shared and processing groups
-# RUN uv sync --frozen --no-dev --group shared --group processing
-
-# # Copy source code
-# COPY src/ ./src/
-# COPY config.yaml ./
-
-# # Set model cache directory
-# ENV STEMSET_MODEL_CACHE_DIR=/app/.models
-
-# # Create media directory
-# RUN mkdir -p /app/media
-
-# # Default command runs the CLI
-# ENTRYPOINT ["uv", "run", "stemset"]
-# CMD ["--help"]

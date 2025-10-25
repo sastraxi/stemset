@@ -1244,6 +1244,24 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxruntime-gpu"
+version = "1.23.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coloredlogs" },
+    { name = "flatbuffers" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "protobuf" },
+    { name = "sympy" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/05/40d561636e4114b54aa06d2371bfbca2d03e12cfdf5d4b85814802f18a75/onnxruntime_gpu-1.23.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1e8f75af5da07329d0c3a5006087f4051d8abd133b4be7c9bae8cdab7bea4c26", size = 300515567, upload-time = "2025-10-22T16:56:43.794Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/3b/418300438063d403384c79eaef1cb13c97627042f2247b35a887276a355a/onnxruntime_gpu-1.23.2-cp313-cp313-win_amd64.whl", hash = "sha256:7f1b3f49e5e126b99e23ec86b4203db41c2a911f6165f7624f2bc8267aaca767", size = 244507535, upload-time = "2025-10-22T16:55:28.532Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/dc/80b145e3134d7eba31309b3299a2836e37c76e4c419a261ad9796f8f8d65/onnxruntime_gpu-1.23.2-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:20959cd4ae358aab6579ab9123284a7b1498f7d51ec291d429a5edc26511306f", size = 300525759, upload-time = "2025-10-22T16:56:56.925Z" },
+]
+
+[[package]]
 name = "opuslib"
 version = "3.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1913,6 +1931,7 @@ processing = [
     { name = "audio-separator" },
     { name = "numpy" },
     { name = "onnxruntime" },
+    { name = "onnxruntime-gpu" },
     { name = "opuslib" },
     { name = "pillow" },
     { name = "pyloudnorm" },
@@ -1949,6 +1968,7 @@ processing = [
     { name = "audio-separator", specifier = ">=0.39.1" },
     { name = "numpy", specifier = ">=2.3.4" },
     { name = "onnxruntime", specifier = ">=1.23.1" },
+    { name = "onnxruntime-gpu", specifier = ">=1.23.1" },
     { name = "opuslib", specifier = ">=3.0.1" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyloudnorm", specifier = ">=0.1.1" },

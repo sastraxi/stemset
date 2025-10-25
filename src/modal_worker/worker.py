@@ -36,7 +36,7 @@ image = (
     .env({"STEMSET_MODEL_CACHE_DIR": "/root/.models"})
     .env(r2_env_vars)
     # preload known models
-    .uv_sync(groups=["preload_models"], frozen=True)
+    .uv_sync(groups=["preload_models", "processing"], frozen=True)
     .add_local_file("scripts/preload_models.py", "/root/preload_models.py", copy=True)
     .run_commands("uv run python /root/preload_models.py")
     # uv sync phase
@@ -44,12 +44,12 @@ image = (
     .add_local_file("pyproject.toml", "/root/pyproject.toml", copy=True)
     .uv_sync(groups=["shared", "processing", "modal"], frozen=True)
     # app (added last to optimize build caching)
+    .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
     .add_local_dir("src", "/root/src")
     .add_local_file(
         "config-modal.yaml",
         "/root/config.yaml",
     )  # Use Modal-specific config without auth
-    .env({"BACKEND_URL": os.environ.get("BACKEND_URL", "")})
 )
 
 # Mount R2 bucket for direct file access
