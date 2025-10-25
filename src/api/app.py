@@ -18,7 +18,7 @@ from .profile_routes import (
     get_profile_files,
     get_profiles,
 )
-from .job_routes import job_complete, job_status, trigger_processing, upload_file
+from .job_routes import job_complete, job_status, upload_file
 
 
 media_router = create_static_files_router(
@@ -72,7 +72,6 @@ app = Litestar(
         get_profile_files,
         job_complete,
         job_status,
-        trigger_processing,
         upload_file,
         *static_handlers,
     ],

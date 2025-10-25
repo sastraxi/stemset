@@ -16,8 +16,7 @@ from .models import JobStatusResponse
 from ..config import Config
 from ..storage import get_storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
-from ..utils import compute_file_hash
-from ..cli.scanner import derive_output_name
+from ..utils import compute_file_hash, derive_output_name
 
 
 # Simple in-memory job storage

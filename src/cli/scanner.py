@@ -5,36 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..utils import compute_file_hash
+from ..utils import compute_file_hash, derive_output_name
 
 AUDIO_EXTENSIONS = {".wav", ".wave"}
-
-
-def derive_output_name(file_path: Path) -> str:
-    """Derive output folder name from original filename.
-
-    Removes extension and sanitizes the name for use as a folder name.
-
-    Args:
-        file_path: Path to the original audio file
-
-    Returns:
-        Sanitized folder name
-    """
-    # Get stem (filename without extension)
-    name = file_path.stem
-
-    # Replace spaces and special characters with underscores
-    name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
-
-    # Remove duplicate underscores
-    while "__" in name:
-        name = name.replace("__", "_")
-
-    # Strip leading/trailing underscores
-    name = name.strip("_")
-
-    return name or "unnamed"
 
 
 def scan_for_new_files(source_path: Path, media_path: Path) -> list[tuple[Path, str]]:
