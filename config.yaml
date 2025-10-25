@@ -71,6 +71,16 @@ strategies:
       drums: drums
       other: other
 
+  vocal_then_ft:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    other:
+      _: "htdemucs_ft"
+      bass: bass
+      drums: drums
+      other: other
+  
+
 profiles:
 #################################
   - name: "h4n"
@@ -99,6 +109,14 @@ profiles:
   - name: "bobw"
     source_folder: "./input/bobw"
     strategy: "bobw"
+    remote: true
+    output:
+      format: "opus"
+      bitrate: 192
+
+  - name: "vocal_then_ft"
+    source_folder: "./input/vocal_then_ft"
+    strategy: "vocal_then_ft"
     remote: true
     output:
       format: "opus"
