@@ -1,4 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import { Upload as UploadIcon } from 'lucide-react';
 import './Upload.css';
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
@@ -11,29 +13,55 @@ interface UploadProps {
 
 export function Upload({ profileName, onUploadComplete }: UploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [dragCounter, setDragCounter] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  // Full-screen drag handlers with proper enter/leave tracking
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      setDragCounter(prev => prev + 1);
+      setIsDragging(true);
+    };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      setDragCounter(prev => {
+        const newCount = prev - 1;
+        if (newCount === 0) {
+          setIsDragging(false);
+        }
+        return newCount;
+      });
+    };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
 
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFile(files[0]);
-    }
-  };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      setDragCounter(0);
+
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        handleFile(files[0]);
+      }
+    };
+
+    document.addEventListener('dragenter', handleDragEnter);
+    document.addEventListener('dragleave', handleDragLeave);
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('drop', handleDrop);
+
+    return () => {
+      document.removeEventListener('dragenter', handleDragEnter);
+      document.removeEventListener('dragleave', handleDragLeave);
+      document.removeEventListener('dragover', handleDragOver);
+      document.removeEventListener('drop', handleDrop);
+    };
+  }, [profileName]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -46,7 +74,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     // Validate file size (150MB max)
     const MAX_SIZE = 150 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setError(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Maximum: 150MB`);
+      toast.error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Maximum: 150MB`);
       return;
     }
 
@@ -54,13 +82,12 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     const allowedExtensions = ['.wav', '.flac', '.mp3', '.m4a', '.aac', '.opus', '.ogg', '.wave'];
     const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!allowedExtensions.includes(fileExt)) {
-      setError(`Unsupported file type: ${fileExt}. Allowed: ${allowedExtensions.join(', ')}`);
+      toast.error(`Unsupported file type: ${fileExt}. Allowed: ${allowedExtensions.join(', ')}`);
       return;
     }
 
-    setError(null);
-    setIsUploading(true);
-    setUploadProgress(0);
+    // Show processing toast
+    const toastId = toast.loading(`Uploading ${file.name}...`);
 
     try {
       // Create form data
@@ -82,30 +109,27 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       const result = await response.json();
       const jobId = result.job_id;
 
+      // Update toast to show processing
+      toast.loading(`Processing ${file.name}...`, { id: toastId });
+
       // Poll for completion
-      await pollJobStatus(jobId);
+      await pollJobStatus(jobId, toastId);
 
       // Success!
-      setIsUploading(false);
-      setUploadProgress(100);
+      toast.success(`${file.name} processed successfully!`, { id: toastId });
       onUploadComplete();
 
-      // Reset after a moment
-      setTimeout(() => {
-        setUploadProgress(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }, 2000);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      setIsUploading(false);
-      setUploadProgress(0);
+      toast.error(err instanceof Error ? err.message : 'Upload failed', { id: toastId });
     }
   };
 
-  const pollJobStatus = async (jobId: string): Promise<void> => {
+  const pollJobStatus = async (jobId: string, toastId: string | number): Promise<void> => {
     const maxAttempts = 300; // 10 minutes max (2 second intervals)
     let attempts = 0;
 
@@ -128,10 +152,6 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
         throw new Error(status.error || 'Processing failed');
       }
 
-      // Update progress (simulate based on time elapsed)
-      const progress = Math.min(90, (attempts / maxAttempts) * 100);
-      setUploadProgress(progress);
-
       attempts++;
     }
 
@@ -143,51 +163,31 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
   };
 
   return (
-    <div className="upload-container">
-      <div
-        className={`upload-drop-zone ${isDragging ? 'dragging' : ''} ${isUploading ? 'uploading' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleClick}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".wav,.flac,.mp3,.m4a,.aac,.opus,.ogg"
-          onChange={handleFileSelect}
-          style={{ display: 'none' }}
-        />
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".wav,.flac,.mp3,.m4a,.aac,.opus,.ogg"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
 
-        {isUploading ? (
-          <div className="upload-progress">
-            <div className="spinner"></div>
-            <p>Processing... {uploadProgress.toFixed(0)}%</p>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
-            </div>
-          </div>
-        ) : (
-          <div className="upload-prompt">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 -4 24 26" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <div>
-              <p><strong>Drop</strong> to add new audio</p>
-              <p className="upload-hint">WAV, FLAC, MP3, M4A, AAC, Opus, OGG</p>
-              <p className="upload-hint">Max size: 150MB</p>
-            </div>
-          </div>
-        )}
+      {/* Simple upload button in sidebar */}
+      <div className="upload-sidebar-button" onClick={handleClick}>
+        <UploadIcon className="h-4 w-4" />
+        <span>Upload Audio</span>
       </div>
 
-      {error && (
-        <div className="upload-error">
-          {error}
+      {/* Full-screen drop overlay */}
+      {isDragging && (
+        <div className="upload-fullscreen-overlay">
+          <div className="upload-fullscreen-content">
+            <UploadIcon className="upload-icon" />
+            <p className="upload-message">Drop to upload to {profileName}</p>
+            <p className="upload-hint">WAV, FLAC, MP3, M4A, AAC, Opus, OGG • Max 150MB</p>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

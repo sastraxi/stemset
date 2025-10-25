@@ -58,11 +58,11 @@ export function UserNav({ user, onLogout }: UserNavProps) {
           <ChevronDown className="h-4 w-4 text-gray-300" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 p-2">
-        <div className="flex items-center gap-3 p-2 mb-2">
+      <DropdownMenuContent align="end" className="w-64">
+        <div className="flex items-center gap-3 px-2 py-3">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user.picture || getFallbackAvatarUrl(user)} alt={user.name} />
-            <AvatarFallback className="bg-blue-500 text-white font-medium">{getInitials(user)}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground font-medium">{getInitials(user)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <span className="font-medium text-sm">{user.name || user.email.split('@')[0]}</span>
@@ -70,7 +70,10 @@ export function UserNav({ user, onLogout }: UserNavProps) {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+        <DropdownMenuItem
+          onClick={onLogout}
+          className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:text-red-300 focus:bg-red-500/10"
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

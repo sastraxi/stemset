@@ -5,6 +5,7 @@ import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
 import { ProfileSelector } from './components/ProfileSelector';
 import { Upload } from './components/Upload';
+import { Spinner } from './components/Spinner';
 import { Button } from './components/ui/button';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
@@ -44,6 +45,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
   const [selectedFile, setSelectedFile] = useState<StemFile | null>(null);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   const [fileCountByProfile, setFileCountByProfile] = useState<Record<string, number>>({});
+  const [loadingFiles, setLoadingFiles] = useState(false);
   const stemPlayerRef = useRef<StemPlayerHandle>(null);
 
   useEffect(() => {
@@ -123,6 +125,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
   }
 
   async function loadProfileFiles(profileName: string) {
+    setLoadingFiles(true);
     try {
       const data = await getProfileFiles(profileName);
       setFiles(data);
@@ -130,6 +133,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       setFileCountByProfile(prev => ({ ...prev, [profileName]: data.length }));
     } catch (error) {
       console.error('Error loading files:', error);
+    } finally {
+      setLoadingFiles(false);
     }
   }
 
@@ -176,10 +181,10 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
 
   return (
     <div className="app">
-      <header className="bg-gray-850 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+      <header className="px-6 py-4 flex justify-between items-center">
         <div className="flex-1 flex items-center gap-4">
           <img src="/logo.png" alt="Stemset" className="h-10 w-auto" />
-          <h1 className="lowercase text-4xl font-bold text-white tracking-tight m-0">Stemset</h1>
+          <h1 className="lowercase text-4xl font-bold tracking-tight m-0" style={{ color: '#e8e8e8' }}>Stemset</h1>
         </div>
         <div className="flex-none ml-auto flex items-center gap-3">
           <ProfileSelector
@@ -215,17 +220,21 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-            {files.length === 0 ? (
+            {loadingFiles ? (
+              <div className="flex items-center justify-center py-8">
+                <Spinner size="md" />
+              </div>
+            ) : files.length === 0 ? (
               <p className="empty-state">No processed files yet. Upload a file above or use the CLI.</p>
             ) : (
               <ul className="list-none">
                 {files.map((file) => (
                   <li
                     key={file.name}
-                    className={`py-3 px-2 m-0 bg-transparent border-none border-l-4 cursor-pointer transition-all text-sm text-gray-200
+                    className={`py-2.5 px-3 m-0 bg-transparent border-none border-l-2 cursor-pointer transition-all text-sm rounded-r
                       ${selectedFile?.name === file.name
-                        ? 'bg-blue-400/15 border-l-blue-400 text-white'
-                        : 'border-l-transparent hover:bg-white/5 hover:border-l-gray-600'
+                        ? 'bg-blue-400/10 border-l-blue-400 text-white'
+                        : 'border-l-transparent hover:bg-white/5 hover:border-l-gray-700 text-gray-300'
                       }`}
                     onClick={() => {
                       setSelectedFile(file);

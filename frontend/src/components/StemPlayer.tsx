@@ -1,6 +1,7 @@
 import { useStemPlayer } from './useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
+import { Spinner } from './Spinner';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
@@ -126,7 +127,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
   }
 
   if (isLoading) {
-    return <div className="stem-player loading">Loading stems...</div>;
+    return (
+      <div className="stem-player loading">
+        <Spinner size="lg" />
+        <p style={{ marginTop: '1rem', color: '#888' }}>Loading stems...</p>
+      </div>
+    );
   }
 
   return (

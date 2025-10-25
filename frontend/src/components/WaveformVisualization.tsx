@@ -134,24 +134,24 @@ export function WaveformVisualization({
 
     ctx.restore();
 
-    // TIME GRID: Vertical lines for time navigation
+    // TIME GRID: Vertical lines for time navigation (DRAWN BEHIND WAVEFORM using destination-over)
     if (duration > 0) {
-      ctx.globalCompositeOperation = 'source-over';
-      
+      ctx.globalCompositeOperation = 'destination-over';
+
       // Helper function to draw vertical grid line
       const drawGridLine = (timeSeconds: number, opacity: number, lineWidth: number = 1, dotted: boolean = false) => {
         const x = (timeSeconds / duration) * canvas.width;
         if (x >= 0 && x <= canvas.width) {
           ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
           ctx.lineWidth = lineWidth * dpr;
-          
+
           // Set dash pattern for dotted lines
           if (dotted) {
             ctx.setLineDash([3 * dpr, 3 * dpr]); // 3px dashes with 3px gaps
           } else {
             ctx.setLineDash([]); // Solid line
           }
-          
+
           ctx.beginPath();
           ctx.moveTo(x, 0);
           ctx.lineTo(x, canvas.height);
@@ -162,14 +162,14 @@ export function WaveformVisualization({
       // Draw time grid lines
       for (let time = 0; time <= duration; time += 15) {
         if (time % 60 === 0) {
-          // Every minute - solid line with 12% opacity
-          drawGridLine(time, 0.12, 1, false);
+          // Every minute - solid line with 20% opacity
+          drawGridLine(time, 0.15, 1, false);
         } else if (time % 30 === 0) {
-          // Every 30 seconds - solid line with 8% opacity
-          drawGridLine(time, 0.08, 1, false);
+          // Every 30 seconds - solid line with 12% opacity
+          drawGridLine(time, 0.12, 1, false);
         } else {
-          // Every 15 seconds - dotted line with 4% opacity
-          drawGridLine(time, 0.04, 1, true);
+          // Every 15 seconds - dotted line with 10% opacity
+          drawGridLine(time, 0.1, 1, true);
         }
       }
     }
@@ -212,7 +212,7 @@ export function WaveformVisualization({
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onSeek || !onPreview) return;
-    
+
     setIsDragging(true);
     const seekTime = getSeekTime(e.clientX);
     if (seekTime !== null) {
@@ -222,7 +222,7 @@ export function WaveformVisualization({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging || !onPreview) return;
-    
+
     const seekTime = getSeekTime(e.clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Update preview
@@ -260,7 +260,7 @@ export function WaveformVisualization({
         }
         setIsDragging(false);
       };
-      
+
       const handleGlobalMouseMove = (e: MouseEvent) => {
         if (onPreview) {
           const seekTime = getSeekTime(e.clientX);
@@ -272,7 +272,7 @@ export function WaveformVisualization({
 
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('mousemove', handleGlobalMouseMove);
-      
+
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp);
         document.removeEventListener('mousemove', handleGlobalMouseMove);

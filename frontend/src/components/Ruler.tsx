@@ -90,11 +90,11 @@ export function Ruler({
       // Draw time grid lines (60s and 30s only, skip 15s)
       for (let time = 0; time <= duration; time += 30) {
         if (time % 60 === 0) {
-          // Every minute - solid line with 15% opacity
-          drawGridLine(time, 0.15, 1);
+          // Every minute - solid line with 25% opacity
+          drawGridLine(time, 0.25, 1);
         } else {
-          // Every 30 seconds - solid line with 10% opacity
-          drawGridLine(time, 0.10, 1);
+          // Every 30 seconds - solid line with 15% opacity
+          drawGridLine(time, 0.15, 1);
         }
       }
 

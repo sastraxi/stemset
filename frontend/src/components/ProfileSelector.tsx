@@ -30,7 +30,7 @@ export function ProfileSelector({ profiles, selectedProfile, onSelectProfile, fi
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-fit w-auto bg-[#2a2a2a] border-[#3a3a3a]"
+        className="min-w-fit w-auto"
       >
         {profiles.map((profile) => (
           <DropdownMenuItem
