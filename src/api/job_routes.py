@@ -22,6 +22,7 @@ from ..utils import compute_file_hash, derive_output_name
 # Simple in-memory job storage
 # In production, this should be a database or Redis
 _jobs: dict[str, ProcessingResult] = {}
+_job_metadata: dict[str, dict[str, str]] = {}  # job_id -> {profile_name, output_name, filename}
 
 
 @post("/api/jobs/{job_id:str}/complete")
@@ -48,11 +49,21 @@ async def job_complete(job_id: str, result: ProcessingResult) -> dict[str, str]:
 
 
 @get("/api/jobs/{job_id:str}/status")
-async def job_status(job_id: str) -> JobStatusResponse:
-    """Get status of a processing job.
+async def job_status(job_id: str, state: State) -> JobStatusResponse:
+    """Get status of a processing job with long-polling support.
+
+    Production (with callbacks):
+    - Long-polls up to 60s waiting for job completion callback
+    - Returns immediately if job completes
+
+    Local dev (no callbacks):
+    - Syncs from R2 to local media
+    - Checks if output folder exists in file list
+    - Returns immediately with status based on file presence
 
     Args:
         job_id: Job identifier
+        state: Litestar application state
 
     Returns:
         Job status
@@ -60,13 +71,83 @@ async def job_status(job_id: str) -> JobStatusResponse:
     Raises:
         NotFoundException: If job not found
     """
-    if job_id not in _jobs:
-        raise NotFoundException(f"Job {job_id} not found")
+    import asyncio
+    from ..cli.sync import sync_profile_from_r2, should_sync
 
+    config: Config = state.config
+
+    # Get job metadata from storage
+    if job_id not in _jobs:
+        # Job hasn't completed via callback yet
+        # Try to find it by syncing and checking files (local dev)
+
+        # We need to know which profile this job is for
+        # Store job metadata when created
+        job_metadata = _job_metadata.get(job_id)
+        if job_metadata is None:
+            raise NotFoundException(f"Job {job_id} not found")
+
+        profile_name = job_metadata["profile_name"]
+        output_name = job_metadata["output_name"]
+        filename = job_metadata["filename"]
+
+        # In local dev, sync from R2 and check for file presence
+        if should_sync() and config.r2 is not None:
+            profile = config.get_profile(profile_name)
+            if profile:
+                # Sync from R2 (downloads any new files)
+                sync_profile_from_r2(config, profile)
+
+                # Check if output folder exists now
+                storage = get_storage(config)
+                files = storage.list_files(profile_name)
+
+                if output_name in files:
+                    # File appeared! Mark as complete
+                    return JobStatusResponse(
+                        job_id=job_id,
+                        profile_name=profile_name,
+                        output_name=output_name,
+                        filename=filename,
+                        status="complete",
+                        stems=None,  # We don't know stem names from file presence
+                        error=None,
+                    )
+
+        # Production: Long-poll for callback (up to 60s)
+        max_wait_seconds = 60
+        poll_interval = 1.0
+        waited = 0.0
+
+        while waited < max_wait_seconds:
+            await asyncio.sleep(poll_interval)
+            waited += poll_interval
+
+            if job_id in _jobs:
+                # Job completed!
+                break
+
+        if job_id not in _jobs:
+            # Still processing after 60s
+            return JobStatusResponse(
+                job_id=job_id,
+                profile_name=profile_name,
+                output_name=output_name,
+                filename=filename,
+                status="processing",
+                stems=None,
+                error=None,
+            )
+
+    # Job completed via callback
     result = _jobs[job_id]
+    job_metadata = _job_metadata[job_id]
 
     return JobStatusResponse(
         job_id=job_id,
+        profile_name=job_metadata["profile_name"],
+        output_name=job_metadata["output_name"],
+        filename=job_metadata["filename"],
         status=result.status,
         stems=result.stems,
         error=result.error,
@@ -146,6 +227,13 @@ async def upload_file(
         # Generate job ID
         job_id = str(uuid.uuid4())
 
+        # Store job metadata for status polling
+        _job_metadata[job_id] = {
+            "profile_name": profile_name,
+            "output_name": output_name,
+            "filename": data.filename,
+        }
+
         # Create job payload
         job = ProcessingJob(
             job_id=job_id,
@@ -157,23 +245,30 @@ async def upload_file(
             callback_url=f"{state.base_url}/api/jobs/{job_id}/complete",
         )
 
-        # Trigger GPU worker (non-blocking)
+        # Trigger GPU worker (fire-and-forget)
         import httpx
 
         gpu_worker_url = config.gpu_worker_url.rstrip("/")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Fire and forget - GPU worker will call back
-            _ = await client.post(
-                gpu_worker_url,
-                json=job.model_dump(),
-            )
+        try:
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                # Fire and forget - just confirm job was accepted
+                _ = await client.post(
+                    gpu_worker_url,
+                    json=job.model_dump(),
+                )
+        except httpx.TimeoutException:
+            # Timeout is fine - worker may take longer to respond but job is queued
+            pass
 
         print(f"Job {job_id} created for {output_name}")
 
-        # Return job ID for polling
+        # Return immediately for polling
         return JobStatusResponse(
             job_id=job_id,
+            profile_name=profile_name,
+            output_name=output_name,
+            filename=data.filename,
             status="processing",
             stems=None,
             error=None,

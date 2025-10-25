@@ -71,7 +71,7 @@ export function Ruler({
     // TIME GRID: Vertical lines for time navigation
     if (duration > 0) {
       ctx.globalCompositeOperation = 'source-over';
-      
+
       // Helper function to draw vertical grid line
       const drawGridLine = (timeSeconds: number, opacity: number, lineWidth: number = 1) => {
         const x = (timeSeconds / duration) * canvas.width;
@@ -79,7 +79,7 @@ export function Ruler({
           ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
           ctx.lineWidth = lineWidth * dpr;
           ctx.setLineDash([]); // Solid line
-          
+
           ctx.beginPath();
           ctx.moveTo(x, 0);
           ctx.lineTo(x, canvas.height);
@@ -102,12 +102,12 @@ export function Ruler({
       ctx.font = `${11 * dpr}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      
+
       for (let time = 0; time <= duration; time += 30) {
         const x = (time / duration) * canvas.width;
         if (x >= 20 * dpr && x <= canvas.width - 20 * dpr) { // Avoid edges
           const timeText = formatTime(time);
-          
+
           if (time % 60 === 0) {
             // Every minute - white text, larger
             ctx.fillStyle = '#ffffff';
@@ -130,7 +130,7 @@ export function Ruler({
       // Draw triangle pointing down at the bottom of the ruler
       const triangleSize = 6 * dpr;
       const triangleY = canvas.height - triangleSize;
-      
+
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.moveTo(cursorX, canvas.height); // Bottom point
@@ -146,10 +146,20 @@ export function Ruler({
     renderRuler();
   }, [currentTime, previewTime, duration, height]);
 
+  // Watch for container size changes using ResizeObserver
   useEffect(() => {
-    const handleResize = () => renderRuler();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      renderRuler();
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // Real-time scrubbing handlers (same logic as WaveformVisualization)
@@ -165,7 +175,7 @@ export function Ruler({
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onSeek || !onPreview) return;
-    
+
     setIsDragging(true);
     const seekTime = getSeekTime(e.clientX);
     if (seekTime !== null) {
@@ -175,7 +185,7 @@ export function Ruler({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging || !onPreview) return;
-    
+
     const seekTime = getSeekTime(e.clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Update preview
@@ -213,7 +223,7 @@ export function Ruler({
         }
         setIsDragging(false);
       };
-      
+
       const handleGlobalMouseMove = (e: MouseEvent) => {
         if (onPreview) {
           const seekTime = getSeekTime(e.clientX);
@@ -225,7 +235,7 @@ export function Ruler({
 
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('mousemove', handleGlobalMouseMove);
-      
+
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp);
         document.removeEventListener('mousemove', handleGlobalMouseMove);

@@ -30,6 +30,9 @@ class JobStatusResponse(BaseModel):
     """Job status response."""
 
     job_id: str
+    profile_name: str
+    output_name: str
+    filename: str
     status: str  # "processing", "complete", or "error"
     stems: list[str] | None = None
     error: str | None = None

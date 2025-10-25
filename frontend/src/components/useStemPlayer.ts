@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StemMetadata } from '../types';
 import { getFileMetadata } from '../api';
+import {
+  getMasterEq,
+  setMasterEq,
+  getMasterLimiter,
+  setMasterLimiter,
+  getMasterEqEnabled,
+  setMasterEqEnabled,
+  getRecordingState,
+  updateRecordingState,
+} from '../lib/storage';
+import type { MasterEqSettings } from '../lib/storage';
 
 /**
  * Design goals / patterns for React + Web Audio:
@@ -118,29 +129,14 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       { id: 'highmid', frequency: 3500, type: 'peaking', gain: 0, q: 1 },
       { id: 'high', frequency: 10000, type: 'highshelf', gain: 0, q: 1 },
     ];
-    try {
-      const raw = localStorage.getItem('stemset.master.eq.v1');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed as EqBand[];
-      }
-    } catch {}
-    return defaults;
+    return getMasterEq(defaults) as EqBand[];
   });
   const [limiter, setLimiter] = useState<LimiterSettings>(() => {
     const def: LimiterSettings = { thresholdDb: -6, release: 0.12, enabled: true };
-    try {
-      const raw = localStorage.getItem('stemset.master.limiter.v2');
-      if (raw) return { ...def, ...JSON.parse(raw) };
-    } catch {}
-    return def;
+    return getMasterLimiter(def);
   });
   const [eqEnabled, setEqEnabled] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem('stemset.master.eq.enabled.v1');
-      if (raw) return JSON.parse(raw) === true;
-    } catch {}
-    return true;
+    return getMasterEqEnabled(true);
   });
 
   // Refs for audio graph & timing
@@ -279,19 +275,39 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       }));
       if (aborted) return;
       loadedStemsRef.current = newMap;
-      const stemStateArray = Array.from(newMap.entries()).map(([n, s]) => ({
-        name: n,
-        gain: s.gain.gain.value,
-        initialGain: s.initialGain,
-        waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null,
-        muted: s.muteGain.gain.value === 0
-      })).sort((a, b) => a.name.localeCompare(b.name));
+
+      // Restore per-recording state from localStorage
+      const savedState = getRecordingState(profileName, fileName);
+
+      const stemStateArray = Array.from(newMap.entries()).map(([n, s]) => {
+        // Restore saved gain and mute state if available
+        if (savedState) {
+          if (savedState.stemGains[n] !== undefined) {
+            s.gain.gain.value = savedState.stemGains[n];
+          }
+          if (savedState.stemMutes[n] !== undefined) {
+            s.muteGain.gain.value = savedState.stemMutes[n] ? 0 : 1;
+          }
+        }
+        return {
+          name: n,
+          gain: s.gain.gain.value,
+          initialGain: s.initialGain,
+          waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null,
+          muted: s.muteGain.gain.value === 0
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
       console.log('[useStemPlayer] Setting stem state:', stemStateArray);
       setStemState(stemStateArray);
       setIsLoading(false);
-      pausedAtRef.current = 0;
-      startTimeRef.current = ctx.currentTime;
-      setCurrentTime(0);
+
+      // Restore playback position
+      const initialPosition = savedState?.playbackPosition || 0;
+      pausedAtRef.current = initialPosition;
+      startTimeRef.current = ctx.currentTime - initialPosition;
+      setCurrentTime(initialPosition);
+
       const t1 = performance.now();
       setLoadingMetrics({
         startedAt: t0,
@@ -307,10 +323,34 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     };
   }, [profileName, fileName, metadataUrl, ensureContext]);
 
-  // Persist settings
-  useEffect(() => { try { localStorage.setItem('stemset.master.eq.v1', JSON.stringify(eqBands)); } catch {} }, [eqBands]);
-  useEffect(() => { try { localStorage.setItem('stemset.master.limiter.v2', JSON.stringify(limiter)); } catch {} }, [limiter]);
-  useEffect(() => { try { localStorage.setItem('stemset.master.eq.enabled.v1', JSON.stringify(eqEnabled)); } catch {} }, [eqEnabled]);
+  // Persist master settings (global)
+  useEffect(() => { setMasterEq(eqBands as MasterEqSettings[]); }, [eqBands]);
+  useEffect(() => { setMasterLimiter(limiter); }, [limiter]);
+  useEffect(() => { setMasterEqEnabled(eqEnabled); }, [eqEnabled]);
+
+  // Persist per-recording playback position (debounced to avoid excessive writes)
+  useEffect(() => {
+    if (isLoading) return; // Don't persist during initial load
+    const timer = setTimeout(() => {
+      updateRecordingState(profileName, fileName, { playbackPosition: currentTime });
+    }, 1000); // Debounce 1s
+    return () => clearTimeout(timer);
+  }, [currentTime, profileName, fileName, isLoading]);
+
+  // Persist per-recording stem gains and mute states (debounced)
+  useEffect(() => {
+    if (isLoading || stemState.length === 0) return;
+    const timer = setTimeout(() => {
+      const stemGains: Record<string, number> = {};
+      const stemMutes: Record<string, boolean> = {};
+      stemState.forEach(s => {
+        stemGains[s.name] = s.gain;
+        stemMutes[s.name] = s.muted;
+      });
+      updateRecordingState(profileName, fileName, { stemGains, stemMutes });
+    }, 500); // Debounce 500ms (more responsive for UI controls)
+    return () => clearTimeout(timer);
+  }, [stemState, profileName, fileName, isLoading]);
 
   // React to eqBands change: update existing filters or rebuild if count changes
   useEffect(() => {

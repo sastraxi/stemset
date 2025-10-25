@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Upload as UploadIcon } from 'lucide-react';
+import { getPendingJobs, setPendingJobs, removePendingJob } from '../lib/storage';
 import './Upload.css';
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
@@ -9,9 +10,94 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 interface UploadProps {
   profileName: string;
   onUploadComplete: () => void;
+  onNavigateToRecording?: (profileName: string, fileName: string) => void;
+  shouldAutoNavigate?: () => boolean;
 }
 
-export function Upload({ profileName, onUploadComplete }: UploadProps) {
+// Helper to poll job status (used both in component and for resuming jobs)
+async function pollJobStatus(
+  jobId: string,
+  toastId: string | number,
+  profileName: string,
+  outputName: string,
+  filename: string,
+  onComplete: () => void,
+  onNavigate?: (profileName: string, fileName: string) => void,
+  shouldAutoNavigate?: () => boolean
+): Promise<void> {
+  let lastPollTime = 0;
+
+  while (true) {
+    // Throttle: max once per 5s on frontend
+    const now = Date.now();
+    const timeSinceLastPoll = now - lastPollTime;
+    if (timeSinceLastPoll < 5000) {
+      await new Promise(resolve => setTimeout(resolve, 5000 - timeSinceLastPoll));
+    }
+    lastPollTime = Date.now();
+
+    try {
+      // Long-poll backend (60s timeout in production, immediate in local dev)
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}/status`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check job status');
+      }
+
+      const status = await response.json();
+
+      if (status.status === 'complete') {
+        removePendingJob(jobId);
+        onComplete();
+
+        // Auto-navigate if nothing is currently playing
+        if (shouldAutoNavigate?.() && onNavigate) {
+          onNavigate(profileName, outputName);
+          toast.success(`${filename} ready! Now playing.`, { id: toastId, duration: 5000 });
+        } else {
+          // Show clickable toast with navigation
+          toast.success(
+            <div style={{ cursor: 'pointer' }} onClick={() => onNavigate?.(profileName, outputName)}>
+              <strong>{filename} ready!</strong>
+              <div style={{ fontSize: '0.875rem', marginTop: '0.25rem', opacity: 0.9 }}>
+                Click to play
+              </div>
+            </div>,
+            { id: toastId, duration: 10000 }
+          );
+        }
+        break;
+      } else if (status.status === 'error') {
+        toast.error(status.error || 'Processing failed', { id: toastId });
+        removePendingJob(jobId);
+        break;
+      }
+      // else: status === "processing", continue polling
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to check status', { id: toastId });
+      removePendingJob(jobId);
+      break;
+    }
+  }
+}
+
+// Export function to resume pending jobs (called from App.tsx on mount)
+export function resumePendingJobs(
+  onJobComplete: () => void,
+  onNavigate?: (profileName: string, fileName: string) => void,
+  shouldAutoNavigate?: () => boolean
+) {
+  const pendingJobs = getPendingJobs();
+
+  pendingJobs.forEach(job => {
+    const toastId = toast.loading(`Processing ${job.filename}...`, { duration: Infinity });
+    pollJobStatus(job.job_id, toastId, job.profile_name, job.output_name, job.filename, onJobComplete, onNavigate, shouldAutoNavigate);
+  });
+}
+
+export function Upload({ profileName, onUploadComplete, onNavigateToRecording, shouldAutoNavigate }: UploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -83,7 +169,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       return;
     }
 
-    // Show processing toast
+    // Show uploading toast
     const toastId = toast.loading(`Uploading ${file.name}...`);
 
     try {
@@ -91,7 +177,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       const formData = new FormData();
       formData.append('data', file);
 
-      // Upload file
+      // Upload file (returns immediately)
       const response = await fetch(`${API_BASE}/api/upload/${encodeURIComponent(profileName)}`, {
         method: 'POST',
         body: formData,
@@ -104,17 +190,24 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       }
 
       const result = await response.json();
-      const jobId = result.job_id;
+      const { job_id, profile_name, output_name, filename } = result;
 
-      // Update toast to show processing
-      toast.loading(`Processing ${file.name}...`, { id: toastId });
+      // Store in localStorage for persistence across profile switches
+      const pendingJobs = getPendingJobs();
+      pendingJobs.push({
+        job_id,
+        profile_name,
+        output_name,
+        filename,
+        timestamp: Date.now(),
+      });
+      setPendingJobs(pendingJobs);
 
-      // Poll for completion
-      await pollJobStatus(jobId);
+      // Update toast to show processing (persistent)
+      toast.loading(`Processing ${filename}...`, { id: toastId, duration: Infinity });
 
-      // Success!
-      toast.success(`${file.name} processed successfully!`, { id: toastId });
-      onUploadComplete();
+      // Start polling (throttled to max once per 5s)
+      pollJobStatus(job_id, toastId, profile_name, output_name, filename, onUploadComplete, onNavigateToRecording, shouldAutoNavigate);
 
       // Reset file input
       if (fileInputRef.current) {
@@ -124,35 +217,6 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Upload failed', { id: toastId });
     }
-  };
-
-  const pollJobStatus = async (jobId: string): Promise<void> => {
-    const maxAttempts = 300; // 10 minutes max (2 second intervals)
-    let attempts = 0;
-
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const response = await fetch(`${API_BASE}/api/jobs/${jobId}/status`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to check job status');
-      }
-
-      const status = await response.json();
-
-      if (status.status === 'complete') {
-        return; // Done!
-      } else if (status.status === 'error') {
-        throw new Error(status.error || 'Processing failed');
-      }
-
-      attempts++;
-    }
-
-    throw new Error('Processing timeout');
   };
 
   const handleClick = () => {

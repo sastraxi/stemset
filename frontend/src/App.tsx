@@ -4,13 +4,14 @@ import { StemPlayer, type StemPlayerHandle } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
 import { ProfileSelector } from './components/ProfileSelector';
-import { Upload } from './components/Upload';
+import { Upload, resumePendingJobs } from './components/Upload';
 import { Spinner } from './components/Spinner';
 import { Button } from './components/ui/button';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
 import { Toaster, toast } from 'sonner';
+import { getSessionProfile, setSessionProfile, pruneStalePendingJobs, pruneStaleRecordings } from './lib/storage';
 import './styles/layout.css';
 import './styles/sidebar.css';
 import './styles/splash.css';
@@ -49,10 +50,25 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
   const stemPlayerRef = useRef<StemPlayerHandle>(null);
 
   useEffect(() => {
+    // Clean up stale pending jobs (>7 days old)
+    pruneStalePendingJobs();
+
     // Initial connection check and load profiles
     checkBackendConnection().then((connected) => {
       if (connected) {
         loadProfiles();
+
+        // Resume any pending upload jobs from previous session
+        resumePendingJobs(
+          () => {
+            // Refresh the current profile when a job completes
+            if (selectedProfile) {
+              loadProfileFiles(selectedProfile);
+            }
+          },
+          handleNavigateToRecording,
+          () => !selectedFile // Auto-navigate only if no file is currently selected
+        );
       }
     });
 
@@ -81,6 +97,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       // Clear selected file when profile changes to avoid loading incorrect file
       setSelectedFile(null);
       loadProfileFiles(selectedProfile);
+      // Persist selected profile
+      setSessionProfile(selectedProfile);
     }
   }, [selectedProfile]);
 
@@ -101,8 +119,12 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
     try {
       const data = await getProfiles();
       setProfiles(data);
+
+      // Restore last selected profile from localStorage, or use first profile
       if (data.length > 0 && !selectedProfile) {
-        setSelectedProfile(data[0].name);
+        const savedProfile = getSessionProfile();
+        const profileExists = savedProfile && data.some(p => p.name === savedProfile);
+        setSelectedProfile(profileExists ? savedProfile : data[0].name);
       }
 
       // Load file counts for all profiles
@@ -131,6 +153,10 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       setFiles(data);
       // Update count for this profile
       setFileCountByProfile(prev => ({ ...prev, [profileName]: data.length }));
+
+      // Clean up stale recording states (recordings that no longer exist)
+      const validFileNames = data.map(f => f.name);
+      pruneStaleRecordings(profileName, validFileNames);
     } catch (error) {
       console.error('Error loading files:', error);
     } finally {
@@ -147,6 +173,33 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
     } catch (error) {
       console.error('Error refreshing files:', error);
       toast.error('Error refreshing file list');
+    }
+  }
+
+  async function handleNavigateToRecording(profileName: string, fileName: string) {
+    // Switch to the profile if needed
+    if (selectedProfile !== profileName) {
+      setSelectedProfile(profileName);
+      // Wait for files to load
+      await loadProfileFiles(profileName);
+    }
+
+    // Find the file in the list
+    const targetFile = files.find(f => f.name === fileName);
+
+    if (targetFile) {
+      // Select the file and focus player
+      setSelectedFile(targetFile);
+      setTimeout(() => stemPlayerRef.current?.focus(), 100);
+    } else {
+      // File not in current list, refresh and try again
+      await loadProfileFiles(profileName);
+      const refreshedFiles = await getProfileFiles(profileName);
+      const file = refreshedFiles.find(f => f.name === fileName);
+      if (file) {
+        setSelectedFile(file);
+        setTimeout(() => stemPlayerRef.current?.focus(), 100);
+      }
     }
   }
 
@@ -203,6 +256,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
             <Upload
               profileName={selectedProfile}
               onUploadComplete={handleRefresh}
+              onNavigateToRecording={handleNavigateToRecording}
+              shouldAutoNavigate={() => !selectedFile}
             />
           )}
 

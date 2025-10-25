@@ -61,7 +61,8 @@ export function WaveformVisualization({
     img.onload = () => {
       console.log(`[WaveformVisualization:${stemName}] Image loaded successfully`);
       imageRef.current = img;
-      renderWaveform();
+      // Defer rendering to next frame to ensure container is properly sized
+      requestAnimationFrame(() => renderWaveform());
     };
     img.onerror = (e) => {
       console.error(`[WaveformVisualization:${stemName}] Failed to load waveform image`, waveformUrl, e);
@@ -86,6 +87,13 @@ export function WaveformVisualization({
     // Set canvas size to match container (responsive)
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
+
+    // Skip rendering if container has no dimensions yet
+    if (rect.width === 0 || rect.height === 0) {
+      console.log(`[WaveformVisualization:${stemName}] Container not ready, skipping render`);
+      return;
+    }
+
     canvas.width = rect.width * dpr;
     canvas.height = 128 * dpr; // Fixed height for consistent UI
     canvas.style.width = `${rect.width}px`;
@@ -188,15 +196,25 @@ export function WaveformVisualization({
     }
   };
 
-  // Re-render on time change, preview time change, or window resize
+  // Re-render on time change, preview time change, or duration change
   useEffect(() => {
     renderWaveform();
   }, [currentTime, previewTime, duration]);
 
+  // Watch for container size changes using ResizeObserver
   useEffect(() => {
-    const handleResize = () => renderWaveform();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      renderWaveform();
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // Real-time scrubbing handlers

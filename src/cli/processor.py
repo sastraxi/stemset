@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 from ..config import Profile, get_config
-from ..utils import compute_file_hash
+from ..utils import compute_file_hash, derive_output_name
 from ..modern_separator import StemSeparator
-from .scanner import AUDIO_EXTENSIONS, derive_output_name, scan_for_new_files
+from .scanner import AUDIO_EXTENSIONS, scan_for_new_files
 from .remote_processor import process_file_remotely
 from .sync import sync_profile_from_r2, sync_profile_to_r2
 
