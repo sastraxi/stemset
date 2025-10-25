@@ -29,6 +29,13 @@ r2_env_vars = {
     "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
 }
 
+dummy_auth_vars = {
+    "GOOGLE_CLIENT_ID": "dummy",
+    "GOOGLE_CLIENT_SECRET": "dummy",
+    "JWT_SECRET": "dummy",
+    "OAUTH_REDIRECT_URI": "dummy",
+}
+
 image = (
     modal.Image.debian_slim(python_version="3.13")
     .apt_install("libsndfile1", "libopus0", "ffmpeg")
@@ -45,6 +52,7 @@ image = (
     .uv_sync(groups=["shared", "processing", "modal"], frozen=True)
     # app (added last to optimize build caching)
     .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
+    .env(dummy_auth_vars)
     .add_local_dir("src", "/root/src")
     .add_local_file("config.yaml", "/root/config.yaml")
 )
