@@ -87,7 +87,7 @@ STEMSET_BYPASS_AUTH=false
 GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
 JWT_SECRET=<generate-with: python -c "import secrets; print(secrets.token_hex(32))">
-OAUTH_REDIRECT_URI=https://stemset-api-<yourname>.koyeb.app/auth/callback
+OAUTH_REDIRECT_URI=https://stemset-api.koyeb.app/auth/callback
 FRONTEND_URL=https://stemset.pages.dev  # Update after deploying frontend
 
 # Cloudflare R2
@@ -102,8 +102,8 @@ R2_PUBLIC_URL=<from-step-1.3-if-configured>  # Optional
 
 1. Click **Deploy**
 2. Wait for build to complete (~3-5 minutes)
-3. Your API will be available at: `https://stemset-api-<yourname>.koyeb.app`
-4. Test: Visit `https://stemset-api-<yourname>.koyeb.app/api/profiles`
+3. Your API will be available at: `https://stemset-api.koyeb.app`
+4. Test: Visit `https://stemset-api.koyeb.app/api/profiles`
 
 ---
 
@@ -126,7 +126,7 @@ R2_PUBLIC_URL=<from-step-1.3-if-configured>  # Optional
 Add this environment variable in Cloudflare Pages settings:
 
 ```bash
-VITE_API_URL=https://stemset-api-<yourname>.koyeb.app/api
+VITE_API_URL=https://stemset-api.koyeb.app/api
 ```
 
 ### 3.3 Deploy
@@ -154,10 +154,10 @@ Redeploy the Koyeb app for the change to take effect.
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Edit your OAuth 2.0 Client ID
 3. Add **Authorized redirect URIs**:
-   - `https://stemset-api-<yourname>.koyeb.app/auth/callback`
+   - `https://stemset-api.koyeb.app/auth/callback`
 4. Add **Authorized JavaScript origins**:
    - `https://stemset.pages.dev`
-   - `https://stemset-api-<yourname>.koyeb.app`
+   - `https://stemset-api.koyeb.app`
 5. Click **Save**
 
 ---

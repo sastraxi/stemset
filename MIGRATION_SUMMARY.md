@@ -81,7 +81,7 @@ See `DEPLOYMENT.md` Part 2 for detailed steps.
 1. In Cloudflare Dashboard → Pages
 2. Connect GitHub repository
 3. Set build command: `cd frontend && bun install && bun run build`
-4. Set environment variable: `VITE_API_URL=https://your-koyeb-url.koyeb.app/api`
+4. Set environment variable: `VITE_API_URL=https://stemset-api.koyeb.app/api`
 5. Deploy!
 
 See `DEPLOYMENT.md` Part 3 for detailed steps.
@@ -89,7 +89,7 @@ See `DEPLOYMENT.md` Part 3 for detailed steps.
 ### 5. Configure Google OAuth (5 minutes)
 
 Update your Google OAuth credentials with new redirect URIs:
-- `https://stemset-api-yourname.koyeb.app/auth/callback`
+- `https://stemset-api.koyeb.app/auth/callback`
 
 See `DEPLOYMENT.md` Part 4 for detailed steps.
 

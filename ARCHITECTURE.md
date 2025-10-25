@@ -264,7 +264,7 @@ cd frontend && bun run dev
 ### Production
 
 - Frontend: `https://stemset.pages.dev`
-- Backend: `https://stemset-api-yourname.koyeb.app`
+- Backend: `https://stemset-api.koyeb.app`
 - CORS configured for cross-origin requests
 - Auth required (Google OAuth)
 - Storage: Cloudflare R2
@@ -300,7 +300,7 @@ R2_PUBLIC_URL=...  # Optional
 VITE_API_URL=
 
 # Production (set in Cloudflare Pages)
-VITE_API_URL=https://stemset-api-yourname.koyeb.app
+VITE_API_URL=https://stemset-api.koyeb.app
 ```
 
 ## Deployment Workflow
