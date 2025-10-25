@@ -87,15 +87,16 @@ class AudioSeparator(ABC):
                 model_file_dir = Path.home() / ".stemset" / "models"
 
             # Limit CPU threads to keep system responsive
+            thread_count: int | None = None
             cpu_count = os.cpu_count() or 4
-            thread_override = os.getenv("TORCH_NUM_THREADS")
+            thread_override = os.getenv("PYTORCH_NUM_THREADS")
             if thread_override:
                 thread_count = int(thread_override)
-            else:
-                thread_count = max(1, cpu_count // 2)
 
-            torch.set_num_threads(thread_count)
-            torch.set_num_interop_threads(thread_count)
+            if thread_count is not None:
+                torch.set_num_threads(thread_count)
+                torch.set_num_interop_threads(thread_count)
+
             print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
             # Configure output format
@@ -131,8 +132,10 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
 
             output_format = self.output_config.format.value.upper()
             output_bitrate = f"{self.output_config.bitrate}k" if output_format == "OPUS" else None
-            print(f"Model '{self.model_filename}' loaded (output: {output_format}" +
-                  (f" @ {output_bitrate})" if output_bitrate else ")"))
+            print(
+                f"Model '{self.model_filename}' loaded (output: {output_format}"
+                + (f" @ {output_bitrate})" if output_bitrate else ")")
+            )
 
         # Set output directory - model_instance can be None initially but set after load_model
         if separator.model_instance is not None:
@@ -144,7 +147,9 @@ class AudioSeparatorLibraryModel(AudioSeparator, ABC):
         custom_output_names = {slot_name: slot_name for slot_name in self.output_slots.keys()}
 
         # Perform separation
-        output_files: list[str] = separator.separate(str(input_file), custom_output_names=custom_output_names)  # type: ignore[assignment]
+        output_files: list[str] = separator.separate(
+            str(input_file), custom_output_names=custom_output_names
+        )  # type: ignore[assignment]
 
         # Map output files to slots
         output_paths: dict[str, Path] = {}

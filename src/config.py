@@ -147,6 +147,7 @@ class Profile(BaseModel):
     name: str = Field(..., description="Profile name (unique identifier)")
     source_folder: str = Field(..., description="Path to folder containing audio files")
     strategy: str = Field(..., description="Strategy name to use for separation")
+    remote: bool = Field(default=False, description="Use remote GPU processing instead of local")
     output: OutputConfig = Field(default_factory=OutputConfig, description="Output format configuration")
 
     @field_validator("source_folder")
@@ -259,8 +260,27 @@ class Config(BaseModel):
         with open(path, "r") as f:
             data: dict[str, Any] = yaml.safe_load(f)
 
-        # Validate all required environment variables are set
-        required_vars = cls._collect_required_env_vars(data)
+        # Validate environment variables for enabled sections only
+        # Only check env vars for sections that are present and not None
+        required_vars = set()
+
+        # Always check R2 if present
+        if data.get("r2") is not None:
+            required_vars.update(cls._collect_required_env_vars(data["r2"]))
+
+        # Always check GPU worker URL if present
+        if data.get("gpu_worker_url") is not None:
+            required_vars.update(cls._collect_required_env_vars(data["gpu_worker_url"]))
+
+        # Always check auth if present
+        if data.get("auth") is not None:
+            required_vars.update(cls._collect_required_env_vars(data["auth"]))
+
+        # Check other top-level sections
+        for key in ["strategies", "profiles"]:
+            if data.get(key) is not None:
+                required_vars.update(cls._collect_required_env_vars(data[key]))
+
         missing_vars = [var for var in required_vars if var not in os.environ]
 
         if missing_vars:

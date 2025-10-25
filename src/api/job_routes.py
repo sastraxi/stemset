@@ -12,7 +12,7 @@ from litestar.datastructures import State, UploadFile
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.enums import RequestEncodingType
 
-from .models import JobStatusResponse, TriggerProcessingRequest
+from .models import JobStatusResponse
 from ..config import Config
 from ..storage import get_storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
@@ -74,76 +74,6 @@ async def job_status(job_id: str) -> JobStatusResponse:
     )
 
 
-@post("/api/process")
-async def trigger_processing(
-    data: TriggerProcessingRequest,
-    state: State,
-) -> JobStatusResponse:
-    """Trigger remote GPU processing for an uploaded file.
-
-    This endpoint is used by the web frontend to start processing
-    after uploading a file.
-
-    Args:
-        data: Processing request with profile and file info
-        state: Litestar application state
-
-    Returns:
-        Job status with job_id for polling
-
-    Raises:
-        ValueError: If GPU worker not configured or profile not found
-    """
-    config: Config = state.config
-
-    if config.gpu_worker_url is None:
-        raise ValueError(
-            "Remote processing requires gpu_worker_url in config.yaml"
-        )
-
-    # Get profile
-    profile = config.get_profile(data.profile_name)
-    if profile is None:
-        raise ValueError(f"Profile '{data.profile_name}' not found")
-
-    # Generate job ID
-    job_id = str(uuid.uuid4())
-
-    # Assume file is already uploaded to R2 at inputs/{profile}/{filename}
-    input_key = f"inputs/{data.profile_name}/{data.filename}"
-
-    # Create job payload
-    job = ProcessingJob(
-        job_id=job_id,
-        profile_name=data.profile_name,
-        strategy_name=profile.strategy,
-        input_key=input_key,
-        output_name=data.output_name,
-        output_config=profile.output,
-        callback_url=f"{state.base_url}/api/jobs/{job_id}/complete",
-    )
-
-    # Trigger GPU worker (non-blocking)
-    import httpx
-
-    gpu_worker_url = config.gpu_worker_url.rstrip("/")
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        # Fire and forget - GPU worker will call back
-        await client.post(
-            f"{gpu_worker_url}/process",
-            json=job.model_dump(),
-        )
-
-    # Return job ID for polling
-    return JobStatusResponse(
-        job_id=job_id,
-        status="processing",
-        stems=None,
-        error=None,
-    )
-
-
 @post("/api/upload")
 async def upload_file(
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
@@ -192,8 +122,7 @@ async def upload_file(
     file_ext = Path(data.filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise ValidationException(
-            f"Unsupported file type: {file_ext}. "
-            f"Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            f"Unsupported file type: {file_ext}. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
     # Save to temp file to compute hash
@@ -236,8 +165,8 @@ async def upload_file(
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Fire and forget - GPU worker will call back
-            await client.post(
-                f"{gpu_worker_url}/process",
+            _ = await client.post(
+                gpu_worker_url,
                 json=job.model_dump(),
             )
 

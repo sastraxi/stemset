@@ -33,14 +33,25 @@ def process_cmd(
     If FILE is provided, processes that specific file.
     Otherwise, scans the profile's source folder for new files and processes them.
     """
-    # Determine processing mode: auto-detect if None, otherwise use explicit flag
+    # Get config and profile
     config = get_config()
-    should_use_gpu = local is False or (local is None and config.gpu_worker_url is not None)
     profile_obj = config.get_profile(profile)
     if not profile_obj:
         print(f"Error: Profile '{profile}' not found in config.yaml", file=sys.stderr)
         print(f"Available profiles: {', '.join(p.name for p in config.profiles)}", file=sys.stderr)
         raise typer.Exit(1)
+
+    # Determine processing mode:
+    # 1. If --local flag is set explicitly, use local
+    # 2. Otherwise, check profile.remote setting
+    # 3. If profile.remote is True, require GPU worker URL
+    if local is True:
+        should_use_gpu = False
+    elif local is False:
+        should_use_gpu = True
+    else:
+        # Auto-detect: use profile.remote if set, otherwise check GPU_WORKER_URL
+        should_use_gpu = profile_obj.remote or (config.gpu_worker_url is not None)
 
     if file:
         # Single file mode

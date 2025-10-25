@@ -3,54 +3,59 @@
 from __future__ import annotations
 
 import tempfile
+from botocore.client import ClientError
 import httpx
 import os
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
+from dotenv import load_dotenv
 
 import modal
 
-# Create Modal app
-app = modal.App("stemset-gpu")
+# Load .env file for build-time configuration
+_ = load_dotenv()
 
-# R2 credentials secret (create via: modal secret create r2-secret)
+# Define modal app and secret
+app = modal.App("stemset-gpu")
 r2_secret = modal.Secret.from_name("r2-secret")  # pyright: ignore[reportUnknownMemberType]
 
-
-# Parse dependencies from pyproject.toml
-def get_processing_dependencies() -> list[str]:
-    """Extract processing dependencies from pyproject.toml.
-
-    Returns list of dependencies from [dependency-groups.shared]
-    and [dependency-groups.processing].
-    """
-    import tomllib
-    from pathlib import Path
-
-    pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
-    with open(pyproject_path, "rb") as f:
-        pyproject = tomllib.load(f)
-
-    shared_deps = cast(list[str], pyproject["dependency-groups"]["shared"])
-    processing_deps = cast(list[str], pyproject["dependency-groups"]["processing"])
-    return shared_deps + processing_deps
-
-
 # Container image with all processing dependencies
+# R2 configuration for runtime (Modal worker only needs R2, not OAuth/JWT)
+r2_env_vars = {
+    "R2_ACCOUNT_ID": os.environ.get("R2_ACCOUNT_ID", ""),
+    "R2_ACCESS_KEY_ID": os.environ.get("R2_ACCESS_KEY_ID", ""),
+    "R2_SECRET_ACCESS_KEY": os.environ.get("R2_SECRET_ACCESS_KEY", ""),
+    "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", "stemset-media"),
+    "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
+}
+
 image = (
     modal.Image.debian_slim(python_version="3.13")
-    .pip_install(*get_processing_dependencies())
     .apt_install("libsndfile1", "libopus0", "ffmpeg")
+    # Set all env vars before adding local files
+    .env({"STEMSET_MODEL_CACHE_DIR": "/root/.models"})
+    .env(r2_env_vars)
+    # preload known models
+    .uv_sync(groups=["preload_models"], frozen=True)
+    .add_local_file("scripts/preload_models.py", "/root/preload_models.py", copy=True)
+    .run_commands("uv run python /root/preload_models.py")
+    # uv sync phase
+    .add_local_file("uv.lock", "/root/uv.lock", copy=True)
+    .add_local_file("pyproject.toml", "/root/pyproject.toml", copy=True)
+    .uv_sync(groups=["shared", "processing", "modal"], frozen=True)
+    # app (added last to optimize build caching)
     .add_local_dir("src", "/root/src")
-    .add_local_file("config.yaml", "/root/config.yaml")
+    .add_local_file(
+        "config-modal.yaml",
+        "/root/config.yaml",
+    )  # Use Modal-specific config without auth
 )
 
 # Mount R2 bucket for direct file access
-# R2_ACCOUNT_ID and R2_BUCKET_NAME are read from the r2-secret at runtime
+# R2_ACCOUNT_ID and R2_BUCKET_NAME are read from the r2-secret at runtime (dotenv)
 # Create the secret with: ./scripts/setup_modal_secret.sh
 r2_account_id = os.environ.get("R2_ACCOUNT_ID", "")
 r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "stemset-media")
-
 r2_mount = modal.CloudBucketMount(
     bucket_name=r2_bucket_name,
     bucket_endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
@@ -61,11 +66,11 @@ r2_mount = modal.CloudBucketMount(
 @app.function(  # pyright: ignore[reportUnknownMemberType]
     image=image,
     gpu="A100-40GB",
-    timeout=600,
+    timeout=180,
     volumes={"/r2": r2_mount},
     secrets=[r2_secret],
 )
-@modal.web_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
+@modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
 def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
     """Process audio file using GPU and return results.
 
@@ -115,21 +120,6 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             file_hash = compute_file_hash(input_path)
             print(f"File hash: {file_hash[:8]}...")
 
-            # Check if output already exists in R2
-            try:
-                existing_metadata_key = f"{job.profile_name}/{job.output_name}/metadata.json"
-                storage.s3_client.head_object(  # pyright: ignore[reportUnknownMemberType]
-                    Bucket=storage.config.bucket_name, Key=existing_metadata_key
-                )
-                # If we got here, the output already exists
-                raise ValueError(
-                    f"Output '{job.output_name}' already exists. " +
-                    f"This file has already been processed (hash: {file_hash[:8]})"
-                )
-            except storage.s3_client.exceptions.NoSuchKey:  # pyright: ignore[reportUnknownMemberType]
-                # Good - output doesn't exist yet, we can proceed
-                pass
-
             # Get strategy from config
             strategy = config.get_strategy(job.strategy_name)
             if strategy is None:
@@ -152,16 +142,50 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             output_dir.mkdir()
 
             # Run separation (this creates stems, metadata.json, and waveforms)
-            stem_paths, _metadata = separator.separate_and_normalize(
-                input_path, output_dir
-            )
+            stem_paths, _metadata = separator.separate_and_normalize(input_path, output_dir)
+
+            # Check if output already exists in R2 and compare sizes
+            # Get size of first generated stem for comparison
+            first_stem_path = next(iter(stem_paths.values()))
+            new_stem_size = first_stem_path.stat().st_size
+
+            try:
+                # Try to get existing stem from R2
+                stem_ext = f".{job.output_config.format.value}"
+                first_stem_name = next(iter(stem_paths.keys()))
+                existing_key = f"{job.profile_name}/{job.output_name}/{first_stem_name}{stem_ext}"
+
+                head_response = storage.s3_client.head_object(
+                    Bucket=storage.config.bucket_name,
+                    Key=existing_key
+                )
+
+                existing_size = head_response.get("ContentLength", 0)
+
+                # Compare sizes - allow overwrite if within 10x
+                if existing_size > 0:
+                    size_ratio = max(new_stem_size, existing_size) / min(new_stem_size, existing_size)
+                    if size_ratio > 10:
+                        raise ValueError(
+                            f"Output size mismatch: new={new_stem_size} bytes, "
+                            f"existing={existing_size} bytes (ratio: {size_ratio:.1f}x). "
+                            f"Refusing to overwrite - something may be wrong."
+                        )
+                    else:
+                        print(f"Overwriting existing output (size ratio: {size_ratio:.1f}x)")
+
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "404":
+                    # No existing output, proceed normally
+                    print(f"No existing output found")
+                else:
+                    # Some other S3 error
+                    raise
 
             # Upload all outputs to R2
             print(f"Uploading {len(stem_paths)} stems to R2")
             for stem_name, stem_path in stem_paths.items():
-                storage.upload_file(
-                    stem_path, job.profile_name, job.output_name, stem_path.name
-                )
+                storage.upload_file(stem_path, job.profile_name, job.output_name, stem_path.name)
 
                 # Upload waveform if it exists
                 waveform_path = stem_path.parent / f"{stem_name}_waveform.png"
@@ -173,11 +197,15 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                         waveform_path.name,
                     )
 
-            # Upload metadata.json
+            # Upload metadata.json with source file hash
             metadata_path = output_dir / "metadata.json"
             if metadata_path.exists():
                 storage.upload_file(
-                    metadata_path, job.profile_name, job.output_name, "metadata.json"
+                    metadata_path,
+                    job.profile_name,
+                    job.output_name,
+                    "metadata.json",
+                    extra_metadata={"source-sha256": file_hash}
                 )
 
             result = ProcessingResult(

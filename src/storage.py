@@ -165,22 +165,54 @@ class R2Storage:
 
         return files
 
-    def upload_file(self, local_path: Path, profile_name: str, file_name: str, object_name: str) -> None:
-        """Upload a file to R2."""
+    def upload_file(
+        self,
+        local_path: Path,
+        profile_name: str,
+        file_name: str,
+        object_name: str,
+        extra_metadata: dict[str, str] | None = None
+    ) -> None:
+        """Upload a file to R2, preserving local mtime in metadata."""
         key = f"{profile_name}/{file_name}/{object_name}"
+
+        # Get local file mtime and store in metadata
+        local_mtime = local_path.stat().st_mtime
+
+        metadata = {"original-mtime": str(local_mtime)}
+
+        # Add any extra metadata
+        if extra_metadata:
+            metadata.update(extra_metadata)
+
         self.s3_client.upload_file(
             str(local_path),
             self.config.bucket_name,
             key,
+            ExtraArgs={"Metadata": metadata}
         )
 
     def upload_input_file(self, local_path: Path, profile_name: str, filename: str) -> str:
-        """Upload an input file to R2 and return its key."""
+        """Upload an input file to R2 and return its key, preserving SHA256 hash in metadata."""
         key = f"inputs/{profile_name}/{filename}"
+
+        # Compute SHA256 hash for deduplication
+        import hashlib
+        sha256_hash = hashlib.sha256()
+        with open(local_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256_hash.update(chunk)
+        file_sha256 = sha256_hash.hexdigest()
+
         self.s3_client.upload_file(
             str(local_path),
             self.config.bucket_name,
             key,
+            ExtraArgs={
+                "Metadata": {
+                    "sha256": file_sha256
+                }
+            }
         )
         return key
 
@@ -216,10 +248,8 @@ _storage: StorageBackend | None = None
 def get_storage(config: Config | None = None) -> StorageBackend:
     """Get the configured storage backend.
 
-    Storage selection:
-    - If STEMSET_LOCAL_STORAGE=true, use local storage
-    - If STEMSET_LOCAL_STORAGE=false, require R2 config and use R2 storage
-    - If STEMSET_LOCAL_STORAGE not set, use R2 if configured, otherwise local
+    For API routes: Always uses R2 if configured, otherwise LocalStorage.
+    For CLI: Not used directly - CLI manages local files and syncs with R2.
     """
     global _storage
 
@@ -231,25 +261,10 @@ def get_storage(config: Config | None = None) -> StorageBackend:
         from .config import get_config
         config = get_config()
 
-    # Check for explicit storage backend selection
-    local_storage_env = os.getenv("STEMSET_LOCAL_STORAGE", "").lower()
-
-    if local_storage_env == "true":
-        # Explicitly use local storage
-        _storage = LocalStorage()
-    elif local_storage_env == "false":
-        # Explicitly use R2 storage (require config)
-        if config.r2 is None:
-            raise ValueError(
-                "STEMSET_LOCAL_STORAGE=false but R2 is not configured in config.yaml. "
-                "Either set STEMSET_LOCAL_STORAGE=true or uncomment the r2 section in config.yaml."
-            )
+    # Use R2 if configured, otherwise local storage
+    if config.r2 is not None:
         _storage = R2Storage(config.r2)
     else:
-        # No explicit preference - use R2 if configured, otherwise local
-        if config.r2 is not None:
-            _storage = R2Storage(config.r2)
-        else:
-            _storage = LocalStorage()
+        _storage = LocalStorage()
 
     return _storage

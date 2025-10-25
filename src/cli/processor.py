@@ -10,6 +10,7 @@ from ..utils import compute_file_hash
 from ..modern_separator import StemSeparator
 from .scanner import AUDIO_EXTENSIONS, derive_output_name, scan_for_new_files
 from .remote_processor import process_file_remotely
+from .sync import sync_profile_from_r2, sync_profile_to_r2
 
 
 def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int:
@@ -25,6 +26,9 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
     """
     try:
         config = get_config()
+
+        # Sync from R2 before processing (download any files not present locally)
+        sync_profile_from_r2(config, profile)
 
         # Validate file exists and is an audio file
         if not file_path.exists():
@@ -71,6 +75,9 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
                     print(f"  - {stem_name}: {stem_path.name}")
                 print(f"Output folder: {output_folder}")
 
+                # Sync to R2 after processing (remote already uploaded, but sync handles conflicts)
+                sync_profile_to_r2(config, profile)
+
                 return 0
 
             except Exception as e:
@@ -96,24 +103,8 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
                     print(f"  - {stem_name}: {stem_path.name}")
                 print(f"Output folder: {output_folder}")
 
-                # Upload to R2 if configured
-                if config.r2 is not None:
-                    print()
-                    print("Uploading results to R2...")
-                    from ..storage import R2Storage
-                    r2_storage = R2Storage(config.r2)
-
-                    # Upload all files in output folder
-                    for file in output_folder.iterdir():
-                        if file.is_file():
-                            print(f"  Uploading {file.name}...")
-                            r2_storage.upload_file(
-                                file,
-                                profile.name,
-                                output_folder_name,
-                                file.name
-                            )
-                    print("✓ Upload complete!")
+                # Sync to R2 after processing
+                sync_profile_to_r2(config, profile)
 
                 return 0
 
@@ -138,7 +129,10 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
     """
     try:
         config = get_config()
-        
+
+        # Sync from R2 before processing
+        sync_profile_from_r2(config, profile)
+
         print(f"Processing profile: {profile.name}")
         print(f"Source folder: {profile.source_folder}")
         print(f"Output format: {profile.output.format} @ {profile.output.bitrate}kbps")
@@ -219,30 +213,16 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
                     print(f"  ✓ Success! Created {len(stem_paths)} stems")
                     for stem_name, stem_path in stem_paths.items():
                         print(f"    - {stem_name}: {stem_path.name}")
-
-                    # Upload to R2 if configured
-                    if config.r2 is not None:
-                        print(f"  Uploading to R2...")
-                        from ..storage import R2Storage
-                        r2_storage = R2Storage(config.r2)
-
-                        # Upload all files in output folder
-                        for file in output_folder.iterdir():
-                            if file.is_file():
-                                r2_storage.upload_file(
-                                    file,
-                                    profile.name,
-                                    output_name,
-                                    file.name
-                                )
-                        print(f"  ✓ Upload complete!")
-
                     print()
 
                 except Exception as e:
                     failed_count += 1
                     print(f"  ✗ Failed: {e}", file=sys.stderr)
                     print()
+
+        # Sync to R2 after all processing
+        if processed_count > 0:
+            sync_profile_to_r2(config, profile)
 
         # Summary
         print("=" * 60)

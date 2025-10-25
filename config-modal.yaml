@@ -1,0 +1,54 @@
+# Stemset Configuration for Modal GPU Worker
+# This is a stripped-down config without OAuth/JWT (Modal worker doesn't need auth)
+
+# Cloudflare R2 Storage (required for GPU worker)
+r2:
+  account_id: ${R2_ACCOUNT_ID}
+  access_key_id: ${R2_ACCESS_KEY_ID}
+  secret_access_key: ${R2_SECRET_ACCESS_KEY}
+  bucket_name: ${R2_BUCKET_NAME}
+  public_url: ${R2_PUBLIC_URL}
+
+strategies:
+#################################
+  htdemucs_ft:
+    _: "htdemucs_ft"
+    vocals: vocals
+    bass: bass
+    drums: drums
+    other: other
+
+  hdemucs_mmi:
+    _: "hdemucs_mmi"
+    vocals: vocals
+    bass: bass
+    drums: drums
+    other: other
+
+  successive:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    not_vocals: 
+      _: "kuielab_b_drums.onnx"
+      drums: drums
+      not_drums:
+        _: "kuielab_a_bass.onnx"
+        bass: bass
+        not_bass: other
+
+profiles:
+#################################
+  - name: "h4n"
+    source_folder: "/Volumes/H4N_SD/STEREO"
+    strategy: "hdemucs_mmi"
+    output:
+      format: "opus"
+      bitrate: 192
+
+  - name: "one"
+    source_folder: "./input/one"
+    strategy: "htdemucs_ft"
+    remote: true
+    output:
+      format: "opus"
+      bitrate: 192

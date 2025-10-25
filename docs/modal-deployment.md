@@ -74,32 +74,16 @@ This opens a browser window to authenticate. After authenticating, your credenti
 Modal needs access to your R2 bucket. Create a secret with your R2 credentials:
 
 ```bash
-modal secret create r2-secret \
-  AWS_ACCESS_KEY_ID=<your-r2-access-key-id> \
-  AWS_SECRET_ACCESS_KEY=<your-r2-secret-access-key>
+./scripts/setup_modal_secret.sh
 ```
 
 **Note**: Cloudflare R2 is S3-compatible, so it uses `AWS_*` variable names even though it's not AWS.
 
-### 3. Update Modal Worker Code
-
-Edit `src/modal_worker/app.py` and replace `${R2_ACCOUNT_ID}` in the `bucket_endpoint_url` with your actual Cloudflare R2 account ID:
-
-```python
-r2_mount = modal.CloudBucketMount(
-    bucket_name="stemset-media",
-    bucket_endpoint_url="https://YOUR_ACCOUNT_ID_HERE.r2.cloudflarestorage.com",
-    secret=r2_secret,
-)
-```
-
-You can find your account ID in the Cloudflare R2 dashboard.
-
-### 4. Deploy to Modal
+### 3. Deploy to Modal
 
 ```bash
 # Deploy the worker function
-modal deploy src/modal_worker/app.py
+uv run modal deploy src/modal_worker/app.py
 ```
 
 This will output the webhook URL for your function, something like:
@@ -107,7 +91,7 @@ This will output the webhook URL for your function, something like:
 ✓ Created web function process => https://your-workspace--stemset-gpu-process.modal.run
 ```
 
-### 5. Configure Stemset
+### 4. Configure Stemset
 
 Update your `.env` file with the Modal endpoint:
 

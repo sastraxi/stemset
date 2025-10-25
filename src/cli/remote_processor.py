@@ -8,8 +8,9 @@ import httpx
 from pathlib import Path
 
 from ..config import Config, Profile
-from ..storage import get_storage
+from ..storage import get_storage, R2Storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
+from ..utils import compute_file_hash
 
 
 def process_file_remotely(
@@ -49,12 +50,44 @@ def process_file_remotely(
     # Get storage (must be R2 for remote processing)
     storage = get_storage(config)
 
-    # Upload input file to R2
-    print(f"  Uploading input to R2...", end="", flush=True)
+    if not isinstance(storage, R2Storage):
+        raise ValueError("Remote processing requires R2 storage")
+
+    # Check if input file already exists in R2 with same content
     input_filename = input_file.name
-    storage.upload_input_file(input_file, profile.name, input_filename)
     input_key = f"inputs/{profile.name}/{input_filename}"
-    print(" ✓")
+
+    should_upload = True
+    try:
+        # Check if file exists and compare SHA256 hash from metadata
+        head_response = storage.s3_client.head_object(
+            Bucket=storage.config.bucket_name,
+            Key=input_key,
+        )
+
+        # Get SHA256 from metadata
+        metadata = head_response.get("Metadata", {})
+        r2_sha256 = metadata.get("sha256")
+
+        if r2_sha256:
+            # Compute local file SHA256
+            local_sha256 = compute_file_hash(input_file)
+
+            if r2_sha256 == local_sha256:
+                print(f"  Input already in R2 (identical) ✓")
+                should_upload = False
+            else:
+                print(f"  Input exists but differs, re-uploading...", end="", flush=True)
+        else:
+            # Old upload without SHA256 metadata, re-upload to add metadata
+            print(f"  Input exists (no hash metadata), re-uploading...", end="", flush=True)
+    except storage.s3_client.exceptions.NoSuchKey:
+        # File doesn't exist, need to upload
+        print(f"  Uploading input to R2...", end="", flush=True)
+
+    if should_upload:
+        storage.upload_input_file(input_file, profile.name, input_filename)
+        print(" ✓")
 
     # Create job payload
     job_id = str(uuid.uuid4())
@@ -72,10 +105,10 @@ def process_file_remotely(
     print(f"  Triggering GPU worker...", end="", flush=True)
     gpu_worker_url = config.gpu_worker_url.rstrip("/")
 
-    with httpx.Client(timeout=300.0) as client:
-        # POST to /process endpoint
+    with httpx.Client(timeout=300.0, follow_redirects=True) as client:
+        # POST to root endpoint (Modal fastapi_endpoint uses function at root)
         response = client.post(
-            f"{gpu_worker_url}/process",
+            gpu_worker_url,
             json=job.model_dump(),
         )
         response.raise_for_status()
