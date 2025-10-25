@@ -13,26 +13,23 @@ interface UploadProps {
 
 export function Upload({ profileName, onUploadComplete }: UploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [dragCounter, setDragCounter] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // Full-screen drag handlers with proper enter/leave tracking
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
-      setDragCounter(prev => prev + 1);
+      dragCounterRef.current += 1;
       setIsDragging(true);
     };
 
     const handleDragLeave = (e: DragEvent) => {
       e.preventDefault();
-      setDragCounter(prev => {
-        const newCount = prev - 1;
-        if (newCount === 0) {
-          setIsDragging(false);
-        }
-        return newCount;
-      });
+      dragCounterRef.current -= 1;
+      if (dragCounterRef.current === 0) {
+        setIsDragging(false);
+      }
     };
 
     const handleDragOver = (e: DragEvent) => {
@@ -42,7 +39,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     const handleDrop = (e: DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      setDragCounter(0);
+      dragCounterRef.current = 0;
 
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
@@ -113,7 +110,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       toast.loading(`Processing ${file.name}...`, { id: toastId });
 
       // Poll for completion
-      await pollJobStatus(jobId, toastId);
+      await pollJobStatus(jobId);
 
       // Success!
       toast.success(`${file.name} processed successfully!`, { id: toastId });
@@ -129,7 +126,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     }
   };
 
-  const pollJobStatus = async (jobId: string, toastId: string | number): Promise<void> => {
+  const pollJobStatus = async (jobId: string): Promise<void> => {
     const maxAttempts = 300; // 10 minutes max (2 second intervals)
     let attempts = 0;
 
