@@ -155,7 +155,10 @@ async def auth_callback(
             "SameSite=Lax",
         ]
     else:
-        # Production: cross-site cookie with Partitioned attribute
+        # Production: cross-site cookie
+        # Note: Not using Partitioned because the cookie is set when user is on the backend domain,
+        # which partitions it under the wrong key. For Partitioned to work, the cookie must be
+        # set while the user is on the frontend domain (e.g., via iframe/popup).
         cookie_parts = [
             f"stemset_token={jwt_token}",
             "Path=/",
@@ -163,7 +166,6 @@ async def auth_callback(
             "Secure",
             "HttpOnly",
             "SameSite=None",
-            "Partitioned",  # Chrome CHIPS requirement
         ]
 
     cookie_header = "; ".join(cookie_parts)
@@ -204,7 +206,6 @@ async def auth_logout() -> Response[LogoutResponse]:
             "Secure",
             "HttpOnly",
             "SameSite=None",
-            "Partitioned",
         ]
 
     cookie_header = "; ".join(cookie_parts)
