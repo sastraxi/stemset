@@ -1,4 +1,14 @@
 /* Stem Player Styles */
+.stem-player {
+  outline: none;
+}
+
+.stem-player:focus {
+  outline: 2px solid #4a9eff;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .player-panel {
   background: #242424;
   border: 1px solid #3a3a3a;
@@ -53,9 +63,10 @@
   gap: 0.25rem;
 }
 
+.mute-button,
 .reset-gain {
   width: auto;
-  padding: 0.1rem 0.3rem;
+  padding: 0.3rem 0.4rem;
   font-size: 0.9rem;
   background: transparent;
   border: 1px solid #3a3a3a;
@@ -63,12 +74,27 @@
   cursor: pointer;
   transition: all 0.2s;
   min-width: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.mute-button:hover,
 .reset-gain:hover {
   background: #3a3a3a;
   color: #4a9eff;
   border-color: #4a9eff;
+}
+
+.mute-button.muted {
+  background: #ff4444;
+  border-color: #ff4444;
+  color: white;
+}
+
+.mute-button.muted:hover {
+  background: #ff5555;
+  border-color: #ff5555;
 }
 
 /* Range Input Styling */

@@ -41,6 +41,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom Stemset colors
+        'gray': {
+          850: '#2a2a2a',
+          900: '#242424',
+          950: '#1a1a1a',
+        },
+        'blue': {
+          400: '#4a9eff',
+          500: '#3a8eef',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

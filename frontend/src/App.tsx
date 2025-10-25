@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import { StemPlayer } from './components/StemPlayer';
+import { useEffect, useState, useRef } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { StemPlayer, type StemPlayerHandle } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
+import { ProfileSelector } from './components/ProfileSelector';
 import { Upload } from './components/Upload';
+import { Button } from './components/ui/button';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
@@ -40,6 +43,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
   const [files, setFiles] = useState<StemFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<StemFile | null>(null);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
+  const [fileCountByProfile, setFileCountByProfile] = useState<Record<string, number>>({});
+  const stemPlayerRef = useRef<StemPlayerHandle>(null);
 
   useEffect(() => {
     // Initial connection check and load profiles
@@ -71,6 +76,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
 
   useEffect(() => {
     if (selectedProfile) {
+      // Clear selected file when profile changes to avoid loading incorrect file
+      setSelectedFile(null);
       loadProfileFiles(selectedProfile);
     }
   }, [selectedProfile]);
@@ -95,6 +102,21 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       if (data.length > 0 && !selectedProfile) {
         setSelectedProfile(data[0].name);
       }
+
+      // Load file counts for all profiles
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        data.map(async (profile) => {
+          try {
+            const files = await getProfileFiles(profile.name);
+            counts[profile.name] = files.length;
+          } catch (error) {
+            console.error(`Error loading files for profile ${profile.name}:`, error);
+            counts[profile.name] = 0;
+          }
+        })
+      );
+      setFileCountByProfile(counts);
     } catch (error) {
       console.error('Error loading profiles:', error);
     }
@@ -104,6 +126,8 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
     try {
       const data = await getProfileFiles(profileName);
       setFiles(data);
+      // Update count for this profile
+      setFileCountByProfile(prev => ({ ...prev, [profileName]: data.length }));
     } catch (error) {
       console.error('Error loading files:', error);
     }
@@ -152,35 +176,24 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-left">
-          <h1>Stemset</h1>
-          <p>AI-powered stem separation for band practice</p>
+      <header className="bg-gray-850 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+        <div className="flex-1 flex items-center gap-4">
+          <img src="/logo.png" alt="Stemset" className="h-10 w-auto" />
+          <h1 className="lowercase text-4xl font-bold text-white tracking-tight m-0">Stemset</h1>
         </div>
-        <div className="header-right">
+        <div className="flex-none ml-auto flex items-center gap-3">
+          <ProfileSelector
+            profiles={profiles}
+            selectedProfile={selectedProfile}
+            onSelectProfile={setSelectedProfile}
+            fileCountByProfile={fileCountByProfile}
+          />
           <UserNav user={user} onLogout={onLogout} />
         </div>
       </header>
 
       <div className="main-content">
         <aside className="sidebar">
-          <div className="profile-selector">
-            <h2>Profile</h2>
-            <select
-              value={selectedProfile || ''}
-              onChange={(e) => setSelectedProfile(e.target.value)}
-            >
-              {profiles.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <button onClick={handleRefresh} disabled={!selectedProfile}>
-              Refresh Files
-            </button>
-          </div>
-
           {selectedProfile && (
             <Upload
               profileName={selectedProfile}
@@ -189,16 +202,36 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
           )}
 
           <div className="file-list">
-            <h2>Recordings</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-white uppercase tracking-wider">Recordings</h2>
+              <Button
+                onClick={handleRefresh}
+                disabled={!selectedProfile}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 border border-gray-700 hover:bg-gray-700 hover:text-blue-400 hover:border-blue-400"
+                title="Refresh file list"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
             {files.length === 0 ? (
               <p className="empty-state">No processed files yet. Upload a file above or use the CLI.</p>
             ) : (
-              <ul>
+              <ul className="list-none">
                 {files.map((file) => (
                   <li
                     key={file.name}
-                    className={selectedFile?.name === file.name ? 'selected' : ''}
-                    onClick={() => setSelectedFile(file)}
+                    className={`py-3 px-2 m-0 bg-transparent border-none border-l-4 cursor-pointer transition-all text-sm text-gray-200
+                      ${selectedFile?.name === file.name
+                        ? 'bg-blue-400/15 border-l-blue-400 text-white'
+                        : 'border-l-transparent hover:bg-white/5 hover:border-l-gray-600'
+                      }`}
+                    onClick={() => {
+                      setSelectedFile(file);
+                      // Focus the player after a short delay to allow rendering
+                      setTimeout(() => stemPlayerRef.current?.focus(), 100);
+                    }}
                   >
                     {file.name}
                   </li>
@@ -213,6 +246,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
             <>
               <h2>{selectedFile.name}</h2>
               <StemPlayer
+                ref={stemPlayerRef}
                 profileName={selectedProfile}
                 fileName={selectedFile.name}
                 metadataUrl={selectedFile.metadata_url}

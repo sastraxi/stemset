@@ -24,7 +24,8 @@ export interface StemSources {
 
 interface LoadedStem {
   buffer: AudioBuffer;
-  gain: GainNode; // persistent gain node
+  gain: GainNode; // persistent gain node for volume control
+  muteGain: GainNode; // persistent gain node for mute (0 or 1)
   initialGain: number; // derived from metadata
   metadata: StemMetadata | null;
 }
@@ -41,6 +42,7 @@ interface StemStateEntry {
   gain: number; // current linear gain for UI
   initialGain: number;
   waveformUrl: string | null;
+  muted: boolean;
 }
 
 // Equalizer band representation
@@ -87,6 +89,7 @@ export interface UseStemPlayerResult {
   seek: (seconds: number) => void;
   setStemGain: (stemName: string, gain: number) => void;
   resetStemGain: (stemName: string) => void;
+  toggleMute: (stemName: string) => void;
   formatTime: (seconds: number) => string;
   eqBands: EqBand[];
   updateEqBand: (id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => void;
@@ -251,12 +254,17 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
           if (ctx.state === 'closed') return;
           const gainNode = ctx.createGain();
           gainNode.gain.value = initialGain;
+          const muteGainNode = ctx.createGain();
+          muteGainNode.gain.value = 1; // unmuted by default
+          // Chain: gainNode (volume) -> muteGainNode (mute) -> masterInput
           if (masterInputRef.current) {
-            gainNode.connect(masterInputRef.current);
+            gainNode.connect(muteGainNode);
+            muteGainNode.connect(masterInputRef.current);
           } else {
-            gainNode.connect(ctx.destination);
+            gainNode.connect(muteGainNode);
+            muteGainNode.connect(ctx.destination);
           }
-          newMap.set(name, { buffer, gain: gainNode, initialGain, metadata: meta });
+          newMap.set(name, { buffer, gain: gainNode, muteGain: muteGainNode, initialGain, metadata: meta });
           setDuration((prev) => (prev === 0 ? buffer.duration : prev));
           timingAccumulator.push({
             name,
@@ -275,8 +283,9 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
         name: n,
         gain: s.gain.gain.value,
         initialGain: s.initialGain,
-        waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null
-      }));
+        waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null,
+        muted: s.muteGain.gain.value === 0
+      })).sort((a, b) => a.name.localeCompare(b.name));
       console.log('[useStemPlayer] Setting stem state:', stemStateArray);
       setStemState(stemStateArray);
       setIsLoading(false);
@@ -414,7 +423,8 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       name,
       gain: s.gain.gain.value,
       initialGain: s.initialGain,
-      waveformUrl: s.metadata ? metadataBaseUrlRef.current + s.metadata.waveform_url : null
+      waveformUrl: s.metadata ? metadataBaseUrlRef.current + s.metadata.waveform_url : null,
+      muted: s.muteGain.gain.value === 0
     })).sort((a, b) => a.name.localeCompare(b.name)));
   }, []);
 
@@ -531,6 +541,14 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     updateStemState();
   }, [updateStemState]);
 
+  const toggleMute = useCallback((stemName: string) => {
+    const stem = loadedStemsRef.current.get(stemName);
+    if (!stem) return;
+    const isMuted = stem.muteGain.gain.value === 0;
+    stem.muteGain.gain.value = isMuted ? 1 : 0;
+    updateStemState();
+  }, [updateStemState]);
+
   // EQ management
   const updateEqBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => {
     setEqBands(prev => prev.map(b => b.id === id ? { ...b, ...changes } : b));
@@ -572,6 +590,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     seek,
     setStemGain,
     resetStemGain,
+    toggleMute,
     formatTime,
     eqBands,
     updateEqBand,

@@ -1,12 +1,11 @@
 .upload-container {
-  margin-top: 1rem;
+  margin: 1rem;
 }
 
 .upload-drop-zone {
   border: 2px dashed #4a5568;
   border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
+  padding: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   background-color: #1a202c;
@@ -27,22 +26,30 @@
   opacity: 0.8;
 }
 
+.upload-prompt {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .upload-prompt svg {
   margin: 0 auto 1rem;
   color: #63b3ed;
 }
 
 .upload-prompt p {
-  margin: 0.5rem 0;
+  margin: 0;
   color: #e2e8f0;
 }
 
 .upload-prompt p:first-of-type {
-  font-size: 1rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
 }
 
 .upload-hint {
-  font-size: 0.85rem;
+  font-size: 0.6rem;
   color: #a0aec0;
 }
 

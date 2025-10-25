@@ -1,7 +1,8 @@
 import { useStemPlayer } from './useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
-import { useState } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface StemPlayerProps {
   profileName: string;
@@ -9,14 +10,26 @@ interface StemPlayerProps {
   metadataUrl: string;
 }
 
+export interface StemPlayerHandle {
+  focus: () => void;
+}
+
 /** Simplified StemPlayer using `useStemPlayer` hook.
  * Responsibilities:
  * - UI rendering & user interaction only.
  * - Delegates all audio graph & timing logic to hook.
  */
-export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerProps) {
+export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
+  ({ profileName, fileName, metadataUrl }, ref) => {
   const [previewTime, setPreviewTime] = useState<number | null>(null);
-  
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      playerRef.current?.focus();
+    }
+  }));
+
   const {
     isLoading,
     loadingMetrics,
@@ -30,6 +43,7 @@ export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerPro
     seek,
     setStemGain,
     resetStemGain,
+    toggleMute,
     formatTime,
     eqBands,
     updateEqBand,
@@ -41,6 +55,38 @@ export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerPro
     setEqEnabled,
     gainReduction,
   } = useStemPlayer({ profileName, fileName, metadataUrl });
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if player is focused or target is the player/body
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return; // Don't interfere with input fields
+      }
+
+      switch (e.code) {
+        case 'Space':
+        case 'KeyK':
+          e.preventDefault();
+          if (isPlaying) {
+            pause();
+          } else {
+            play();
+          }
+          break;
+        case 'Home':
+        case 'Digit0':
+        case 'Numpad0':
+          e.preventDefault();
+          stop();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, play, pause, stop]);
 
   // Dump profile info once after load completes
   const hasLoggedRef = (window as any).__stemPlayerLoggedRef || ((window as any).__stemPlayerLoggedRef = { current: new Set<string>() });
@@ -85,7 +131,7 @@ export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerPro
 
   return (
     <>
-      <div className="stem-player">
+      <div className="stem-player" ref={playerRef} tabIndex={0}>
         <div className="waveforms-section">
           {/* Ruler row with controls alignment */}
           <div className="waveform-row">
@@ -133,12 +179,20 @@ export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerPro
                     value={stem.gain}
                     onChange={(e) => setStemGain(stem.name, parseFloat(e.target.value))}
                     className="volume-slider"
+                    disabled={stem.muted}
                   />
                   <span className="volume-label">
-                    {(stem.gain * 100).toFixed(0)}%
+                    {stem.muted ? 'Muted' : `${(stem.gain * 100).toFixed(0)}%`}
                   </span>
                 </div>
-                <div className="waveform-control-buttons">
+                <div className="waveform-control-buttons flex gap-1">
+                  <button
+                    onClick={() => toggleMute(stem.name)}
+                    className={`mute-button ${stem.muted ? 'muted' : ''}`}
+                    title={stem.muted ? "Unmute" : "Mute"}
+                  >
+                    {stem.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </button>
                   <button
                     onClick={() => resetStemGain(stem.name)}
                     className="reset-gain"
@@ -235,4 +289,4 @@ export function StemPlayer({ profileName, fileName, metadataUrl }: StemPlayerPro
       </div>
     </>
   );
-}
+});

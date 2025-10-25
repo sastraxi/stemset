@@ -169,13 +169,16 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
           </div>
         ) : (
           <div className="upload-prompt">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 -4 24 26" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            <p><strong>Drop audio file here</strong> or click to browse</p>
-            <p className="upload-hint">WAV, FLAC, MP3, M4A, AAC, Opus, OGG • Max 150MB</p>
+            <div>
+              <p><strong>Drop</strong> to add new audio</p>
+              <p className="upload-hint">WAV, FLAC, MP3, M4A, AAC, Opus, OGG</p>
+              <p className="upload-hint">Max size: 150MB</p>
+            </div>
           </div>
         )}
       </div>
