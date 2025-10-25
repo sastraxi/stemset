@@ -78,4 +78,5 @@ app = Litestar(
     middleware=[auth_middleware],
     cors_config=cors_config,
     state=State({"config": config, "base_url": base_url}),
+    request_max_body_size=1024 * 1024 * 150,  # 150MB max upload size
 )
