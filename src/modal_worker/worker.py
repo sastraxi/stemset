@@ -26,7 +26,8 @@ required_env_vars = {
     "R2_SECRET_ACCESS_KEY": os.environ.get("R2_SECRET_ACCESS_KEY", ""),
     "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", "stemset-media"),
     "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
-    "BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", ""),
+    # Use production URL if set, otherwise fallback to standard
+    "BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", os.environ.get("BACKEND_URL", "")),
 }
 
 missing_vars = [k for k, v in required_env_vars.items() if not v]

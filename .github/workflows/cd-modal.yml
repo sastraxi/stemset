@@ -17,7 +17,7 @@ jobs:
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
       R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
-      BACKEND_URL_PRODUCTION: ${{ vars.BACKEND_URL_PRODUCTION }}
+      BACKEND_URL: ${{ vars.BACKEND_URL }}
 
     steps:
       - name: Checkout
