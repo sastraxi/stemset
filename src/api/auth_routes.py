@@ -34,32 +34,35 @@ _oauth_states: dict[str, str] = {}
 async def auth_status(request: Request[Any, Any, Any]) -> AuthStatusResponse:  # pyright: ignore[reportExplicitAny]
     """Get current auth status and user info"""
     config = get_config()
-    
+
     if is_auth_bypassed():
         return AuthStatusResponse(
             authenticated=True,
             user={
                 "id": "dev-user",
-                "name": "Development User", 
+                "name": "Development User",
                 "email": "dev@localhost",
-                "picture": None
-            }
+                "picture": None,
+            },
         )
-    
+
     token = extract_token_from_request(request)
     if not token:
         return AuthStatusResponse(authenticated=False)
-    
+
     try:
         user_info = decode_jwt_token(token, config.auth.jwt_secret if config.auth else "")
         return AuthStatusResponse(
             authenticated=True,
             user={
                 "id": user_info.email,
-                "name": user_info.name or user_info.email.split("@")[0],  # Use real name from Google, fallback to email prefix
+                "name": user_info.name
+                or user_info.email.split("@")[
+                    0
+                ],  # Use real name from Google, fallback to email prefix
                 "email": user_info.email,
-                "picture": user_info.picture
-            }
+                "picture": user_info.picture,
+            },
         )
     except Exception:
         return AuthStatusResponse(authenticated=False)
@@ -88,7 +91,9 @@ async def auth_login() -> Redirect:
 
 
 @get("/auth/callback")
-async def auth_callback(code: str, callback_state: Annotated[str, Parameter(query="state")]) -> Redirect:
+async def auth_callback(
+    code: str, callback_state: Annotated[str, Parameter(query="state")]
+) -> Redirect:
     """Handle Google OAuth callback."""
     config = get_config()
     if config.auth is None:
@@ -122,21 +127,45 @@ async def auth_callback(code: str, callback_state: Annotated[str, Parameter(quer
     if not is_email_allowed(userinfo.email, config):
         raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
 
-    jwt_token = create_jwt_token(userinfo.email, config.auth.jwt_secret, userinfo.name, userinfo.picture)
+    jwt_token = create_jwt_token(
+        userinfo.email, config.auth.jwt_secret, userinfo.name, userinfo.picture
+    )
 
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     is_dev = frontend_url.startswith("http://localhost")
 
     response = Redirect(path=frontend_url)
-    response.set_cookie(
-        key="stemset_token",
-        value=jwt_token,
-        httponly=True,
-        secure=False if is_dev else True,
-        samesite="lax" if is_dev else "none",  # Cross-site cookies need SameSite=None
-        max_age=30 * 24 * 60 * 60,
-        domain="localhost" if is_dev else None,
-    )
+
+    # For production cross-site cookies, we need:
+    # 1. secure=True (HTTPS only)
+    # 2. samesite="none" (allow cross-origin)
+    # 3. httponly=True (security)
+    # 4. Partitioned attribute (Chrome requirement for CHIPS)
+    cookie_settings = {
+        "key": "stemset_token",
+        "value": jwt_token,
+        "httponly": True,
+        "secure": not is_dev,
+        "samesite": "lax" if is_dev else "none",
+        "max_age": 30 * 24 * 60 * 60,
+    }
+
+    # In development, set domain to localhost so cookie works across ports
+    # In production, leave domain unset so it defaults to backend domain
+    if is_dev:
+        cookie_settings["domain"] = "localhost"
+
+    response.set_cookie(**cookie_settings)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+    # Add Partitioned attribute for Chrome's CHIPS (Cookies Having Independent Partitioned State)
+    # This is required for cross-site cookies in Chrome 115+
+    # Litestar doesn't support this directly, so we need to modify the Set-Cookie header
+    if not is_dev:
+        set_cookie_header = response.headers.get("set-cookie")
+        if set_cookie_header:
+            # Append ;Partitioned to the Set-Cookie header
+            response.headers["set-cookie"] = f"{set_cookie_header}; Partitioned"
+
     return response
 
 
