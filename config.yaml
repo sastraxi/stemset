@@ -54,13 +54,13 @@ strategies:
   successive:
     _: "vocals_mel_band_roformer.ckpt"
     vocals: vocals
-    not_vocals: 
+    other: 
       _: "kuielab_b_drums.onnx"
       drums: drums
-      not_drums:
+      no drums:
         _: "kuielab_a_bass.onnx"
         bass: bass
-        not_bass: other
+        no bass: other
 
 profiles:
 #################################

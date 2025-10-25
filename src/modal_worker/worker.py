@@ -46,10 +46,7 @@ image = (
     # app (added last to optimize build caching)
     .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
     .add_local_dir("src", "/root/src")
-    .add_local_file(
-        "config-modal.yaml",
-        "/root/config.yaml",
-    )  # Use Modal-specific config without auth
+    .add_local_file("config.yaml", "/root/config.yaml")
 )
 
 # Mount R2 bucket for direct file access
