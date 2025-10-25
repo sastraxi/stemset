@@ -65,7 +65,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       formData.append('data', file);
 
       // Upload file
-      const response = await fetch(`/api/upload?profile_name=${encodeURIComponent(profileName)}`, {
+      const response = await fetch(`/api/upload/${encodeURIComponent(profileName)}`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
