@@ -415,7 +415,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       gain: s.gain.gain.value,
       initialGain: s.initialGain,
       waveformUrl: s.metadata ? metadataBaseUrlRef.current + s.metadata.waveform_url : null
-    })));
+    })).sort((a, b) => a.name.localeCompare(b.name)));
   }, []);
 
   // Create buffer sources and start playback from offset
