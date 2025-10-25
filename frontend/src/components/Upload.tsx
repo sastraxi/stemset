@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import './Upload.css';
 
+// Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 interface UploadProps {
   profileName: string;
   onUploadComplete: () => void;
@@ -65,7 +68,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
       formData.append('data', file);
 
       // Upload file
-      const response = await fetch(`/api/upload/${encodeURIComponent(profileName)}`, {
+      const response = await fetch(`${API_BASE}/api/upload/${encodeURIComponent(profileName)}`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -109,7 +112,7 @@ export function Upload({ profileName, onUploadComplete }: UploadProps) {
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const response = await fetch(`/api/jobs/${jobId}/status`, {
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}/status`, {
         credentials: 'include',
       });
 
