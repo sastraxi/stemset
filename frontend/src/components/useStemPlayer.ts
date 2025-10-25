@@ -36,9 +36,10 @@ export interface StemSources {
 interface LoadedStem {
   buffer: AudioBuffer;
   gain: GainNode; // persistent gain node for volume control
-  muteGain: GainNode; // persistent gain node for mute (0 or 1)
+  outputGain: GainNode; // final output gain node (handles mute/solo logic)
   initialGain: number; // derived from metadata
   metadata: StemMetadata | null;
+  muted: boolean; // mute state (stored here instead of in gain value)
 }
 
 interface UseStemPlayerOptions {
@@ -54,6 +55,7 @@ interface StemStateEntry {
   initialGain: number;
   waveformUrl: string | null;
   muted: boolean;
+  soloed: boolean;
 }
 
 // Equalizer band representation
@@ -101,9 +103,10 @@ export interface UseStemPlayerResult {
   setStemGain: (stemName: string, gain: number) => void;
   resetStemGain: (stemName: string) => void;
   toggleMute: (stemName: string) => void;
+  toggleSolo: (stemName: string) => void;
   formatTime: (seconds: number) => string;
   eqBands: EqBand[];
-  updateEqBand: (id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => void;
+  updateEqBand: (id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => void;
   resetEq: () => void;
   limiter: LimiterSettings;
   updateLimiter: (changes: Partial<LimiterSettings>) => void;
@@ -121,6 +124,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [stemState, setStemState] = useState<StemStateEntry[]>([]);
+  const [soloedStems, setSoloedStems] = useState<Set<string>>(new Set());
   const [eqBands, setEqBands] = useState<EqBand[]>(() => {
     const defaults: EqBand[] = [
       { id: 'low', frequency: 80, type: 'lowshelf', gain: 0, q: 1 },
@@ -206,9 +210,9 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       setIsLoading(true);
       setLoadingMetrics(null);
       // Tear down previous stems (keep context)
-      sourcesRef.current.forEach((src) => { try { src.stop(); } catch {}; });
+      sourcesRef.current.forEach((src) => { try { src.stop(); } catch { }; });
       sourcesRef.current.clear();
-      loadedStemsRef.current.forEach((ls) => { try { ls.gain.disconnect(); } catch {}; });
+      loadedStemsRef.current.forEach((ls) => { try { ls.gain.disconnect(); } catch { }; });
       loadedStemsRef.current.clear();
       setDuration(0);
       const t0 = performance.now();
@@ -250,17 +254,24 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
           if (ctx.state === 'closed') return;
           const gainNode = ctx.createGain();
           gainNode.gain.value = initialGain;
-          const muteGainNode = ctx.createGain();
-          muteGainNode.gain.value = 1; // unmuted by default
-          // Chain: gainNode (volume) -> muteGainNode (mute) -> masterInput
+          const outputGainNode = ctx.createGain();
+          outputGainNode.gain.value = 1;
+          // Simplified chain: gainNode (volume) -> outputGainNode (calculated mute/solo) -> masterInput
           if (masterInputRef.current) {
-            gainNode.connect(muteGainNode);
-            muteGainNode.connect(masterInputRef.current);
+            gainNode.connect(outputGainNode);
+            outputGainNode.connect(masterInputRef.current);
           } else {
-            gainNode.connect(muteGainNode);
-            muteGainNode.connect(ctx.destination);
+            gainNode.connect(outputGainNode);
+            outputGainNode.connect(ctx.destination);
           }
-          newMap.set(name, { buffer, gain: gainNode, muteGain: muteGainNode, initialGain, metadata: meta });
+          newMap.set(name, {
+            buffer,
+            gain: gainNode,
+            outputGain: outputGainNode,
+            initialGain,
+            metadata: meta,
+            muted: false
+          });
           setDuration((prev) => (prev === 0 ? buffer.duration : prev));
           timingAccumulator.push({
             name,
@@ -286,7 +297,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
             s.gain.gain.value = savedState.stemGains[n];
           }
           if (savedState.stemMutes[n] !== undefined) {
-            s.muteGain.gain.value = savedState.stemMutes[n] ? 0 : 1;
+            s.muted = savedState.stemMutes[n];
           }
         }
         return {
@@ -294,7 +305,8 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
           gain: s.gain.gain.value,
           initialGain: s.initialGain,
           waveformUrl: s.metadata ? metadataBaseUrl + s.metadata.waveform_url : null,
-          muted: s.muteGain.gain.value === 0
+          muted: s.muted,
+          soloed: soloedStems.has(n)
         };
       }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -313,7 +325,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
         startedAt: t0,
         finishedAt: t1,
         totalMs: t1 - t0,
-        stems: timingAccumulator.sort((a,b) => a.name.localeCompare(b.name)),
+        stems: timingAccumulator.sort((a, b) => a.name.localeCompare(b.name)),
         metadataMs: metaEnd - metaStart,
       });
     }
@@ -358,7 +370,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     if (!ctx || !masterInputRef.current) return;
     if (eqFilterRefs.current.length !== eqBands.length) {
       // Disconnect old
-      eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch {} });
+      eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch { } });
       eqFilterRefs.current = eqBands.map(b => {
         const f = ctx.createBiquadFilter();
         f.type = b.type;
@@ -384,10 +396,10 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     const ctx = audioCtxRef.current;
     if (!ctx || !masterInputRef.current) return;
     // Disconnect everything first to avoid duplicate parallel paths
-    try { masterInputRef.current.disconnect(); } catch {}
-    eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch {} });
-    if (compressorRef.current) { try { compressorRef.current.disconnect(); } catch {} }
-    if (makeupGainRef.current) { try { makeupGainRef.current.disconnect(); } catch {} }
+    try { masterInputRef.current.disconnect(); } catch { }
+    eqFilterRefs.current.forEach(f => { try { f.disconnect(); } catch { } });
+    if (compressorRef.current) { try { compressorRef.current.disconnect(); } catch { } }
+    if (makeupGainRef.current) { try { makeupGainRef.current.disconnect(); } catch { } }
 
     if (eqEnabled) {
       // master -> filters -> (compressor?) -> (makeup?) -> destination
@@ -414,7 +426,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       // Ensure visual + gain makeup reset when bypassed
       setGainReduction(0);
       if (makeupGainRef.current) {
-        try { makeupGainRef.current.gain.setValueAtTime(1, ctx.currentTime); } catch {}
+        try { makeupGainRef.current.gain.setValueAtTime(1, ctx.currentTime); } catch { }
       }
     }
   }, [eqEnabled, limiter.enabled]);
@@ -464,13 +476,14 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       gain: s.gain.gain.value,
       initialGain: s.initialGain,
       waveformUrl: s.metadata ? metadataBaseUrlRef.current + s.metadata.waveform_url : null,
-      muted: s.muteGain.gain.value === 0
+      muted: s.muted,
+      soloed: soloedStems.has(name)
     })).sort((a, b) => a.name.localeCompare(b.name)));
-  }, []);
+  }, [soloedStems]);
 
   // Create buffer sources and start playback from offset
   const stopAllSources = useCallback(() => {
-    sourcesRef.current.forEach((src) => { try { src.stop(); } catch {}; });
+    sourcesRef.current.forEach((src) => { try { src.stop(); } catch { }; });
     sourcesRef.current.clear();
   }, []);
 
@@ -484,7 +497,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     loadedStemsRef.current.forEach((stem, name) => {
       const src = ctx.createBufferSource();
       src.buffer = stem.buffer;
-  src.connect(stem.gain);
+      src.connect(stem.gain);
       src.onended = () => {
         // Ignore if superseded by a newer playback generation OR manually stopped/paused
         if (playbackGenRef.current !== thisPlaybackGen) return;
@@ -581,16 +594,53 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     updateStemState();
   }, [updateStemState]);
 
+  const updateAudibility = useCallback(() => {
+    // Calculate audibility: solo overrides mute
+    const hasSoloedStems = soloedStems.size > 0;
+
+    for (const [stemName, stem] of loadedStemsRef.current.entries()) {
+      const isSoloed = soloedStems.has(stemName);
+
+      let audible = true;
+      if (hasSoloedStems) {
+        // If any stems are soloed, only soloed stems are audible
+        audible = isSoloed;
+      } else {
+        // No soloing: audible unless muted
+        audible = !stem.muted;
+      }
+
+      stem.outputGain.gain.value = audible ? 1 : 0;
+    }
+    updateStemState();
+  }, [soloedStems, updateStemState]);
+
   const toggleMute = useCallback((stemName: string) => {
     const stem = loadedStemsRef.current.get(stemName);
     if (!stem) return;
-    const isMuted = stem.muteGain.gain.value === 0;
-    stem.muteGain.gain.value = isMuted ? 1 : 0;
-    updateStemState();
-  }, [updateStemState]);
+    stem.muted = !stem.muted;
+    updateAudibility();
+  }, [updateAudibility]);
+
+  const toggleSolo = useCallback((stemName: string) => {
+    setSoloedStems(prev => {
+      const newSoloedStems = new Set(prev);
+      if (newSoloedStems.has(stemName)) {
+        newSoloedStems.delete(stemName);
+      } else {
+        newSoloedStems.add(stemName);
+      }
+      return newSoloedStems;
+    });
+  }, []);
+
+  // Update audibility whenever soloedStems changes
+  useEffect(() => {
+    updateAudibility();
+  }, [updateAudibility]);
 
   // EQ management
-  const updateEqBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain'|'frequency'|'q'|'type'>>) => {
+  const updateEqBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => {
     setEqBands(prev => prev.map(b => b.id === id ? { ...b, ...changes } : b));
   }, []);
   const resetEq = useCallback(() => {
@@ -631,6 +681,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     setStemGain,
     resetStemGain,
     toggleMute,
+    toggleSolo,
     formatTime,
     eqBands,
     updateEqBand,

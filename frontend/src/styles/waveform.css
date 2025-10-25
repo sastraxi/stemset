@@ -13,7 +13,8 @@
   gap: 1.5rem;
   align-items: center;
   padding: 0;
-  margin: 0;
+  margin: 0 4px;
+  /* Add horizontal margin to prevent outline clipping */
   transition: background 0.15s;
 }
 

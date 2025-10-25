@@ -2,8 +2,9 @@ import { useStemPlayer } from './useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { Spinner } from './Spinner';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Music } from 'lucide-react';
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
 
 interface StemPlayerProps {
   profileName: string;
@@ -23,6 +24,7 @@ export interface StemPlayerHandle {
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
   ({ profileName, fileName, metadataUrl }, ref) => {
     const [previewTime, setPreviewTime] = useState<number | null>(null);
+    const [showTimeRemaining, setShowTimeRemaining] = useState(false);
     const playerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -45,6 +47,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       setStemGain,
       resetStemGain,
       toggleMute,
+      toggleSolo,
       formatTime,
       eqBands,
       updateEqBand,
@@ -135,32 +138,48 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       );
     }
 
+    // Render playback controls in header
+    const playbackControlsContainer = document.getElementById('playback-controls-container');
+    const playbackControls = (
+      <>
+        <div
+          className="time-display clickable"
+          onClick={() => setShowTimeRemaining(!showTimeRemaining)}
+          title="Click to toggle time remaining"
+        >
+          {showTimeRemaining
+            ? `-${formatTime(duration - (previewTime !== null ? previewTime : currentTime))} / ${formatTime(duration)}`
+            : `${formatTime(previewTime !== null ? previewTime : currentTime)} / ${formatTime(duration)}`
+          }
+        </div>
+        <button
+          onClick={isPlaying ? pause : play}
+          disabled={stemEntries.length === 0}
+          className="playback-button"
+          title={isPlaying ? "Pause" : "Play"}
+        >
+          {isPlaying ? '⏸' : '▶'}
+        </button>
+        <button
+          onClick={stop}
+          disabled={!isPlaying && currentTime === 0}
+          className="playback-button stop-button"
+          title="Reset"
+        >
+          ⏹
+        </button>
+      </>
+    );
+
     return (
       <>
+        {playbackControlsContainer && createPortal(playbackControls, playbackControlsContainer)}
         <div className="stem-player" ref={playerRef} tabIndex={0}>
           <div className="waveforms-section">
-            {/* Ruler row with controls alignment */}
+            {/* Ruler row - now just ruler without controls */}
             <div className="waveform-row">
-              <div className="waveform-controls playback-controls">
-                <div className="time-display">
-                  {formatTime(previewTime !== null ? previewTime : currentTime)} / {formatTime(duration)}
-                </div>
-                <button
-                  onClick={isPlaying ? pause : play}
-                  disabled={stemEntries.length === 0}
-                  className="playback-button"
-                  title={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? '⏸' : '▶'}
-                </button>
-                <button
-                  onClick={stop}
-                  disabled={!isPlaying && currentTime === 0}
-                  className="playback-button"
-                  title="Reset"
-                >
-                  ⏹
-                </button>
+              <div className="waveform-controls">
+                {/* Empty controls area to maintain alignment */}
               </div>
               <Ruler
                 currentTime={currentTime}
@@ -197,7 +216,17 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                       className={`mute-button ${stem.muted ? 'muted' : ''}`}
                       title={stem.muted ? "Unmute" : "Mute"}
                     >
-                      {stem.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      {stem.muted ?
+                        <VolumeX className="h-4 w-4" color={stem.muted ? "#ff6666" : "currentColor"} /> :
+                        <Volume2 className="h-4 w-4" color="currentColor" />
+                      }
+                    </button>
+                    <button
+                      onClick={() => toggleSolo(stem.name)}
+                      className={`solo-button ${stem.soloed ? 'soloed' : ''}`}
+                      title={stem.soloed ? "Unsolo" : "Solo"}
+                    >
+                      <Music className="h-4 w-4" color={stem.soloed ? "#ffb347" : "currentColor"} />
                     </button>
                     <button
                       onClick={() => resetStemGain(stem.name)}

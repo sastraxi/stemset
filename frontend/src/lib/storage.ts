@@ -46,6 +46,7 @@ const KEYS = {
 
   // Session state
   SESSION_PROFILE: 'stemset.session.profile.v1',
+  SESSION_RECORDING: 'stemset.session.recording.v1',
   SESSION_PENDING_JOBS: 'stemset.session.pendingJobs.v1',
 
   // Per-recording state
@@ -127,6 +128,26 @@ export function getSessionProfile(): string | null {
 
 export function setSessionProfile(profileName: string): void {
   setItem(KEYS.SESSION_PROFILE, profileName);
+}
+
+export function getSessionRecording(profileName?: string): string | null {
+  if (profileName) {
+    // Get profile-specific recording
+    const key = `${KEYS.SESSION_RECORDING}.${profileName}`;
+    return getItem<string | null>(key, null);
+  }
+  // Fallback to global recording for backward compatibility
+  return getItem<string | null>(KEYS.SESSION_RECORDING, null);
+}
+
+export function setSessionRecording(recordingName: string, profileName?: string): void {
+  if (profileName) {
+    // Store profile-specific recording
+    const key = `${KEYS.SESSION_RECORDING}.${profileName}`;
+    setItem(key, recordingName);
+  }
+  // Also store as global for backward compatibility
+  setItem(KEYS.SESSION_RECORDING, recordingName);
 }
 
 export function getPendingJobs(): PendingJob[] {

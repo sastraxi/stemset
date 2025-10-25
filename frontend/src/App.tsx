@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { RefreshCw, Play } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { StemPlayer, type StemPlayerHandle } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
@@ -39,7 +40,17 @@ function App() {
   );
 }
 
-function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string; email: string; picture?: string }; onLogout: () => void }) {
+export function AuthenticatedApp({
+  user,
+  onLogout,
+  initialProfile,
+  initialRecording
+}: {
+  user: { id: string; name: string; email: string; picture?: string };
+  onLogout: () => void;
+  initialProfile?: string;
+  initialRecording?: string;
+}) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [files, setFiles] = useState<StemFile[]>([]);
@@ -48,6 +59,7 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
   const [fileCountByProfile, setFileCountByProfile] = useState<Record<string, number>>({});
   const [loadingFiles, setLoadingFiles] = useState(false);
   const stemPlayerRef = useRef<StemPlayerHandle>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Clean up stale pending jobs (>7 days old)
@@ -120,11 +132,19 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       const data = await getProfiles();
       setProfiles(data);
 
-      // Restore last selected profile from localStorage, or use first profile
+      // Restore last selected profile from localStorage, initial profile, or use first profile
       if (data.length > 0 && !selectedProfile) {
-        const savedProfile = getSessionProfile();
-        const profileExists = savedProfile && data.some(p => p.name === savedProfile);
-        setSelectedProfile(profileExists ? savedProfile : data[0].name);
+        let profileToSelect: string | null = null;
+
+        if (initialProfile && data.some(p => p.name === initialProfile)) {
+          profileToSelect = initialProfile;
+        } else {
+          const savedProfile = getSessionProfile();
+          const profileExists = savedProfile && data.some(p => p.name === savedProfile);
+          profileToSelect = profileExists ? savedProfile : data[0].name;
+        }
+
+        setSelectedProfile(profileToSelect);
       }
 
       // Load file counts for all profiles
@@ -157,6 +177,15 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
       // Clean up stale recording states (recordings that no longer exist)
       const validFileNames = data.map(f => f.name);
       pruneStaleRecordings(profileName, validFileNames);
+
+      // Select initial recording if provided
+      if (initialRecording && profileName === initialProfile) {
+        const targetFile = data.find(f => f.name === initialRecording);
+        if (targetFile) {
+          setSelectedFile(targetFile);
+          setTimeout(() => stemPlayerRef.current?.focus(), 100);
+        }
+      }
     } catch (error) {
       console.error('Error loading files:', error);
     } finally {
@@ -243,7 +272,10 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
           <ProfileSelector
             profiles={profiles}
             selectedProfile={selectedProfile}
-            onSelectProfile={setSelectedProfile}
+            onSelectProfile={(profileName) => {
+              setSelectedProfile(profileName);
+              navigate({ to: '/p/$profileName', params: { profileName } });
+            }}
             fileCountByProfile={fileCountByProfile}
           />
           <UserNav user={user} onLogout={onLogout} />
@@ -293,6 +325,15 @@ function AuthenticatedApp({ user, onLogout }: { user: { id: string; name: string
                       }`}
                     onClick={() => {
                       setSelectedFile(file);
+                      if (selectedProfile) {
+                        navigate({
+                          to: '/p/$profileName/$recordingName',
+                          params: {
+                            profileName: selectedProfile,
+                            recordingName: file.name
+                          }
+                        });
+                      }
                       // Focus the player after a short delay to allow rendering
                       setTimeout(() => stemPlayerRef.current?.focus(), 100);
                     }}
