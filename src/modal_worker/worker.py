@@ -49,6 +49,7 @@ image = (
         "config-modal.yaml",
         "/root/config.yaml",
     )  # Use Modal-specific config without auth
+    .env({"BACKEND_URL": os.environ.get("BACKEND_URL", "")})
 )
 
 # Mount R2 bucket for direct file access
@@ -156,15 +157,16 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                 existing_key = f"{job.profile_name}/{job.output_name}/{first_stem_name}{stem_ext}"
 
                 head_response = storage.s3_client.head_object(
-                    Bucket=storage.config.bucket_name,
-                    Key=existing_key
+                    Bucket=storage.config.bucket_name, Key=existing_key
                 )
 
                 existing_size = head_response.get("ContentLength", 0)
 
                 # Compare sizes - allow overwrite if within 10x
                 if existing_size > 0:
-                    size_ratio = max(new_stem_size, existing_size) / min(new_stem_size, existing_size)
+                    size_ratio = max(new_stem_size, existing_size) / min(
+                        new_stem_size, existing_size
+                    )
                     if size_ratio > 10:
                         raise ValueError(
                             f"Output size mismatch: new={new_stem_size} bytes, "
@@ -205,7 +207,7 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                     job.profile_name,
                     job.output_name,
                     "metadata.json",
-                    extra_metadata={"source-sha256": file_hash}
+                    extra_metadata={"source-sha256": file_hash},
                 )
 
             result = ProcessingResult(

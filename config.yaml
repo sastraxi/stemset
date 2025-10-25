@@ -34,6 +34,8 @@ gpu_worker_url: ${GPU_WORKER_URL}
 
 strategies:
 #################################
+
+  # Faster, lower-quality (squishier sounding)
   htdemucs_ft:
     _: "htdemucs_ft"
     vocals: vocals
@@ -41,6 +43,7 @@ strategies:
     drums: drums
     other: other
 
+  # Pretty decent separation.
   hdemucs_mmi:
     _: "hdemucs_mmi"
     vocals: vocals
@@ -76,3 +79,10 @@ profiles:
       format: "opus"
       bitrate: 192
 
+  - name: "experimental"
+    source_folder: "./input/experimental"
+    strategy: "successive"
+    remote: true
+    output:
+      format: "opus"
+      bitrate: 192
