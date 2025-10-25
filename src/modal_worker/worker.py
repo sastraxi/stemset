@@ -29,11 +29,12 @@ r2_env_vars = {
     "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
 }
 
-dummy_auth_vars = {
+dummy_required_vars = {
     "GOOGLE_CLIENT_ID": "dummy",
     "GOOGLE_CLIENT_SECRET": "dummy",
     "JWT_SECRET": "dummy",
     "OAUTH_REDIRECT_URI": "dummy",
+    "GPU_WORKER_URL": "dummy",
 }
 
 image = (
@@ -52,7 +53,7 @@ image = (
     .uv_sync(groups=["shared", "processing", "modal"], frozen=True)
     # app (added last to optimize build caching)
     .env({"BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", "https://not-configured")})
-    .env(dummy_auth_vars)
+    .env(dummy_required_vars)
     .add_local_dir("src", "/root/src")
     .add_local_file("config.yaml", "/root/config.yaml")
 )
