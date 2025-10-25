@@ -61,6 +61,16 @@ strategies:
         _: "kuielab_a_bass.onnx"
         bass: bass
         no bass: other
+  
+  bobw:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    other: 
+      hdemucs_mmi:
+        _: "hdemucs_mmi"
+        bass: bass
+        drums: drums
+        other: other
 
 profiles:
 #################################
@@ -82,6 +92,14 @@ profiles:
   - name: "experimental"
     source_folder: "./input/experimental"
     strategy: "successive"
+    remote: true
+    output:
+      format: "opus"
+      bitrate: 192
+
+  - name: "bobw"
+    source_folder: "./input/bobw"
+    strategy: "bobw"
     remote: true
     output:
       format: "opus"
