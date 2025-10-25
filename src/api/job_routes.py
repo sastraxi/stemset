@@ -24,7 +24,7 @@ from ..utils import compute_file_hash, derive_output_name
 _jobs: dict[str, ProcessingResult] = {}
 
 
-@post("/api/jobs/{job_id}/complete")
+@post("/api/jobs/{job_id:str}/complete")
 async def job_complete(job_id: str, result: ProcessingResult) -> dict[str, str]:
     """Callback endpoint for GPU worker to report completion.
 
@@ -47,7 +47,7 @@ async def job_complete(job_id: str, result: ProcessingResult) -> dict[str, str]:
     return {"status": "ok"}
 
 
-@get("/api/jobs/{job_id}/status")
+@get("/api/jobs/{job_id:str}/status")
 async def job_status(job_id: str) -> JobStatusResponse:
     """Get status of a processing job.
 
