@@ -40,7 +40,8 @@ class StrategyNode(BaseModel):
 
     model: str = Field(..., description="Model name to use for separation")
     outputs: dict[str, str | StrategyNode] = Field(
-        default_factory=dict, description="Output slot mappings (slot_name -> final_name or subtree)"
+        default_factory=dict,
+        description="Output slot mappings (slot_name -> final_name or subtree)",
     )
 
     @model_validator(mode="before")
@@ -64,30 +65,6 @@ class StrategyNode(BaseModel):
         outputs = {k: v for k, v in dict_data.items() if k != "_"}
 
         return {"model": model_name, "outputs": outputs}
-
-    def validate_outputs(self, expected_slots: set[str]) -> None:
-        """Validate that output slots match model's expected slots.
-
-        Args:
-            expected_slots: Set of slot names the model produces
-
-        Raises:
-            ValueError: If output slots don't match expected slots
-        """
-        actual_slots = set(self.outputs.keys())
-
-        if actual_slots != expected_slots:
-            missing = expected_slots - actual_slots
-            extra = actual_slots - expected_slots
-            errors = []
-            if missing:
-                errors.append(f"missing slots: {missing}")
-            if extra:
-                errors.append(f"unexpected slots: {extra}")
-            raise ValueError(
-                f"Model '{self.model}' output mismatch: {', '.join(errors)}. " +
-                f"Expected: {expected_slots}"
-            )
 
     def get_final_outputs(self) -> set[str]:
         """Get all final output names from this tree."""
@@ -124,7 +101,7 @@ class AuthConfig(BaseModel):
     jwt_secret: str = Field(..., description="Secret key for JWT signing")
     redirect_uri: str = Field(
         default="http://localhost:8000/auth/callback",
-        description="OAuth redirect URI (update for production)"
+        description="OAuth redirect URI (update for production)",
     )
 
 
@@ -136,8 +113,7 @@ class R2Config(BaseModel):
     secret_access_key: str = Field(..., description="R2 secret access key")
     bucket_name: str = Field(..., description="R2 bucket name for media files")
     public_url: str | None = Field(
-        default=None,
-        description="Public R2 bucket URL (if configured for public access)"
+        default=None, description="Public R2 bucket URL (if configured for public access)"
     )
 
 
@@ -148,7 +124,9 @@ class Profile(BaseModel):
     source_folder: str = Field(..., description="Path to folder containing audio files")
     strategy: str = Field(..., description="Strategy name to use for separation")
     remote: bool = Field(default=False, description="Use remote GPU processing instead of local")
-    output: OutputConfig = Field(default_factory=OutputConfig, description="Output format configuration")
+    output: OutputConfig = Field(
+        default_factory=OutputConfig, description="Output format configuration"
+    )
 
     @field_validator("source_folder")
     @classmethod
@@ -172,9 +150,7 @@ class Config(BaseModel):
     strategies: dict[str, Strategy] = Field(
         default_factory=dict, description="Available separation strategies"
     )
-    profiles: list[Profile] = Field(
-        default_factory=list, description="List of processing profiles"
-    )
+    profiles: list[Profile] = Field(default_factory=list, description="List of processing profiles")
     auth: AuthConfig | None = Field(
         default=None, description="Authentication configuration (optional)"
     )
@@ -207,7 +183,7 @@ class Config(BaseModel):
                 cls._collect_required_env_vars(item, collected)
         elif isinstance(data, str):
             # Find all ${VAR_NAME} patterns
-            pattern = r'\$\{([^}]+)\}'
+            pattern = r"\$\{([^}]+)\}"
             matches = re.findall(pattern, data)
             collected.update(matches)
 
@@ -232,7 +208,7 @@ class Config(BaseModel):
             return [cls._substitute_env_vars(item) for item in data]
         elif isinstance(data, str):
             # Replace ${VAR_NAME} with environment variable
-            pattern = r'\$\{([^}]+)\}'
+            pattern = r"\$\{([^}]+)\}"
 
             def replace_var(match: re.Match[str]) -> str:
                 var_name = match.group(1)
@@ -307,8 +283,8 @@ class Config(BaseModel):
             if profile.strategy not in config.strategies:
                 available = ", ".join(config.strategies.keys())
                 raise ValueError(
-                    f"Profile '{profile.name}' references unknown strategy '{profile.strategy}'. " +
-                    f"Available strategies: {available}"
+                    f"Profile '{profile.name}' references unknown strategy '{profile.strategy}'. "
+                    + f"Available strategies: {available}"
                 )
 
         # Note: Strategy output slot validation happens at execution time

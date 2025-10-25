@@ -53,9 +53,7 @@ class StrategyExecutor:
 
             # Execute tree starting from root with original input
             final_outputs = self._execute_node(
-                node=self.strategy.root,
-                input_file=input_file,
-                current_step=0
+                node=self.strategy.root, input_file=input_file, current_step=0
             )
 
             # Move final outputs to destination with correct format
@@ -78,10 +76,7 @@ class StrategyExecutor:
                 self._temp_dir = None
 
     def _execute_node(
-        self,
-        node: StrategyNode,
-        input_file: Path,
-        current_step: int
+        self, node: StrategyNode, input_file: Path, current_step: int
     ) -> dict[str, Path]:
         """Recursively execute a strategy node.
 
@@ -102,11 +97,11 @@ class StrategyExecutor:
         # Validate config keys match actual model output slots
         model_output_slots = model.get_output_slots()
         configured_slots = set(node.outputs.keys())
-        if model_output_slots != configured_slots:
+        if model_output_slots < configured_slots:
             raise ValueError(
-                f"Model '{node.model}' output mismatch. " +
-                f"Model produces: {sorted(model_output_slots)}, " +
-                f"Config maps: {sorted(configured_slots)}"
+                f"Model '{node.model}' output mismatch. "
+                + f"Model produces: {sorted(model_output_slots)}, "
+                + f"Config maps: {sorted(configured_slots)}"
             )
 
         # Create step-specific temp directory
@@ -121,7 +116,10 @@ class StrategyExecutor:
         if not is_root:
             # Create a temporary WAV config for intermediates
             from ..config import OutputConfig
-            temp_output_config = OutputConfig(format=AudioFormat.WAV, bitrate=self.output_config.bitrate)
+
+            temp_output_config = OutputConfig(
+                format=AudioFormat.WAV, bitrate=self.output_config.bitrate
+            )
             # Re-instantiate model with WAV output for intermediates
             model = self._create_model_instance(node.model, temp_output_config)
 
@@ -146,9 +144,7 @@ class StrategyExecutor:
 
                 # Recursively execute child node
                 child_outputs = self._execute_node(
-                    node=child_node,
-                    input_file=slot_path,
-                    current_step=step_num
+                    node=child_node, input_file=slot_path, current_step=step_num
                 )
 
                 # Merge child outputs into final outputs
@@ -164,7 +160,9 @@ class StrategyExecutor:
             )
         return self._model_instances[model_name]
 
-    def _create_model_instance(self, model_name: str, output_config: OutputConfig) -> AudioSeparator:
+    def _create_model_instance(
+        self, model_name: str, output_config: OutputConfig
+    ) -> AudioSeparator:
         """Create a new model instance with given output config."""
         model_class = get_model_class(model_name)
         return model_class(output_config)
