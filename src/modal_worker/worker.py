@@ -14,8 +14,7 @@ import modal
 # Load .env file for build-time configuration
 _ = load_dotenv()
 
-# Define modal app
-# FIXME: using modal secrets prevents logging secrets at build-time
+# Define modal app with R2 secrets
 app = modal.App("stemset-gpu")
 
 # Container image with all processing dependencies
@@ -63,11 +62,13 @@ image = (
 )
 
 # Mount R2 bucket for direct file access
+# CloudBucketMount reads AWS credentials from Modal secrets at runtime
 r2_account_id = os.environ.get("R2_ACCOUNT_ID", "")
 r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "stemset-media")
 r2_mount = modal.CloudBucketMount(
     bucket_name=r2_bucket_name,
     bucket_endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+    secret=modal.Secret.from_name("r2-secret"),  # pyright: ignore[reportUnknownMemberType]
 )
 
 
