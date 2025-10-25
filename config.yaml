@@ -65,12 +65,11 @@ strategies:
   bobw:
     _: "vocals_mel_band_roformer.ckpt"
     vocals: vocals
-    other: 
-      hdemucs_mmi:
-        _: "hdemucs_mmi"
-        bass: bass
-        drums: drums
-        other: other
+    other:
+      _: "hdemucs_mmi"
+      bass: bass
+      drums: drums
+      other: other
 
 profiles:
 #################################
