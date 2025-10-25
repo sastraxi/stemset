@@ -64,4 +64,4 @@ target-version = "py310"
 
 [tool.uv]
 allow-insecure-host = ["*.r2.cloudflarestorage.com"]
-default-groups = ["shared", "processing"]
+default-groups = ["shared"]
