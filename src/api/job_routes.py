@@ -73,10 +73,10 @@ async def job_status(job_id: str) -> JobStatusResponse:
     )
 
 
-@post("/api/upload")
+@post("/api/upload/{profile_name:str}")
 async def upload_file(
-    data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
     profile_name: str,
+    data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
     state: State,
 ) -> JobStatusResponse:
     """Upload an audio file and trigger GPU processing.

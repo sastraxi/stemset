@@ -136,7 +136,7 @@ const formData = new FormData();
 formData.append('file', audioFile);
 
 // 1. Upload to R2 and trigger processing (single endpoint)
-const uploadResponse = await fetch('/api/upload?profile_name=h4n', {
+const uploadResponse = await fetch('/api/upload/h4n', {
   method: 'POST',
   body: formData,
 });
