@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getProfiles, getProfileFiles, getFileMetadata, updateDisplayName } from '../api'
-import type { StemFileWithDisplayName, StemsMetadata } from '../types'
+import type { StemFileWithDisplayName } from '../types'
 
 export function useProfiles() {
     return useQuery({
@@ -87,7 +87,7 @@ export function useUpdateDisplayName() {
             fileName: string
             displayName: string
         }) => updateDisplayName(profileName, fileName, displayName),
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             // Invalidate the files with display names query to refetch
             queryClient.invalidateQueries({
                 queryKey: ['profileFilesWithDisplayNames', variables.profileName]
