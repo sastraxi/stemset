@@ -2,13 +2,14 @@ import { useEffect, useState, useRef } from 'react'
 import { RefreshCw, Music } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { StemPlayer, type StemPlayerHandle } from './StemPlayer'
+import { InlineEdit } from './InlineEdit'
 import { UserNav } from './UserNav'
 import { ProfileSelector } from './ProfileSelector'
 import { Upload, resumePendingJobs } from './Upload'
 import { Spinner } from './Spinner'
 import { Button } from './ui/button'
-import { useProfiles, useProfileFiles } from '../hooks/queries'
-import type { StemFile } from '../types'
+import { useProfiles, useProfileFilesWithDisplayNames, useUpdateDisplayName } from '../hooks/queries'
+import type { StemFileWithDisplayName } from '../types'
 import { toast } from 'sonner'
 import {
     setSessionProfile,
@@ -37,7 +38,7 @@ export function AuthenticatedApp({
     initialRecording
 }: AuthenticatedAppProps) {
     const [selectedProfile, setSelectedProfile] = useState<string | null>(initialProfile || null)
-    const [selectedFile, setSelectedFile] = useState<StemFile | null>(null)
+    const [selectedFile, setSelectedFile] = useState<StemFileWithDisplayName | null>(null)
     const stemPlayerRef = useRef<StemPlayerHandle>(null)
     const navigate = useNavigate()
 
@@ -51,7 +52,9 @@ export function AuthenticatedApp({
         isLoading: filesLoading,
         error: filesError,
         refetch: refetchFiles
-    } = useProfileFiles(selectedProfile || undefined)
+    } = useProfileFilesWithDisplayNames(selectedProfile || undefined)
+
+    const updateDisplayNameMutation = useUpdateDisplayName()
 
     // Set selected profile based on initial or first available
     useEffect(() => {
@@ -130,7 +133,7 @@ export function AuthenticatedApp({
         navigate({ to: '/p/$profileName', params: { profileName } })
     }
 
-    const handleFileSelect = (file: StemFile) => {
+    const handleFileSelect = (file: StemFileWithDisplayName) => {
         setSelectedFile(file)
         if (selectedProfile) {
             navigate({
@@ -151,6 +154,24 @@ export function AuthenticatedApp({
         } catch (error) {
             console.error('Error refreshing files:', error)
             toast.error('Error refreshing file list')
+        }
+    }
+
+    const handleSaveDisplayName = async (newDisplayName: string) => {
+        if (!selectedFile || !selectedProfile) return
+
+        try {
+            await updateDisplayNameMutation.mutateAsync({
+                profileName: selectedProfile,
+                fileName: selectedFile.name,
+                displayName: newDisplayName
+            })
+
+            toast.success('Display name updated')
+        } catch (error) {
+            console.error('Error updating display name:', error)
+            toast.error('Failed to update display name')
+            throw error // Re-throw to let InlineEdit handle the error
         }
     }
 
@@ -256,7 +277,7 @@ export function AuthenticatedApp({
                                         onClick={() => handleFileSelect(file)}
                                     >
                                         <span className={`truncate ${selectedFile?.name === file.name ? 'font-bold' : ''}`}>
-                                            {file.name}
+                                            {file.displayName}
                                         </span>
                                         {selectedFile?.name === file.name && (
                                             <Music className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
@@ -272,7 +293,14 @@ export function AuthenticatedApp({
                     {selectedFile && selectedProfile ? (
                         <>
                             <div className="recording-header">
-                                <h2 className="recording-name">{selectedFile.name}</h2>
+                                <h2 className="recording-name">
+                                    <InlineEdit
+                                        value={selectedFile.displayName}
+                                        onSave={handleSaveDisplayName}
+                                        placeholder={selectedFile.name}
+                                    />
+                                </h2>
+                                <div className="flex-grow" />
                                 <div id="playback-controls-container" className="playback-controls-header">
                                     {/* Playback controls will be rendered here by StemPlayer */}
                                 </div>

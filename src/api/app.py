@@ -17,6 +17,7 @@ from .profile_routes import (
     get_profile,
     get_profile_files,
     get_profiles,
+    update_display_name,
 )
 from .job_routes import job_complete, job_status, upload_file
 
@@ -50,7 +51,7 @@ if frontend_url and frontend_url not in ["/", ""]:
 
 cors_config = CORSConfig(
     allow_origins=allowed_origins,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
     allow_credentials=True,
 )
@@ -70,6 +71,7 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
+        update_display_name,
         job_complete,
         job_status,
         upload_file,

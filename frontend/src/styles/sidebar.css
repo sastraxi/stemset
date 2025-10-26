@@ -34,8 +34,7 @@
   border-color: #4a9eff;
 }
 
-.profile-selector button,
-button {
+.profile-selector button {
   width: 100%;
   padding: 0.6rem 1rem;
   background: transparent;

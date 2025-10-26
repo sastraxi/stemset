@@ -32,10 +32,37 @@ export async function getProfileFiles(name: string): Promise<StemFile[]> {
   return response.json();
 }
 
-export async function getFileMetadata(metadataUrl: string): Promise<Record<string, any>> {
-  const response = await fetch(metadataUrl);
+export async function getFileMetadata(metadataUrl: string, bustCache = false): Promise<Record<string, any>> {
+  // Add cache-busting parameter if needed (e.g., after updates)
+  const url = bustCache ? `${metadataUrl}?t=${Date.now()}` : metadataUrl;
+
+  const response = await fetch(url, {
+    cache: 'no-store', // Prevent browser caching
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch metadata: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function updateDisplayName(
+  profileName: string,
+  fileName: string,
+  displayName: string
+): Promise<Record<string, any>> {
+  const response = await fetch(
+    `${API_BASE}/api/profiles/${profileName}/files/${fileName}/display-name`,
+    {
+      ...defaultOptions,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ display_name: displayName }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to update display name: ${response.statusText}`);
   }
   return response.json();
 }

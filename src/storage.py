@@ -42,6 +42,10 @@ class StorageBackend(Protocol):
         """Download an input file to local destination."""
         ...
 
+    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
+        """Update metadata.json file."""
+        ...
+
 
 class LocalStorage:
     """Local filesystem storage backend."""
@@ -88,6 +92,13 @@ class LocalStorage:
         """Copy input file from inputs directory to destination."""
         source_path = Path("inputs") / profile_name / filename
         shutil.copy2(source_path, dest_path)
+
+    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
+        """Update metadata.json file."""
+        metadata_path = Path("media") / profile_name / file_name / "metadata.json"
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(metadata_path, "w") as f:
+            f.write(metadata_content)
 
 
 class R2Storage:
@@ -238,6 +249,16 @@ class R2Storage:
             self.config.bucket_name,
             key,
             str(dest_path),
+        )
+
+    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
+        """Update metadata.json file in R2."""
+        key = f"{profile_name}/{file_name}/metadata.json"
+        self.s3_client.put_object(
+            Bucket=self.config.bucket_name,
+            Key=key,
+            Body=metadata_content.encode("utf-8"),
+            ContentType="application/json",
         )
 
 

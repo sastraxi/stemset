@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from litestar import get
+from litestar import get, patch
 from litestar.exceptions import NotFoundException
 from litestar.response import File, Redirect
+from pydantic import BaseModel
 
 from ..config import get_config
 from ..storage import get_storage
@@ -52,4 +53,42 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
         files.append(FileWithStems(name=file_name, metadata_url=metadata_url))
 
     return files
+
+
+class UpdateDisplayNameRequest(BaseModel):
+    """Request to update display name."""
+    display_name: str
+
+
+@patch("/api/profiles/{profile_name:str}/files/{file_name:str}/display-name")
+async def update_display_name(
+    profile_name: str,
+    file_name: str,
+    data: UpdateDisplayNameRequest
+) -> StemsMetadata:
+    """Update the display name for a recording."""
+    config = get_config()
+    profile = config.get_profile(profile_name)
+    if profile is None:
+        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+
+    storage = get_storage(config)
+
+    # Fetch current metadata
+    metadata_url = storage.get_metadata_url(profile_name, file_name)
+    import httpx
+    async with httpx.AsyncClient() as client:
+        response = await client.get(metadata_url)
+        if response.status_code != 200:
+            raise NotFoundException(detail=f"Metadata not found for '{file_name}'")
+
+        metadata = StemsMetadata.model_validate_json(response.text)
+
+    # Update display name
+    metadata.display_name = data.display_name
+
+    # Write back to storage
+    storage.update_metadata(profile_name, file_name, metadata.model_dump_json(indent=2))
+
+    return metadata
 

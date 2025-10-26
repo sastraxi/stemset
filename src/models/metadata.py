@@ -28,6 +28,7 @@ class StemsMetadata(BaseModel):
     """Metadata for all stems in a separation."""
 
     stems: dict[str, StemMetadata]
+    display_name: str = ""  # Empty string means use the folder name as default
 
     def to_file(self, file_path: Path) -> None:
         """Write metadata to a JSON file."""
