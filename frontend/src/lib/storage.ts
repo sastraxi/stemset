@@ -4,21 +4,6 @@
  * All keys use the `stemset.*` prefix with version suffixes for safe migration.
  */
 
-// Master effect settings (global across all recordings)
-export interface MasterEqSettings {
-  id: string;
-  frequency: number;
-  type: BiquadFilterType;
-  gain: number;
-  q: number;
-}
-
-export interface MasterLimiterSettings {
-  thresholdDb: number;
-  release: number;
-  enabled: boolean;
-}
-
 // Session state (UI state that persists across page reloads)
 export interface PendingJob {
   job_id: string;
@@ -34,24 +19,24 @@ export interface RecordingState {
   stemGains: Record<string, number>; // linear gain values
   stemMutes: Record<string, boolean>; // mute states
   stemSolos: Record<string, boolean>; // solo states
+  // Audio effects (opaque JSON blobs managed by effect hooks)
+  eqConfig?: unknown;
+  compressorConfig?: unknown;
+  reverbConfig?: unknown;
+  stereoExpanderConfig?: unknown;
 }
 
 export type RecordingsMap = Record<string, RecordingState>; // key: `${profile}::${fileName}`
 
 // Storage keys with versioning
 const KEYS = {
-  // Global master effects
-  MASTER_EQ: 'stemset.master.eq.v1',
-  MASTER_LIMITER: 'stemset.master.limiter.v2',
-  MASTER_EQ_ENABLED: 'stemset.master.eq.enabled.v1',
-
   // Session state
   SESSION_PROFILE: 'stemset.session.profile.v1',
   SESSION_RECORDING: 'stemset.session.recording.v1',
   SESSION_PENDING_JOBS: 'stemset.session.pendingJobs.v1',
 
-  // Per-recording state
-  RECORDINGS: 'stemset.recordings.v1',
+  // Per-recording state (v2 includes effects config)
+  RECORDINGS: 'stemset.recordings.v2',
 } as const;
 
 /**
@@ -90,34 +75,6 @@ function setItem<T>(key: string, value: T): void {
 //     console.error(`[storage] Failed to remove ${key}:`, error);
 //   }
 // }
-
-// ============================================================================
-// Master Effects (global settings)
-// ============================================================================
-
-export function getMasterEq(defaultValue: MasterEqSettings[]): MasterEqSettings[] {
-  return getItem(KEYS.MASTER_EQ, defaultValue);
-}
-
-export function setMasterEq(value: MasterEqSettings[]): void {
-  setItem(KEYS.MASTER_EQ, value);
-}
-
-export function getMasterLimiter(defaultValue: MasterLimiterSettings): MasterLimiterSettings {
-  return getItem(KEYS.MASTER_LIMITER, defaultValue);
-}
-
-export function setMasterLimiter(value: MasterLimiterSettings): void {
-  setItem(KEYS.MASTER_LIMITER, value);
-}
-
-export function getMasterEqEnabled(defaultValue: boolean): boolean {
-  return getItem(KEYS.MASTER_EQ_ENABLED, defaultValue);
-}
-
-export function setMasterEqEnabled(value: boolean): void {
-  setItem(KEYS.MASTER_EQ_ENABLED, value);
-}
 
 // ============================================================================
 // Session State
@@ -225,6 +182,10 @@ export function updateRecordingState(
     stemGains: {},
     stemMutes: {},
     stemSolos: {},
+    eqConfig: undefined,
+    compressorConfig: undefined,
+    reverbConfig: undefined,
+    stereoExpanderConfig: undefined,
   };
   setRecordingState(profileName, fileName, { ...existing, ...updates });
 }

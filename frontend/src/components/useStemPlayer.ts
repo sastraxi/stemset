@@ -1,28 +1,33 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useAudioContext } from '../hooks/useAudioContext';
 import { useSettings } from '../hooks/useSettings';
-import type { EqBand, LimiterSettings } from '../hooks/useSettings';
 import { useAudioLoader } from '../hooks/useAudioLoader';
 import type { LoadingMetrics } from '../hooks/useAudioLoader';
 import { useStemManager } from '../hooks/useStemManager';
 import type { StemStateEntry } from '../hooks/useStemManager';
 import { usePlaybackController } from '../hooks/usePlaybackController';
+import { useAudioEffects } from '../hooks/useAudioEffects';
+import type { UseEqEffectResult } from '../hooks/effects/useEqEffect';
+import type { UseCompressorEffectResult } from '../hooks/effects/useCompressorEffect';
+import type { UseReverbEffectResult } from '../hooks/effects/useReverbEffect';
+import type { UseStereoExpanderEffectResult } from '../hooks/effects/useStereoExpanderEffect';
 
 /**
  * Orchestrator hook for multi-stem audio player.
  *
  * This hook composes focused hooks to provide a complete audio player:
  * - useAudioContext: AudioContext + master gain
- * - useSettings: localStorage persistence (master + per-recording)
+ * - useSettings: localStorage persistence (per-recording)
  * - useAudioLoader: Metadata fetching + buffer loading
  * - useStemManager: Individual stem state + mute/solo logic
  * - usePlaybackController: Play/pause/stop/seek + RAF timing
+ * - useAudioEffects: Audio effects chain (EQ, stereo expander, reverb, compressor)
  *
  * Responsibilities:
  * - Data flow between focused hooks
- * - EQ/limiter audio graph routing
  * - Persist stem state changes
  * - Persist playback position
+ * - Persist effects settings
  *
  * Pattern: Thin composition layer. No business logic here - just wiring.
  */
@@ -60,16 +65,11 @@ export interface UseStemPlayerResult {
   toggleMute: (stemName: string) => void;
   toggleSolo: (stemName: string) => void;
 
-  // Master effects
-  eqBands: EqBand[];
-  updateEqBand: (id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => void;
-  resetEq: () => void;
-  limiter: LimiterSettings;
-  updateLimiter: (changes: Partial<LimiterSettings>) => void;
-  resetLimiter: () => void;
-  eqEnabled: boolean;
-  setEqEnabled: (enabled: boolean) => void;
-  gainReduction: number;
+  // Audio effects
+  eq: UseEqEffectResult;
+  compressor: UseCompressorEffectResult;
+  reverb: UseReverbEffectResult;
+  stereoExpander: UseStereoExpanderEffectResult;
 }
 
 export function useStemPlayer({
@@ -83,19 +83,12 @@ export function useStemPlayer({
   const audioContext = getContext();
   const masterInput = getMasterInput();
 
-  // 2. Settings (master + per-recording)
+  // 2. Settings (per-recording only)
   const {
-    eqBands,
-    updateEqBand,
-    resetEq,
-    limiter,
-    updateLimiter,
-    resetLimiter,
-    eqEnabled,
-    setEqEnabled,
     getSavedRecordingState,
     persistPlaybackPosition,
     persistStemSettings,
+    persistEffectsSettings,
   } = useSettings({ profileName, fileName });
 
   // 3. Load audio buffers
@@ -130,157 +123,18 @@ export function useStemPlayer({
     getLoadedStems,
   });
 
-  // 6. EQ/Limiter audio graph routing
-  const eqFilterRefs = useRef<BiquadFilterNode[]>([]);
-  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
-  const makeupGainRef = useRef<GainNode | null>(null);
-  const [gainReduction, setGainReduction] = useState<number>(0);
-
-  // Initialize EQ/limiter chain
-  useEffect(() => {
-    if (!audioContext || !masterInput) return;
-
-    // Create filters if not already created
-    if (eqFilterRefs.current.length === 0) {
-      eqFilterRefs.current = eqBands.map(b => {
-        const f = audioContext.createBiquadFilter();
-        f.type = b.type;
-        f.frequency.value = b.frequency;
-        f.Q.value = b.q;
-        f.gain.value = b.gain;
-        return f;
-      });
-    }
-
-    // Create compressor and makeup gain if not already created
-    if (!compressorRef.current) {
-      compressorRef.current = audioContext.createDynamicsCompressor();
-      compressorRef.current.threshold.value = limiter.thresholdDb;
-      compressorRef.current.knee.value = 6;
-      compressorRef.current.ratio.value = 20;
-      compressorRef.current.attack.value = 0.003;
-      compressorRef.current.release.value = limiter.release;
-    }
-
-    if (!makeupGainRef.current) {
-      makeupGainRef.current = audioContext.createGain();
-      makeupGainRef.current.gain.value = 1;
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioContext, masterInput]);
-
-  // Update EQ filter parameters when bands change
-  useEffect(() => {
-    if (!audioContext) return;
-
-    eqBands.forEach((b, i) => {
-      const f = eqFilterRefs.current[i];
-      if (!f) return;
-      f.type = b.type;
-      f.frequency.setTargetAtTime(b.frequency, audioContext.currentTime, 0.01);
-      f.Q.setTargetAtTime(b.q, audioContext.currentTime, 0.01);
-      f.gain.setTargetAtTime(b.gain, audioContext.currentTime, 0.01);
-    });
-  }, [eqBands, audioContext]);
-
-  // Rewire master chain when EQ enabled/disabled or limiter enabled/disabled
-  useEffect(() => {
-    if (!audioContext || !masterInput) return;
-    if (!compressorRef.current || !makeupGainRef.current) return;
-
-    // Disconnect everything first
-    try {
-      masterInput.disconnect();
-    } catch {}
-    eqFilterRefs.current.forEach(f => {
-      try {
-        f.disconnect();
-      } catch {}
-    });
-    try {
-      compressorRef.current.disconnect();
-    } catch {}
-    try {
-      makeupGainRef.current.disconnect();
-    } catch {}
-
-    if (eqEnabled) {
-      // master -> filters -> (compressor?) -> (makeup?) -> destination
-      let node: AudioNode = masterInput;
-      eqFilterRefs.current.forEach(f => {
-        node.connect(f);
-        node = f;
-      });
-      if (limiter.enabled) {
-        node.connect(compressorRef.current);
-        compressorRef.current.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(audioContext.destination);
-      } else {
-        node.connect(audioContext.destination);
-      }
-    } else {
-      // master -> (compressor?) -> destination
-      if (limiter.enabled) {
-        masterInput.connect(compressorRef.current);
-        compressorRef.current.connect(makeupGainRef.current);
-        makeupGainRef.current.connect(audioContext.destination);
-      } else {
-        masterInput.connect(audioContext.destination);
-      }
-    }
-
-    if (!limiter.enabled) {
-      setGainReduction(0);
-      if (makeupGainRef.current) {
-        try {
-          makeupGainRef.current.gain.setValueAtTime(1, audioContext.currentTime);
-        } catch {}
-      }
-    }
-  }, [eqEnabled, limiter.enabled, audioContext, masterInput]);
-
-  // Update limiter parameters
-  useEffect(() => {
-    if (!audioContext || !compressorRef.current) return;
-    compressorRef.current.threshold.setTargetAtTime(limiter.thresholdDb, audioContext.currentTime, 0.01);
-    compressorRef.current.release.setTargetAtTime(limiter.release, audioContext.currentTime, 0.05);
-  }, [limiter.thresholdDb, limiter.release, audioContext]);
-
-  // Poll compressor reduction with auto makeup
-  useEffect(() => {
-    let raf: number;
-    let smooth = 0;
-    const alpha = 0.3;
-
-    const tick = () => {
-      if (compressorRef.current && makeupGainRef.current && audioContext) {
-        let rawReduction = 0;
-        if (limiter.enabled) {
-          const r = compressorRef.current.reduction;
-          rawReduction = r < 0 ? -r : 0;
-        }
-        smooth = smooth === 0 ? rawReduction : smooth * (1 - alpha) + rawReduction * alpha;
-        const display = Math.min(smooth, 25);
-        setGainReduction(display);
-
-        // Auto makeup gain
-        const makeupDb = limiter.enabled ? Math.min(smooth * 0.7, 12) : 0;
-        const targetLinear = Math.pow(10, makeupDb / 20);
-        makeupGainRef.current.gain.setTargetAtTime(targetLinear, audioContext.currentTime, 0.02);
-
-        if (!limiter.enabled && smooth !== 0) {
-          smooth = 0;
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    tick();
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [limiter.enabled, audioContext]);
+  // 6. Audio effects (EQ, stereo expander, reverb, compressor)
+  const savedRecordingState = getSavedRecordingState();
+  const { eq, compressor, reverb, stereoExpander, getCurrentEffectsConfig } = useAudioEffects({
+    audioContext,
+    masterInput,
+    savedEffectsConfig: {
+      eqConfig: savedRecordingState.eqConfig,
+      compressorConfig: savedRecordingState.compressorConfig,
+      reverbConfig: savedRecordingState.reverbConfig,
+      stereoExpanderConfig: savedRecordingState.stereoExpanderConfig,
+    },
+  });
 
   // Persist playback position (debounced by useSettings)
   useEffect(() => {
@@ -296,6 +150,22 @@ export function useStemPlayer({
       persistStemSettings(state.stemGains, state.stemMutes, state.stemSolos);
     }
   }, [stems, isLoading, getCurrentState, persistStemSettings]);
+
+  // Persist effects settings (debounced by useSettings)
+  useEffect(() => {
+    if (!isLoading) {
+      const configs = getCurrentEffectsConfig();
+      persistEffectsSettings(configs);
+    }
+  }, [
+    eq.settings,
+    compressor.settings,
+    reverb.settings,
+    stereoExpander.settings,
+    isLoading,
+    getCurrentEffectsConfig,
+    persistEffectsSettings,
+  ]);
 
   return {
     // Loading
@@ -323,15 +193,10 @@ export function useStemPlayer({
     toggleMute,
     toggleSolo,
 
-    // Master effects
-    eqBands,
-    updateEqBand,
-    resetEq,
-    limiter,
-    updateLimiter,
-    resetLimiter,
-    eqEnabled,
-    setEqEnabled,
-    gainReduction,
+    // Audio effects
+    eq,
+    compressor,
+    reverb,
+    stereoExpander,
   };
 }

@@ -5,6 +5,10 @@ import { Spinner } from './Spinner';
 import { Volume2, VolumeX, Music } from 'lucide-react';
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
+import { EqPanel } from './effects/EqPanel';
+import { CompressorPanel } from './effects/CompressorPanel';
+import { ReverbPanel } from './effects/ReverbPanel';
+import { StereoExpanderPanel } from './effects/StereoExpanderPanel';
 
 interface StemPlayerProps {
   profileName: string;
@@ -50,15 +54,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       toggleMute,
       toggleSolo,
       formatTime,
-      eqBands,
-      updateEqBand,
-      resetEq,
-      limiter,
-      updateLimiter,
-      resetLimiter,
-      eqEnabled,
-      setEqEnabled,
-      gainReduction,
+      eq,
+      compressor,
+      reverb,
+      stereoExpander,
     } = useStemPlayer({ profileName, fileName, metadataUrl });
 
     // Notify parent of loading state changes
@@ -110,9 +109,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         loadingMetrics,
         stemCount: stemEntries.length,
         stems: stemEntries.map(s => ({ name: s.name, gain: s.gain, initialGain: s.initialGain })),
-        eqEnabled,
-        eqBands,
-        limiter,
+        eq: eq.settings,
+        compressor: compressor.settings,
+        reverb: reverb.settings,
+        stereoExpander: stereoExpander.settings,
         timestamp: new Date().toISOString(),
       };
       // Pretty print
@@ -125,8 +125,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
           console.info('Metadata fetch ms', loadingMetrics.metadataMs.toFixed(1));
           console.info('Overall ms', loadingMetrics.totalMs.toFixed(1));
         }
-        console.info('EQ', { enabled: eqEnabled, bands: eqBands });
-        console.info('Limiter', limiter);
+        console.info('EQ', eq.settings);
+        console.info('Compressor', compressor.settings);
+        console.info('Reverb', reverb.settings);
+        console.info('Stereo Expander', stereoExpander.settings);
         console.info('Stems', snapshot.stems);
         console.groupEnd();
       } catch (e) {
@@ -260,83 +262,28 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         </div>
         <div className="player-panel master-effects">
           <div className="master-effects-row">
-            <div className="eq-section">
-              <div className="eq-header">
-                <h4>Graphic EQ</h4>
-                <div className="effect-controls">
-                  <label className="effect-toggle">
-                    <input type="checkbox" checked={eqEnabled} onChange={e => setEqEnabled(e.target.checked)} />
-                    <span>On</span>
-                  </label>
-                  <button onClick={resetEq} className="reset-gain" title="Reset EQ">↺</button>
-                </div>
-              </div>
-              <div className="eq-bands vertical">
-                {eqBands.map(b => (
-                  <div key={b.id} className="eq-band-vertical">
-                    <label className="eq-band-label">{b.id}<br /><small>{b.frequency}Hz</small></label>
-                    <input
-                      type="range"
-                      min={-12}
-                      max={12}
-                      step={0.5}
-                      value={b.gain}
-                      onChange={e => updateEqBand(b.id, { gain: parseFloat(e.target.value) })}
-                      className="eq-slider-vertical"
-                    />
-                    <span className="eq-band-value">{b.gain.toFixed(1)}dB</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="limiter-section">
-              <div className="limiter-header">
-                <h4>Limiter</h4>
-                <div className="effect-controls">
-                  <label className="effect-toggle">
-                    <input type="checkbox" checked={limiter.enabled} onChange={e => updateLimiter({ enabled: e.target.checked })} />
-                    <span>On</span>
-                  </label>
-                  <button onClick={resetLimiter} className="reset-gain" title="Reset Limiter">↺</button>
-                </div>
-              </div>
-              <div className="limiter-controls">
-                <div className="limiter-ceiling">
-                  <label>Threshold {limiter.thresholdDb} dB</label>
-                  <input
-                    type="range"
-                    min={-40}
-                    max={0}
-                    step={1}
-                    value={limiter.thresholdDb}
-                    onChange={e => updateLimiter({ thresholdDb: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div className="limiter-ceiling">
-                  <label>Release {Math.floor(limiter.release * 1000).toFixed(0)}ms</label>
-                  <input
-                    type="range"
-                    min={0.005}
-                    max={0.6}
-                    step={0.005}
-                    value={limiter.release}
-                    onChange={e => updateLimiter({ release: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div className="flex-grow" />
-                <div className="limiter-reduction">
-                  <label className="meter-label">Gain Reduction {gainReduction.toFixed(1)} dB</label>
-                  <div className="gr-meter" title={`${gainReduction.toFixed(1)} dB`}>
-                    {(() => {
-                      // Log-like visualization: map 0-25dB to 0-100% using (value/25)^(0.65)
-                      const norm = gainReduction <= 0 ? 0 : Math.pow(Math.min(gainReduction, 25) / 25, 0.65);
-                      const pct = norm * 100;
-                      return <div className="gr-fill" style={{ width: `${pct}%` }} />;
-                    })()}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <EqPanel
+              settings={eq.settings}
+              onUpdateBand={eq.updateBand}
+              onSetEnabled={eq.setEnabled}
+              onReset={eq.reset}
+            />
+            <StereoExpanderPanel
+              settings={stereoExpander.settings}
+              onUpdate={stereoExpander.update}
+              onReset={stereoExpander.reset}
+            />
+            <ReverbPanel
+              settings={reverb.settings}
+              onUpdate={reverb.update}
+              onReset={reverb.reset}
+            />
+            <CompressorPanel
+              settings={compressor.settings}
+              gainReduction={compressor.gainReduction}
+              onUpdate={compressor.update}
+              onReset={compressor.reset}
+            />
           </div>
         </div>
       </>
