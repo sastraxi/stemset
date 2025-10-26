@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface EqBand {
   id: string;
@@ -20,14 +20,13 @@ export interface UseEqEffectOptions {
 
 export interface UseEqEffectResult {
   isReady: boolean;
-  inputNode: AudioNode | null; // Connect audio TO here (first filter)
-  outputNode: AudioNode | null; // Connect audio FROM here (last filter)
+  inputNode: BiquadFilterNode | null; // First filter in the chain
+  outputNode: BiquadFilterNode | null; // Last filter in the chain
+  nodes: BiquadFilterNode[];
   settings: EqSettings;
   updateBand: (id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => void;
   setEnabled: (enabled: boolean) => void;
   reset: () => void;
-  getConfig: () => unknown;
-  setConfig: (config: unknown) => void;
 }
 
 const DEFAULT_BANDS: EqBand[] = [
@@ -38,19 +37,15 @@ const DEFAULT_BANDS: EqBand[] = [
   { id: 'high', frequency: 10000, type: 'highshelf', gain: 0, q: 1 },
 ];
 
-/**
- * EQ effect hook using BiquadFilter nodes.
- *
- * Manages 5-band graphic EQ with per-recording settings.
- */
+const DEFAULT_SETTINGS: EqSettings = {
+  bands: DEFAULT_BANDS,
+  enabled: true,
+};
+
 export function useEqEffect({
   audioContext,
   initialConfig,
 }: UseEqEffectOptions): UseEqEffectResult {
-  const [isReady, setIsReady] = useState(false);
-  const nodesRef = useRef<BiquadFilterNode[]>([]);
-
-  // Initialize settings from config or defaults
   const [settings, setSettings] = useState<EqSettings>(() => {
     if (initialConfig && typeof initialConfig === 'object' && initialConfig !== null) {
       const config = initialConfig as EqSettings;
@@ -58,41 +53,38 @@ export function useEqEffect({
         return config;
       }
     }
-    return { bands: DEFAULT_BANDS, enabled: true };
+    return DEFAULT_SETTINGS;
   });
 
-  // Create and connect filter nodes when audioContext becomes available
+  const [isReady, setIsReady] = useState(false);
+  const nodesRef = useRef<BiquadFilterNode[]>([]);
+
+  // Create filter nodes once when audioContext is available
   useEffect(() => {
-    if (!audioContext) return;
+    if (!audioContext || nodesRef.current.length > 0) return;
 
-    // Create filters if not already created
-    if (nodesRef.current.length === 0) {
-      nodesRef.current = settings.bands.map(b => {
-        const f = audioContext.createBiquadFilter();
-        f.type = b.type;
-        f.frequency.value = b.frequency;
-        f.Q.value = b.q;
-        f.gain.value = b.gain;
-        return f;
-      });
+    const createdNodes = settings.bands.map(b => {
+      const f = audioContext.createBiquadFilter();
+      f.type = b.type;
+      f.frequency.value = b.frequency;
+      f.Q.value = b.q;
+      f.gain.value = b.gain;
+      return f;
+    });
 
-      // Chain the filters together
-      for (let i = 0; i < nodesRef.current.length - 1; i++) {
-        nodesRef.current[i].connect(nodesRef.current[i + 1]);
-      }
-      setIsReady(true);
+    // Chain the filters together internally, once.
+    for (let i = 0; i < createdNodes.length - 1; i++) {
+      createdNodes[i].connect(createdNodes[i + 1]);
     }
 
+    nodesRef.current = createdNodes;
+    setIsReady(true);
+
     return () => {
-      // Cleanup on unmount
-      nodesRef.current.forEach(f => {
-        try {
-          f.disconnect();
-        } catch {}
-      });
+      createdNodes.forEach(f => { try { f.disconnect(); } catch {} });
       setIsReady(false);
+      nodesRef.current = [];
     };
-    // Only depend on audioContext - don't recreate filters on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioContext]);
 
@@ -103,23 +95,18 @@ export function useEqEffect({
     settings.bands.forEach((b, i) => {
       const f = nodesRef.current[i];
       if (!f) return;
-
-      const targetGain = settings.enabled ? b.gain : 0;
-      f.gain.setTargetAtTime(targetGain, audioContext.currentTime, 0.01);
-
-      if (settings.enabled) {
-        f.type = b.type;
-        f.frequency.setTargetAtTime(b.frequency, audioContext.currentTime, 0.01);
-        f.Q.setTargetAtTime(b.q, audioContext.currentTime, 0.01);
-      }
+      // When the effect is disabled, the orchestrator will bypass it entirely.
+      // Here, we just set the parameters regardless of the enabled state.
+      // The gain will be whatever the user has set it to.
+      f.gain.setTargetAtTime(b.gain, audioContext.currentTime, 0.01);
+      f.type = b.type;
+      f.frequency.setTargetAtTime(b.frequency, audioContext.currentTime, 0.01);
+      f.Q.setTargetAtTime(b.q, audioContext.currentTime, 0.01);
     });
-  }, [settings, audioContext, isReady]);
+  }, [settings.bands, audioContext, isReady]);
 
   const updateBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => {
-    setSettings(prev => ({
-      ...prev,
-      bands: prev.bands.map(b => b.id === id ? { ...b, ...changes } : b)
-    }));
+    setSettings(prev => ({ ...prev, bands: prev.bands.map(b => b.id === id ? { ...b, ...changes } : b) }));
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
@@ -127,31 +114,17 @@ export function useEqEffect({
   }, []);
 
   const reset = useCallback(() => {
-    setSettings({ bands: DEFAULT_BANDS, enabled: true });
-  }, []);
-
-  const getConfig = useCallback(() => {
-    return settings;
-  }, [settings]);
-
-  const setConfig = useCallback((config: unknown) => {
-    if (config && typeof config === 'object' && config !== null) {
-      const eqConfig = config as EqSettings;
-      if (eqConfig.bands && eqConfig.enabled !== undefined) {
-        setSettings(eqConfig);
-      }
-    }
+    setSettings(DEFAULT_SETTINGS);
   }, []);
 
   return {
     isReady,
-    inputNode: nodesRef.current[0] || null, // First filter in chain
-    outputNode: nodesRef.current[nodesRef.current.length - 1] || null, // Last filter in chain
+    inputNode: nodesRef.current[0] || null,
+    outputNode: nodesRef.current[nodesRef.current.length - 1] || null,
+    nodes: nodesRef.current,
     settings,
     updateBand,
     setEnabled,
     reset,
-    getConfig,
-    setConfig,
   };
 }

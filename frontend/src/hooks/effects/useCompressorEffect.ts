@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface CompressorSettings {
   threshold: number; // dB, -40 to 0
@@ -16,13 +16,12 @@ export interface UseCompressorEffectOptions {
 
 export interface UseCompressorEffectResult {
   isReady: boolean;
-  inputNode: AudioNode | null; // Where to connect audio TO
-  outputNode: AudioNode | null; // Where to connect audio FROM
+  inputNode: AudioWorkletNode | null;
+  outputNode: GainNode | null;
   settings: CompressorSettings;
   update: (changes: Partial<CompressorSettings>) => void;
   reset: () => void;
-  getConfig: () => unknown;
-  setConfig: (config: unknown) => void;
+  setEnabled: (enabled: boolean) => void;
   gainReduction: number;
 }
 
@@ -30,96 +29,52 @@ const DEFAULT_SETTINGS: CompressorSettings = {
   threshold: -6,
   attack: 0.005,
   release: 0.1,
-  bodyBlend: 0.0,  // 0 = no body processing, 1 = full body processing
-  airBlend: 0.1,   // 0 = no air processing, 1 = full air processing
+  bodyBlend: 0.0,
+  airBlend: 0.1,
   enabled: true,
 };
 
-/**
- * AirBody Compressor effect hook using AudioWorklet.
- *
- * Multi-band compressor/limiter with "body" and "air" characteristics.
- */
 export function useCompressorEffect({
   audioContext,
   initialConfig,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
-  const [isReady, setIsReady] = useState(false);
-  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const makeupGainRef = useRef<GainNode | null>(null);
-  const workletLoadedRef = useRef(false);
-  const [gainReduction, setGainReduction] = useState(0);
-
-  // Initialize settings from config or defaults
   const [settings, setSettings] = useState<CompressorSettings>(() => {
     if (initialConfig && typeof initialConfig === 'object' && initialConfig !== null) {
       const config = initialConfig as CompressorSettings;
-      if (
-        typeof config.threshold === 'number' &&
-        typeof config.enabled === 'boolean'
-      ) {
+      if (typeof config.threshold === 'number') {
         return { ...DEFAULT_SETTINGS, ...config };
       }
     }
     return DEFAULT_SETTINGS;
   });
 
-  // Load AudioWorklet module and create nodes when audioContext becomes available
+  const [isReady, setIsReady] = useState(false);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const makeupGainRef = useRef<GainNode | null>(null);
+  const workletLoadedRef = useRef(false);
+  const [gainReduction, setGainReduction] = useState(0);
+
   useEffect(() => {
-    if (!audioContext) return;
+    if (!audioContext || workletLoadedRef.current) return;
 
     async function loadWorklet() {
-      if (!audioContext || workletLoadedRef.current) return;
-
       try {
+        if (!audioContext) {
+          throw new Error('AudioContext is null');
+        }
+
         await audioContext.audioWorklet.addModule('/airbody-compressor.js');
         workletLoadedRef.current = true;
 
-        // Create the AudioWorkletNode with stereo output
-        const node = new AudioWorkletNode(audioContext, 'airbody-compressor', {
-          numberOfInputs: 1,
-          numberOfOutputs: 1,
-          outputChannelCount: [2],
-        });
-
-        // Set initial parameters (clamped to valid ranges)
-        const clampedThreshold = Math.max(-40, Math.min(0, settings.threshold));
-        const clampedAttack = Math.max(0.001, Math.min(0.1, settings.attack));
-        const clampedRelease = Math.max(0.01, Math.min(1.0, settings.release));
-        const clampedBodyBlend = Math.max(0, Math.min(1, settings.bodyBlend));
-        const clampedAirBlend = Math.max(0, Math.min(1, settings.airBlend));
-
-        node.parameters.get('threshold')?.setValueAtTime(clampedThreshold, audioContext.currentTime);
-        node.parameters.get('attack')?.setValueAtTime(clampedAttack, audioContext.currentTime);
-        node.parameters.get('release')?.setValueAtTime(clampedRelease, audioContext.currentTime);
-        node.parameters.get('bodyBlend')?.setValueAtTime(clampedBodyBlend, audioContext.currentTime);
-        node.parameters.get('airBlend')?.setValueAtTime(clampedAirBlend, audioContext.currentTime);
-
-        // Create makeup gain node (comes after the compressor)
+        const node = new AudioWorkletNode(audioContext, 'airbody-compressor', { outputChannelCount: [2] });
         const makeupGain = audioContext.createGain();
-        // Apply constant makeup gain based on threshold
-        const makeupGainLinear = Math.pow(10, -clampedThreshold / 20);
-        makeupGain.gain.value = makeupGainLinear;
-        node.connect(makeupGain);
 
-        // Listen for gain reduction messages with throttling
-        let lastUpdate = 0;
-        let smoothReduction = 0;
-        const alpha = 0.3;
+        // Internal connection
+        node.connect(makeupGain);
 
         node.port.onmessage = (event) => {
           if (event.data.type === 'gainReduction') {
-            const now = performance.now();
-            const rawReduction = event.data.value;
-
-            // Smooth the gain reduction value
-            smoothReduction = smoothReduction === 0 ? rawReduction : smoothReduction * (1 - alpha) + rawReduction * alpha;
-
-            // Throttle UI updates to ~30fps to prevent excessive React updates
-            if (now - lastUpdate > 33) {
-              setGainReduction(smoothReduction);
-              lastUpdate = now;
-            }
+            setGainReduction(event.data.value);
           }
         };
 
@@ -134,50 +89,31 @@ export function useCompressorEffect({
     loadWorklet();
 
     return () => {
-      // Cleanup on unmount
-      if (workletNodeRef.current) {
-        try {
-          workletNodeRef.current.disconnect();
-        } catch {}
-      }
-      if (makeupGainRef.current) {
-        try {
-          makeupGainRef.current.disconnect();
-        } catch {}
-      }
+      workletNodeRef.current?.port.close();
+      workletNodeRef.current?.disconnect();
+      makeupGainRef.current?.disconnect();
       setIsReady(false);
     };
-    // Only depend on audioContext - don't recreate on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioContext]);
 
-  // Update parameters when settings change
   useEffect(() => {
-    if (!audioContext || !workletNodeRef.current) return;
+    if (!audioContext || !isReady || !workletNodeRef.current || !makeupGainRef.current) return;
 
-    const node = workletNodeRef.current;
-    node.parameters.get('threshold')?.setTargetAtTime(settings.threshold, audioContext.currentTime, 0.01);
-    node.parameters.get('attack')?.setTargetAtTime(settings.attack, audioContext.currentTime, 0.01);
-    node.parameters.get('release')?.setTargetAtTime(settings.release, audioContext.currentTime, 0.05);
-    node.parameters.get('bodyBlend')?.setTargetAtTime(settings.bodyBlend, audioContext.currentTime, 0.01);
-    node.parameters.get('airBlend')?.setTargetAtTime(settings.airBlend, audioContext.currentTime, 0.01);
+    const { threshold, attack, release, bodyBlend, airBlend } = settings;
+    workletNodeRef.current.parameters.get('threshold')?.setTargetAtTime(threshold, audioContext.currentTime, 0.01);
+    workletNodeRef.current.parameters.get('attack')?.setTargetAtTime(attack, audioContext.currentTime, 0.01);
+    workletNodeRef.current.parameters.get('release')?.setTargetAtTime(release, audioContext.currentTime, 0.05);
+    workletNodeRef.current.parameters.get('bodyBlend')?.setTargetAtTime(bodyBlend, audioContext.currentTime, 0.01);
+    workletNodeRef.current.parameters.get('airBlend')?.setTargetAtTime(airBlend, audioContext.currentTime, 0.01);
 
-    // Update makeup gain when threshold changes
-    if (makeupGainRef.current) {
-      const makeupGainLinear = Math.pow(10, -settings.threshold / 20);
-      makeupGainRef.current.gain.setTargetAtTime(makeupGainLinear, audioContext.currentTime, 0.01);
-    }
-  }, [settings, audioContext]);
+    const makeupGainLinear = Math.pow(10, -threshold / 20);
+    makeupGainRef.current.gain.setTargetAtTime(makeupGainLinear, audioContext.currentTime, 0.01);
 
-  // Reset gain reduction and makeup gain when disabled
-  useEffect(() => {
     if (!settings.enabled) {
       setGainReduction(0);
-      if (makeupGainRef.current && audioContext) {
-        makeupGainRef.current.gain.setValueAtTime(1, audioContext.currentTime);
-      }
     }
-  }, [settings.enabled, audioContext]);
+  }, [settings, audioContext, isReady]);
 
   const update = useCallback((changes: Partial<CompressorSettings>) => {
     setSettings(prev => ({ ...prev, ...changes }));
@@ -187,28 +123,18 @@ export function useCompressorEffect({
     setSettings(DEFAULT_SETTINGS);
   }, []);
 
-  const getConfig = useCallback(() => {
-    return settings;
-  }, [settings]);
-
-  const setConfig = useCallback((config: unknown) => {
-    if (config && typeof config === 'object' && config !== null) {
-      const compConfig = config as CompressorSettings;
-      if (typeof compConfig.threshold === 'number' && typeof compConfig.enabled === 'boolean') {
-        setSettings({ ...DEFAULT_SETTINGS, ...compConfig });
-      }
-    }
+  const setEnabled = useCallback((enabled: boolean) => {
+    setSettings(prev => ({ ...prev, enabled }));
   }, []);
 
   return {
     isReady,
-    inputNode: workletNodeRef.current, // Connect audio TO here
-    outputNode: makeupGainRef.current, // Connect audio FROM here
+    inputNode: workletNodeRef.current,
+    outputNode: makeupGainRef.current,
     settings,
     update,
     reset,
-    getConfig,
-    setConfig,
+    setEnabled,
     gainReduction,
   };
 }

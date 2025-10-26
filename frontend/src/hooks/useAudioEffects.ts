@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useEqEffect } from './effects/useEqEffect';
 import type { UseEqEffectResult } from './effects/useEqEffect';
 import { useCompressorEffect } from './effects/useCompressorEffect';
@@ -22,10 +22,10 @@ export interface UseAudioEffectsOptions {
 }
 
 export interface UseAudioEffectsResult {
-  eq: UseEqEffectResult;
-  compressor: UseCompressorEffectResult;
-  reverb: UseReverbEffectResult;
-  stereoExpander: UseStereoExpanderEffectResult;
+  eq: Omit<UseEqEffectResult, 'inputNode' | 'outputNode' | 'nodes' | 'isReady'>;
+  compressor: Omit<UseCompressorEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
+  reverb: Omit<UseReverbEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
+  stereoExpander: Omit<UseStereoExpanderEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
   getCurrentEffectsConfig: () => AudioEffectsConfig;
 }
 
@@ -34,16 +34,13 @@ export interface UseAudioEffectsResult {
  *
  * Composes all effect hooks and manages the audio graph routing:
  * masterInput → EQ → stereoExpander → reverb → compressor → destination
- *
- * Each effect can be enabled/disabled independently, and disabled effects
- * are bypassed in the audio graph.
  */
 export function useAudioEffects({
   audioContext,
   masterInput,
   savedEffectsConfig,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
-  // Initialize all effects
+
   const eq = useEqEffect({
     audioContext,
     initialConfig: savedEffectsConfig.eqConfig,
@@ -64,59 +61,56 @@ export function useAudioEffects({
     initialConfig: savedEffectsConfig.compressorConfig,
   });
 
-  // Wire audio graph when any effect enabled state or readiness changes.
+  const allEffects = [eq, stereoExpander, reverb, compressor];
+
+  // The Grand Central Wiring Effect
   useEffect(() => {
-    if (!audioContext || !masterInput) {
+    const allReady = allEffects.every(e => e.isReady);
+    if (!audioContext || !masterInput || !allReady) {
       return;
     }
 
-    // Disconnect master input to start the chain fresh.
-    // This is the key to avoiding breaking internal effect connections.
+    // 1. Disconnect EVERYTHING. This is the brute-force, but reliable, way to start fresh.
     masterInput.disconnect();
+    allEffects.forEach(effect => {
+      effect.outputNode?.disconnect();
+    });
 
-    // Build the chain of active effects.
-    const effects: (UseEqEffectResult | UseStereoExpanderEffectResult | UseReverbEffectResult | UseCompressorEffectResult)[] = [eq, stereoExpander, reverb, compressor];
+    // 2. Build the new chain, connecting nodes in series.
     let currentNode: AudioNode = masterInput;
 
-    for (const effect of effects) {
-      if (effect.settings.enabled && effect.isReady && effect.inputNode && effect.outputNode) {
-        currentNode.connect(effect.inputNode);
-        currentNode = effect.outputNode;
-      }
-    }
+    allEffects.forEach(effect => {
+      if (effect.settings.enabled) {
+        // Connect the previous node to this effect's input
+        currentNode.connect(effect.inputNode!);
+        // The new current node is this effect's output
+        currentNode = effect.outputNode!;
+      } // If disabled, currentNode just passes through to the next iteration.
+    });
 
-    // Connect the end of the chain to the destination.
+    // 3. Connect the final node in the chain to the destination.
     currentNode.connect(audioContext.destination);
 
-    // The cleanup function only needs to disconnect the master input on unmount.
-    return () => {
-      if (masterInput) {
-        try {
-          masterInput.disconnect();
-        } catch {}
-      }
-    };
   }, [
     audioContext,
     masterInput,
-    eq.settings.enabled,
-    eq.isReady,
-    stereoExpander.settings.enabled,
-    stereoExpander.isReady,
-    reverb.settings.enabled,
-    reverb.isReady,
-    compressor.settings.enabled,
-    compressor.isReady,
+    eq.isReady, eq.settings.enabled,
+    stereoExpander.isReady, stereoExpander.settings.enabled,
+    reverb.isReady, reverb.settings.enabled,
+    compressor.isReady, compressor.settings.enabled,
+    // Note: We don't need the nodes themselves in the dependency array because
+    // they are stored in refs and never change. This effect only re-runs when
+    // readiness or enabled status changes.
   ]);
 
-  const getCurrentEffectsConfig = useCallback((): AudioEffectsConfig => {
+  const getCurrentEffectsConfig = (): AudioEffectsConfig => {
     return {
-      eqConfig: eq.getConfig(),
-      compressorConfig: compressor.getConfig(),
-      reverbConfig: reverb.getConfig(),
-      stereoExpanderConfig: stereoExpander.getConfig(),
+      eqConfig: eq.settings,
+      compressorConfig: compressor.settings,
+      reverbConfig: reverb.settings,
+      stereoExpanderConfig: stereoExpander.settings,
     };
-  }, [eq, compressor, reverb, stereoExpander]);
+  };
 
   return {
     eq,
