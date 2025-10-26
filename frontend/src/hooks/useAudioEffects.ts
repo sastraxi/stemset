@@ -64,108 +64,49 @@ export function useAudioEffects({
     initialConfig: savedEffectsConfig.compressorConfig,
   });
 
-  // Wire audio graph when any effect enabled state changes
+  // Wire audio graph when any effect enabled state or readiness changes.
   useEffect(() => {
-    if (!audioContext || !masterInput) return;
-
-    // Wait for nodes to be ready - check if we have any nodes at all
-    const eqNodesReady = eq.nodes.length > 0;
-    const compressorReady = compressor.inputNode && compressor.outputNode;
-    const hasWorkletNodes = stereoExpander.node || reverb.node || compressorReady;
-
-    // If no nodes are ready yet, don't try to wire the graph
-    if (!eqNodesReady && !hasWorkletNodes) {
-      console.log('[useAudioEffects] Waiting for effect nodes to be created...');
+    if (!audioContext || !masterInput) {
       return;
     }
 
-    console.log('[useAudioEffects] Wiring audio graph...', {
-      eqEnabled: eq.settings.enabled,
-      eqNodes: eq.nodes.length,
-      stereoExpanderEnabled: stereoExpander.settings.enabled,
-      stereoExpanderNode: !!stereoExpander.node,
-      reverbEnabled: reverb.settings.enabled,
-      reverbNode: !!reverb.node,
-      compressorEnabled: compressor.settings.enabled,
-      compressorInputNode: !!compressor.inputNode,
-      compressorOutputNode: !!compressor.outputNode,
-    });
+    // Disconnect master input to start the chain fresh.
+    // This is the key to avoiding breaking internal effect connections.
+    masterInput.disconnect();
 
-    // Disconnect everything first
-    try {
-      masterInput.disconnect();
-    } catch { }
-    eq.nodes.forEach(node => {
-      try {
-        node.disconnect();
-      } catch { }
-    });
-    if (stereoExpander.node) {
-      try {
-        stereoExpander.node.disconnect();
-      } catch { }
-    }
-    if (reverb.node) {
-      try {
-        reverb.node.disconnect();
-      } catch { }
-    }
-    if (compressor.inputNode) {
-      try {
-        compressor.inputNode.disconnect();
-      } catch { }
-    }
-    if (compressor.outputNode) {
-      try {
-        compressor.outputNode.disconnect();
-      } catch { }
-    }
-
-    // Build the chain: masterInput → EQ → stereoExpander → reverb → compressor → destination
+    // Build the chain of active effects.
+    const effects: (UseEqEffectResult | UseStereoExpanderEffectResult | UseReverbEffectResult | UseCompressorEffectResult)[] = [eq, stereoExpander, reverb, compressor];
     let currentNode: AudioNode = masterInput;
 
-    // EQ
-    if (eq.settings.enabled && eq.nodes.length > 0) {
-      eq.nodes.forEach(node => {
-        currentNode.connect(node);
-        currentNode = node;
-      });
+    for (const effect of effects) {
+      if (effect.settings.enabled && effect.isReady && effect.inputNode && effect.outputNode) {
+        currentNode.connect(effect.inputNode);
+        currentNode = effect.outputNode;
+      }
     }
 
-    // Stereo Expander
-    if (stereoExpander.settings.enabled && stereoExpander.node) {
-      currentNode.connect(stereoExpander.node);
-      currentNode = stereoExpander.node;
-    }
-
-    // Reverb
-    if (reverb.settings.enabled && reverb.node) {
-      currentNode.connect(reverb.node);
-      currentNode = reverb.node;
-    }
-
-    // Compressor (has both input and output nodes)
-    if (compressor.settings.enabled && compressor.inputNode && compressor.outputNode) {
-      currentNode.connect(compressor.inputNode);
-      currentNode = compressor.inputNode;
-    }
-
-    // Connect final node to destination
+    // Connect the end of the chain to the destination.
     currentNode.connect(audioContext.destination);
 
-    console.log('[useAudioEffects] Audio graph wired successfully');
+    // The cleanup function only needs to disconnect the master input on unmount.
+    return () => {
+      if (masterInput) {
+        try {
+          masterInput.disconnect();
+        } catch {}
+      }
+    };
   }, [
     audioContext,
     masterInput,
     eq.settings.enabled,
-    eq.nodes.length, // Use length instead of array reference
+    eq.isReady,
     stereoExpander.settings.enabled,
-    stereoExpander.node,
+    stereoExpander.isReady,
     reverb.settings.enabled,
-    reverb.node,
+    reverb.isReady,
     compressor.settings.enabled,
-    compressor.inputNode, // These are refs, but changes trigger via parent re-render
-    compressor.outputNode,
+    compressor.isReady,
   ]);
 
   const getCurrentEffectsConfig = useCallback((): AudioEffectsConfig => {

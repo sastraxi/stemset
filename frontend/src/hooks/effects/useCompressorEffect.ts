@@ -15,8 +15,9 @@ export interface UseCompressorEffectOptions {
 }
 
 export interface UseCompressorEffectResult {
-  inputNode: AudioNode | null;
-  outputNode: AudioNode | null;
+  isReady: boolean;
+  inputNode: AudioNode | null; // Where to connect audio TO
+  outputNode: AudioNode | null; // Where to connect audio FROM
   settings: CompressorSettings;
   update: (changes: Partial<CompressorSettings>) => void;
   reset: () => void;
@@ -43,10 +44,10 @@ export function useCompressorEffect({
   audioContext,
   initialConfig,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
+  const [isReady, setIsReady] = useState(false);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const makeupGainRef = useRef<GainNode | null>(null);
   const workletLoadedRef = useRef(false);
-  const [nodesReady, setNodesReady] = useState(false);
   const [gainReduction, setGainReduction] = useState(0);
 
   // Initialize settings from config or defaults
@@ -124,7 +125,7 @@ export function useCompressorEffect({
 
         workletNodeRef.current = node;
         makeupGainRef.current = makeupGain;
-        setNodesReady(true);  // Trigger re-render to wire audio graph
+        setIsReady(true);
       } catch (error) {
         console.error('[useCompressorEffect] Failed to load AudioWorklet:', error);
       }
@@ -144,6 +145,7 @@ export function useCompressorEffect({
           makeupGainRef.current.disconnect();
         } catch {}
       }
+      setIsReady(false);
     };
     // Only depend on audioContext - don't recreate on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,8 +201,9 @@ export function useCompressorEffect({
   }, []);
 
   return {
-    inputNode: workletNodeRef.current,
-    outputNode: makeupGainRef.current,
+    isReady,
+    inputNode: workletNodeRef.current, // Connect audio TO here
+    outputNode: makeupGainRef.current, // Connect audio FROM here
     settings,
     update,
     reset,

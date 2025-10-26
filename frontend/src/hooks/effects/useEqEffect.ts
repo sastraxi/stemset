@@ -19,7 +19,9 @@ export interface UseEqEffectOptions {
 }
 
 export interface UseEqEffectResult {
-  nodes: BiquadFilterNode[];
+  isReady: boolean;
+  inputNode: AudioNode | null; // Connect audio TO here (first filter)
+  outputNode: AudioNode | null; // Connect audio FROM here (last filter)
   settings: EqSettings;
   updateBand: (id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => void;
   setEnabled: (enabled: boolean) => void;
@@ -45,6 +47,7 @@ export function useEqEffect({
   audioContext,
   initialConfig,
 }: UseEqEffectOptions): UseEqEffectResult {
+  const [isReady, setIsReady] = useState(false);
   const nodesRef = useRef<BiquadFilterNode[]>([]);
 
   // Initialize settings from config or defaults
@@ -58,7 +61,7 @@ export function useEqEffect({
     return { bands: DEFAULT_BANDS, enabled: true };
   });
 
-  // Create filter nodes when audioContext becomes available
+  // Create and connect filter nodes when audioContext becomes available
   useEffect(() => {
     if (!audioContext) return;
 
@@ -72,6 +75,12 @@ export function useEqEffect({
         f.gain.value = b.gain;
         return f;
       });
+
+      // Chain the filters together
+      for (let i = 0; i < nodesRef.current.length - 1; i++) {
+        nodesRef.current[i].connect(nodesRef.current[i + 1]);
+      }
+      setIsReady(true);
     }
 
     return () => {
@@ -81,6 +90,7 @@ export function useEqEffect({
           f.disconnect();
         } catch {}
       });
+      setIsReady(false);
     };
     // Only depend on audioContext - don't recreate filters on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,17 +98,22 @@ export function useEqEffect({
 
   // Update filter parameters when settings change
   useEffect(() => {
-    if (!audioContext) return;
+    if (!audioContext || !isReady) return;
 
     settings.bands.forEach((b, i) => {
       const f = nodesRef.current[i];
       if (!f) return;
-      f.type = b.type;
-      f.frequency.setTargetAtTime(b.frequency, audioContext.currentTime, 0.01);
-      f.Q.setTargetAtTime(b.q, audioContext.currentTime, 0.01);
-      f.gain.setTargetAtTime(b.gain, audioContext.currentTime, 0.01);
+
+      const targetGain = settings.enabled ? b.gain : 0;
+      f.gain.setTargetAtTime(targetGain, audioContext.currentTime, 0.01);
+
+      if (settings.enabled) {
+        f.type = b.type;
+        f.frequency.setTargetAtTime(b.frequency, audioContext.currentTime, 0.01);
+        f.Q.setTargetAtTime(b.q, audioContext.currentTime, 0.01);
+      }
     });
-  }, [settings.bands, audioContext]);
+  }, [settings, audioContext, isReady]);
 
   const updateBand = useCallback((id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => {
     setSettings(prev => ({
@@ -129,7 +144,9 @@ export function useEqEffect({
   }, []);
 
   return {
-    nodes: nodesRef.current,
+    isReady,
+    inputNode: nodesRef.current[0] || null, // First filter in chain
+    outputNode: nodesRef.current[nodesRef.current.length - 1] || null, // Last filter in chain
     settings,
     updateBand,
     setEnabled,

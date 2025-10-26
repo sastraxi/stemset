@@ -18,7 +18,9 @@ export interface UseStereoExpanderEffectOptions {
 }
 
 export interface UseStereoExpanderEffectResult {
-  node: AudioWorkletNode | null;
+  isReady: boolean;
+  inputNode: AudioNode | null; // Connect audio TO here
+  outputNode: AudioNode | null; // Connect audio FROM here (same as inputNode)
   settings: StereoExpanderSettings;
   update: (changes: Partial<StereoExpanderSettings>) => void;
   reset: () => void;
@@ -47,6 +49,7 @@ export function useStereoExpanderEffect({
   audioContext,
   initialConfig,
 }: UseStereoExpanderEffectOptions): UseStereoExpanderEffectResult {
+  const [isReady, setIsReady] = useState(false);
   const nodeRef = useRef<AudioWorkletNode | null>(null);
   const workletLoadedRef = useRef(false);
 
@@ -102,6 +105,7 @@ export function useStereoExpanderEffect({
         node.parameters.get('compHigh')?.setValueAtTime(clampedCompHigh, audioContext.currentTime);
 
         nodeRef.current = node;
+        setIsReady(true);
       } catch (error) {
         console.error('[useStereoExpanderEffect] Failed to load AudioWorklet:', error);
       }
@@ -116,6 +120,7 @@ export function useStereoExpanderEffect({
         } catch {}
         nodeRef.current = null;
       }
+      setIsReady(false);
     };
     // Only depend on audioContext - don't recreate on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,7 +163,9 @@ export function useStereoExpanderEffect({
   }, []);
 
   return {
-    node: nodeRef.current,
+    isReady,
+    inputNode: nodeRef.current,
+    outputNode: nodeRef.current, // Same node for simple effects
     settings,
     update,
     reset,

@@ -13,7 +13,9 @@ export interface UseReverbEffectOptions {
 }
 
 export interface UseReverbEffectResult {
-  node: AudioWorkletNode | null;
+  isReady: boolean;
+  inputNode: AudioNode | null; // Connect audio TO here
+  outputNode: AudioNode | null; // Connect audio FROM here (same as inputNode)
   settings: ReverbSettings;
   update: (changes: Partial<ReverbSettings>) => void;
   reset: () => void;
@@ -37,6 +39,7 @@ export function useReverbEffect({
   audioContext,
   initialConfig,
 }: UseReverbEffectOptions): UseReverbEffectResult {
+  const [isReady, setIsReady] = useState(false);
   const nodeRef = useRef<AudioWorkletNode | null>(null);
   const workletLoadedRef = useRef(false);
 
@@ -82,6 +85,7 @@ export function useReverbEffect({
         node.parameters.get('satAmount')?.setValueAtTime(clampedSatAmount, audioContext.currentTime);
 
         nodeRef.current = node;
+        setIsReady(true);
       } catch (error) {
         console.error('[useReverbEffect] Failed to load AudioWorklet:', error);
       }
@@ -96,6 +100,7 @@ export function useReverbEffect({
         } catch {}
         nodeRef.current = null;
       }
+      setIsReady(false);
     };
     // Only depend on audioContext - don't recreate on settings changes!
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,7 +138,9 @@ export function useReverbEffect({
   }, []);
 
   return {
-    node: nodeRef.current,
+    isReady,
+    inputNode: nodeRef.current,
+    outputNode: nodeRef.current, // Same node for simple effects
     settings,
     update,
     reset,
