@@ -113,8 +113,7 @@ class AudioSeparator(ABC):
             if thread_count is not None:
                 torch.set_num_threads(thread_count)
                 torch.set_num_interop_threads(thread_count)
-
-            print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
+                print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
             # Configure output format
             output_format = self.output_config.format.value.upper()
