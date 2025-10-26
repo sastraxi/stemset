@@ -33,6 +33,7 @@ export interface RecordingState {
   playbackPosition: number; // seconds
   stemGains: Record<string, number>; // linear gain values
   stemMutes: Record<string, boolean>; // mute states
+  stemSolos: Record<string, boolean>; // solo states
 }
 
 export type RecordingsMap = Record<string, RecordingState>; // key: `${profile}::${fileName}`
@@ -223,6 +224,7 @@ export function updateRecordingState(
     playbackPosition: 0,
     stemGains: {},
     stemMutes: {},
+    stemSolos: {},
   };
   setRecordingState(profileName, fileName, { ...existing, ...updates });
 }
