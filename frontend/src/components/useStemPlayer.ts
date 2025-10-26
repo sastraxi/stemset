@@ -160,6 +160,7 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
   const compressorRef = useRef<DynamicsCompressorNode | null>(null);
   const makeupGainRef = useRef<GainNode | null>(null); // post compressor makeup gain
   const [gainReduction, setGainReduction] = useState<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Lazy init AudioContext
   const ensureContext = useCallback(() => {
@@ -204,7 +205,16 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
 
   // Load metadata + audio buffers (parallel with instrumentation)
   useEffect(() => {
-    let aborted = false;
+    // Abort any previous loading operation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this load
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    const { signal } = abortController;
+
     const ctx = ensureContext();
     async function load() {
       setIsLoading(true);
@@ -231,19 +241,23 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
       const stemEntries = Object.entries(metadata).map(([name, meta]) => [name, metadataBaseUrl + meta.stem_url]);
       const timingAccumulator: StemTiming[] = [];
       await Promise.all(stemEntries.map(async ([name, url]) => {
-        if (aborted || !url) return;
+        if (signal.aborted || !url) return;
         const fetchStart = performance.now();
         try {
-          const resp = await fetch(url);
+          const resp = await fetch(url, {
+            signal,
+            // Explicitly allow browser caching for audio files
+            cache: 'default'
+          });
           const blob = await resp.blob();
           const fetchEnd = performance.now();
           const bytes = blob.size;
           const arrayBuffer = await blob.arrayBuffer();
-          if (aborted) return;
+          if (signal.aborted) return;
           const decodeStart = performance.now();
           const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
           const decodeEnd = performance.now();
-          if (aborted) return;
+          if (signal.aborted) return;
           const meta = metadata[name] || null;
           console.log(`[useStemPlayer] Looking up metadata for stem "${name}":`, meta);
           console.log(`[useStemPlayer] Available metadata keys:`, Object.keys(metadata));
@@ -281,10 +295,10 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
             bytes,
           });
         } catch (e) {
-          if (!aborted) console.error('Failed to load stem', name, e);
+          if (!signal.aborted) console.error('Failed to load stem', name, e);
         }
       }));
-      if (aborted) return;
+      if (signal.aborted) return;
       loadedStemsRef.current = newMap;
 
       // Restore per-recording state from localStorage
@@ -331,7 +345,8 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     }
     load();
     return () => {
-      aborted = true;
+      // Cleanup will abort the current controller when component unmounts
+      // or when switching to a different file
     };
   }, [profileName, fileName, metadataUrl, ensureContext]);
 
@@ -665,6 +680,15 @@ export function useStemPlayer({ profileName, fileName, metadataUrl, sampleRate =
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   return {

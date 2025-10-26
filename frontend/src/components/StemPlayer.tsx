@@ -10,6 +10,7 @@ interface StemPlayerProps {
   profileName: string;
   fileName: string;
   metadataUrl: string;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
 export interface StemPlayerHandle {
@@ -22,7 +23,7 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-  ({ profileName, fileName, metadataUrl }, ref) => {
+  ({ profileName, fileName, metadataUrl, onLoadingChange }, ref) => {
     const [previewTime, setPreviewTime] = useState<number | null>(null);
     const [showTimeRemaining, setShowTimeRemaining] = useState(false);
     const playerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       setEqEnabled,
       gainReduction,
     } = useStemPlayer({ profileName, fileName, metadataUrl });
+
+    // Notify parent of loading state changes
+    useEffect(() => {
+      onLoadingChange?.(isLoading);
+    }, [isLoading, onLoadingChange]);
 
     // Keyboard shortcuts
     useEffect(() => {

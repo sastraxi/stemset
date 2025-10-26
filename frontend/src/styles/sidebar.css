@@ -81,3 +81,13 @@ button:disabled {
   letter-spacing: 0.1em;
   font-weight: 500;
 }
+
+.file-list ul {
+  padding-left: 0;
+  margin-left: 0;
+}
+
+.file-list li {
+  margin-left: 0;
+  padding-left: 1rem !important;
+}

@@ -39,6 +39,7 @@ export function AuthenticatedApp({
 }: AuthenticatedAppProps) {
     const [selectedProfile, setSelectedProfile] = useState<string | null>(initialProfile || null)
     const [selectedFile, setSelectedFile] = useState<StemFileWithDisplayName | null>(null)
+    const [isLoadingStems, setIsLoadingStems] = useState(false)
     const stemPlayerRef = useRef<StemPlayerHandle>(null)
     const navigate = useNavigate()
 
@@ -292,24 +293,27 @@ export function AuthenticatedApp({
                 <main className="player-area">
                     {selectedFile && selectedProfile ? (
                         <>
-                            <div className="recording-header">
-                                <h2 className="recording-name">
-                                    <InlineEdit
-                                        value={selectedFile.displayName}
-                                        onSave={handleSaveDisplayName}
-                                        placeholder={selectedFile.name}
-                                    />
-                                </h2>
-                                <div className="flex-grow" />
-                                <div id="playback-controls-container" className="playback-controls-header">
-                                    {/* Playback controls will be rendered here by StemPlayer */}
+                            {!isLoadingStems && (
+                                <div className="recording-header">
+                                    <h2 className="recording-name">
+                                        <InlineEdit
+                                            value={selectedFile.displayName}
+                                            onSave={handleSaveDisplayName}
+                                            placeholder={selectedFile.name}
+                                        />
+                                    </h2>
+                                    <div className="flex-grow" />
+                                    <div id="playback-controls-container" className="playback-controls-header">
+                                        {/* Playback controls will be rendered here by StemPlayer */}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             <StemPlayer
                                 ref={stemPlayerRef}
                                 profileName={selectedProfile}
                                 fileName={selectedFile.name}
                                 metadataUrl={selectedFile.metadata_url}
+                                onLoadingChange={setIsLoadingStems}
                             />
                         </>
                     ) : (

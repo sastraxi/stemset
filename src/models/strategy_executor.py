@@ -56,12 +56,19 @@ class StrategyExecutor:
                 node=self.strategy.root, input_file=input_file, current_step=0
             )
 
-            # Move final outputs to destination with correct format
+            # Convert and move final outputs to destination with correct format
             final_paths: dict[str, Path] = {}
             for stem_name, temp_path in final_outputs.items():
-                # Use configured output format extension
                 dest_path = output_dir / f"{stem_name}.{self.output_config.format.value}"
-                _ = shutil.move(str(temp_path), str(dest_path))
+
+                # If the temp file is already in the target format, just move it
+                if temp_path.suffix == f".{self.output_config.format.value}":
+                    _ = shutil.move(str(temp_path), str(dest_path))
+                else:
+                    # Convert from WAV to target format using audio-separator
+                    self._convert_audio_format(temp_path, dest_path)
+                    temp_path.unlink()  # Clean up temp WAV file
+
                 final_paths[stem_name] = dest_path
                 print(f"  → Final stem: {stem_name} ({dest_path.name})")
 
@@ -109,19 +116,15 @@ class StrategyExecutor:
         step_dir = self._temp_dir / f"step_{step_num}"
         step_dir.mkdir(parents=True, exist_ok=True)
 
-        # For intermediate steps, always use WAV format (lossless)
-        # Only final outputs use the configured format
-        # We'll temporarily override output_config for intermediate separators
-        is_root = current_step == 0
-        if not is_root:
-            # Create a temporary WAV config for intermediates
-            from ..config import OutputConfig
+        # Always use WAV format for all intermediate processing to maintain quality
+        # Format conversion to the configured format (e.g., opus) happens at the very end
+        from ..config import OutputConfig
 
-            temp_output_config = OutputConfig(
-                format=AudioFormat.WAV, bitrate=self.output_config.bitrate
-            )
-            # Re-instantiate model with WAV output for intermediates
-            model = self._create_model_instance(node.model, temp_output_config)
+        temp_output_config = OutputConfig(
+            format=AudioFormat.WAV, bitrate=self.output_config.bitrate
+        )
+        # Always use WAV for separation to ensure lossless intermediates
+        model = self._create_model_instance(node.model, temp_output_config)
 
         # Execute separation
         slot_outputs = model.separate(input_file, step_dir)
@@ -166,3 +169,50 @@ class StrategyExecutor:
         """Create a new model instance with given output config."""
         model_class = get_model_class(model_name)
         return model_class(output_config)
+
+    def _convert_audio_format(self, source_path: Path, dest_path: Path) -> None:
+        """Convert audio from source format to target format using ffmpeg.
+
+        Args:
+            source_path: Source audio file (typically WAV)
+            dest_path: Destination path with target format extension
+        """
+        import subprocess
+
+        if self.output_config.format == AudioFormat.OPUS:
+            # Convert to Opus using ffmpeg
+            bitrate_str = f"{self.output_config.bitrate}k"
+            cmd = [
+                "ffmpeg",
+                "-y",  # -y to overwrite output file
+                "-i",
+                str(source_path),
+                "-c:a",
+                "libopus",
+                "-b:a",
+                bitrate_str,
+                str(dest_path),
+            ]
+        elif self.output_config.format == AudioFormat.AAC:
+            # Convert to AAC using ffmpeg
+            bitrate_str = f"{self.output_config.bitrate}k"
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(source_path),
+                "-c:a",
+                "aac",
+                "-b:a",
+                bitrate_str,
+                str(dest_path),
+            ]
+        else:
+            # For WAV and other formats, just copy (should not happen in practice)
+            _ = shutil.copy2(str(source_path), str(dest_path))
+            return
+
+        # Run ffmpeg conversion
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg conversion failed: {result.stderr}")
