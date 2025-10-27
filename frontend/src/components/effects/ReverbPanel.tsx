@@ -1,4 +1,4 @@
-import type { ReverbConfig } from '../../hooks/effects/useReverbEffect';
+import type { ImpulseName, ReverbConfig } from '../../hooks/effects/useReverbEffect';
 import { IMPULSES } from '../../hooks/effects/useReverbEffect';
 
 export interface ReverbPanelProps {
@@ -31,7 +31,7 @@ export function ReverbPanel({ config, onUpdate, onReset }: ReverbPanelProps) {
           <label>Impulse Response</label>
           <select
             value={config.impulse}
-            onChange={(e) => onUpdate({ impulse: e.target.value })}
+            onChange={(e) => onUpdate({ impulse: e.target.value as ImpulseName })}
             className="impulse-select"
           >
             {Object.entries(IMPULSES).map(([key, label]) => (

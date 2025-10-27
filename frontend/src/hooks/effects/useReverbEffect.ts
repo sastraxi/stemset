@@ -17,7 +17,7 @@ export const IMPULSES = {
   'stonewall-room': "Stonewall Room",
 }
 
-type ImpulseName = keyof typeof IMPULSES;
+export type ImpulseName = keyof typeof IMPULSES;
 
 export interface ReverbConfig {
   impulse: ImpulseName; // impulse response name (e.g., 'sparkling-hall')
