@@ -124,7 +124,11 @@ export function useStereoExpanderEffect({
     isReady,
     inputNode: workletNodeRef.current,
     outputNode: workletNodeRef.current,
-    config,
+    config: {
+      ...config,
+      // FIXME: Disable the effect until it's fully implemented
+      enabled: false,
+    },
     update,
     reset,
     setEnabled,

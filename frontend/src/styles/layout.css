@@ -3,7 +3,6 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #262335;
 }
 
 .app>header {
@@ -22,7 +21,7 @@
 }
 
 .sidebar {
-  width: 320px;
+  min-width: 320px;
   background: transparent;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
@@ -33,7 +32,7 @@
 .player-area {
   flex: 1;
   padding: 2rem 2rem;
-  overflow-y: auto;
+  z-index: 99;
 }
 
 .recording-header {

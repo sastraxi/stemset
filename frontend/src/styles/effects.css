@@ -1,4 +1,17 @@
 /* Master Effects Styles */
+.master-effects {
+  /* Break out of all parent containers to extend to full viewport width */
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* background: rgba(255, 0, 0, 0.4); */
+  padding: 0;
+  margin: 0;
+  width: 100vw;
+  margin-bottom: -2rem;
+  margin-left: -1rem;
+}
+
 .master-effects-row {
   display: flex;
   flex-direction: row;
@@ -6,10 +19,19 @@
   align-items: flex-start;
   overflow-x: auto;
   overflow-y: visible;
+  padding-left: calc(320px + 2.5rem);
   padding-bottom: 0.5rem;
+  /* Add substantial padding to the right so content doesn't get cut off when scrolling */
+  padding-right: 4rem;
+  /* Smooth scrolling for better UX */
+  scroll-behavior: smooth;
+  /* Prevent browser navigation gestures from interfering with horizontal scrolling */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  /* Prevent swipe gestures from triggering browser back/forward navigation */
+  touch-action: pan-x pinch-zoom;
   /* Custom scrollbar styling */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-width: none;
 }
 
 .master-effects-row::-webkit-scrollbar {

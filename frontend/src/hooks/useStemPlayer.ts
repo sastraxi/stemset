@@ -194,6 +194,14 @@ export function useStemPlayer({
     initialPosition: config.playbackPosition,
   });
 
+  // Validate and correct playback position once duration is loaded
+  useEffect(() => {
+    if (duration > 0 && currentTime > duration || currentTime < 0) {
+      // If current position is beyond song length, reset to beginning
+      stop()
+    }
+  }, [duration, currentTime, seek]);
+
   // 9. Persist playback position
   useEffect(() => {
     if (!isLoading) {

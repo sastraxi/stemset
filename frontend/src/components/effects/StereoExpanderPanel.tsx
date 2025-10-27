@@ -86,6 +86,7 @@ export function StereoExpanderPanel({ config, onUpdate, onReset }: StereoExpande
               type="checkbox"
               checked={config.enabled}
               onChange={(e) => onUpdate({ enabled: e.target.checked })}
+              disabled
             />
             <span>On</span>
           </label>

@@ -98,9 +98,9 @@ export function WaveformVisualization({
     }
 
     canvas.width = rect.width * dpr;
-    canvas.height = 128 * dpr; // Fixed height for consistent UI
+    canvas.height = 108 * dpr; // Fixed height for consistent UI
     canvas.style.width = `${rect.width}px`;
-    canvas.style.height = '128px';
+    canvas.style.height = '108px';
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 

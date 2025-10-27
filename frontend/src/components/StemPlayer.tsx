@@ -2,9 +2,10 @@ import { useStemPlayer } from '../hooks/useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { Spinner } from './Spinner';
-import { Volume2, VolumeX, Music } from 'lucide-react';
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { Volume2, VolumeX, Music, Share } from 'lucide-react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { EqPanel } from './effects/EqPanel';
 import { CompressorPanel } from './effects/CompressorPanel';
 import { ReverbPanel } from './effects/ReverbPanel';
@@ -37,6 +38,15 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         playerRef.current?.focus();
       }
     }));
+
+    // Generate shareable URL with current time (floored to nearest second)
+    const generateShareUrl = useCallback((time: number) => {
+      const baseUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+      const currentPath = `/p/${profileName}/${fileName}`;
+      const url = new URL(currentPath, baseUrl);
+      url.searchParams.set('t', Math.floor(time).toString());
+      return url.toString();
+    }, [profileName, fileName]);
 
     const {
       isLoading,
@@ -153,6 +163,23 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
     const playbackControlsContainer = document.getElementById('playback-controls-container');
     const playbackControls = (
       <>
+        <button
+          onClick={async () => {
+            const shareUrl = generateShareUrl(currentTime);
+            try {
+              await navigator.clipboard.writeText(shareUrl);
+              toast.success('Share link copied to clipboard!');
+            } catch (err) {
+              console.error('Failed to copy to clipboard:', err);
+              // Fallback - show the URL so user can copy manually
+              toast.error('Could not copy to clipboard. Link: ' + shareUrl);
+            }
+          }}
+          className="share-button"
+          title="Share at current time"
+        >
+          <Share className="h-4 w-4" />
+        </button>
         <div
           className="time-display clickable"
           onClick={() => setShowTimeRemaining(!showTimeRemaining)}
