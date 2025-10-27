@@ -168,7 +168,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
             const shareUrl = generateShareUrl(currentTime);
             try {
               await navigator.clipboard.writeText(shareUrl);
-              toast.success('Share link copied to clipboard!');
+              toast.success(`Share link (${formatTime(currentTime)}) copied to clipboard!`);
             } catch (err) {
               console.error('Failed to copy to clipboard:', err);
               // Fallback - show the URL so user can copy manually
