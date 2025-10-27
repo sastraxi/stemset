@@ -1,4 +1,7 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
+
+const MASTER_VOLUME_KEY = 'stemset-master-volume';
+const DEFAULT_MASTER_VOLUME = 0.8;
 
 export interface UseAudioContextOptions {
   sampleRate?: number;
@@ -7,26 +10,41 @@ export interface UseAudioContextOptions {
 export interface UseAudioContextResult {
   getContext: () => AudioContext;
   getMasterInput: () => GainNode;
+  getMasterOutput: () => GainNode;
   isReady: () => boolean;
+  masterVolume: number;
+  setMasterVolume: (volume: number) => void;
 }
 
 /**
- * Manages AudioContext lifecycle and master gain node.
+ * Manages AudioContext lifecycle and master gain nodes.
  *
  * Responsibilities:
  * - AudioContext creation with specified sample rate
  * - Context state management (suspended -> running)
- * - Master gain node creation and persistence
+ * - Master gain node chain creation: stems → masterInput → masterOutput → destination
+ * - Master volume control (applied to masterOutput)
  * - Thread-safe context access via getters
  *
- * Pattern: All audio objects stored in refs (no state).
- * No effects = no cleanup needed, no dependency issues.
+ * Pattern: Audio objects in refs, master volume in state.
  */
 export function useAudioContext({
   sampleRate = 44100
 }: UseAudioContextOptions = {}): UseAudioContextResult {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const masterInputRef = useRef<GainNode | null>(null);
+  const masterOutputRef = useRef<GainNode | null>(null);
+
+  // Load master volume from localStorage (global, not per-recording)
+  const [masterVolume, setMasterVolumeState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(MASTER_VOLUME_KEY);
+      return stored ? parseFloat(stored) : DEFAULT_MASTER_VOLUME;
+    } catch (e) {
+      console.warn('[useAudioContext] Failed to load master volume from localStorage:', e);
+      return DEFAULT_MASTER_VOLUME;
+    }
+  });
 
   const getContext = useCallback((): AudioContext => {
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
@@ -42,30 +60,67 @@ export function useAudioContext({
     return audioCtxRef.current;
   }, [sampleRate]);
 
+  const getMasterOutput = useCallback((): GainNode => {
+    const ctx = getContext();
+
+    if (!masterOutputRef.current) {
+      console.log('[useAudioContext] Creating master output gain node');
+      masterOutputRef.current = ctx.createGain();
+      masterOutputRef.current.gain.value = masterVolume;
+      masterOutputRef.current.connect(ctx.destination);
+      console.log('[useAudioContext] Master output created and connected to destination');
+    }
+
+    return masterOutputRef.current;
+  }, [getContext, masterVolume]);
+
   const getMasterInput = useCallback((): GainNode => {
     const ctx = getContext();
+    const masterOutput = getMasterOutput();
 
     if (!masterInputRef.current) {
       console.log('[useAudioContext] Creating master input gain node');
       masterInputRef.current = ctx.createGain();
       masterInputRef.current.gain.value = 1;
-      console.log('[useAudioContext] Master input created:', {
-        channelCount: masterInputRef.current.channelCount,
-        channelCountMode: masterInputRef.current.channelCountMode,
-        channelInterpretation: masterInputRef.current.channelInterpretation
-      });
+      masterInputRef.current.connect(masterOutput);
+      console.log('[useAudioContext] Master input created and connected to master output');
     }
 
     return masterInputRef.current;
-  }, [getContext]);
+  }, [getContext, getMasterOutput]);
+
+  const setMasterVolume = useCallback((volume: number) => {
+    setMasterVolumeState(volume);
+    if (masterOutputRef.current) {
+      masterOutputRef.current.gain.value = volume;
+      console.log('[useAudioContext] Master volume set to:', volume);
+    }
+    // Persist to localStorage
+    try {
+      localStorage.setItem(MASTER_VOLUME_KEY, volume.toString());
+    } catch (e) {
+      console.warn('[useAudioContext] Failed to save master volume to localStorage:', e);
+    }
+  }, []);
+
+  // Ensure master output gain is synced with initial volume
+  useEffect(() => {
+    if (masterOutputRef.current && masterOutputRef.current.gain.value !== masterVolume) {
+      masterOutputRef.current.gain.value = masterVolume;
+      console.log('[useAudioContext] Synced master output gain to:', masterVolume);
+    }
+  }, [masterVolume]);
 
   const isReady = useCallback((): boolean => {
-    return audioCtxRef.current !== null && masterInputRef.current !== null;
+    return audioCtxRef.current !== null && masterInputRef.current !== null && masterOutputRef.current !== null;
   }, []);
 
   return {
     getContext,
     getMasterInput,
+    getMasterOutput,
     isReady,
+    masterVolume,
+    setMasterVolume,
   };
 }

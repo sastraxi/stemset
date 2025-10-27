@@ -53,7 +53,8 @@
 
 .eq-section,
 .limiter-section,
-.reverb-section {
+.reverb-section,
+.master-volume-section {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -64,7 +65,8 @@
 
 .eq-section:hover,
 .limiter-section:hover,
-.reverb-section:hover {
+.reverb-section:hover,
+.master-volume-section:hover {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -78,6 +80,10 @@
 
 .reverb-section {
   width: 240px;
+}
+
+.master-volume-section {
+  width: 230px;
 }
 
 /* EQ Vertical Sliders */
@@ -149,7 +155,8 @@
 
 .eq-header,
 .limiter-header,
-.reverb-header {
+.reverb-header,
+.master-volume-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -160,7 +167,8 @@
 
 .eq-header h4,
 .limiter-header h4,
-.reverb-header h4 {
+.reverb-header h4,
+.master-volume-header h4 {
   font-size: 0.7rem;
   font-weight: 600;
   color: #e8e8e8;
@@ -465,4 +473,44 @@
 .reverb-impulse .impulse-select option {
   background: #2a2a2a;
   color: #e8e8e8;
+}
+
+/* Master Volume Control Styles */
+.master-volume-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.master-volume-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.volume-triangle {
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.volume-triangle:focus-visible {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.volume-value {
+  font-size: 0.65rem;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: center;
+}
+
+.master-volume-section .mute-button {
+  padding: 0.2rem 0.35rem;
+  opacity: 1;
 }

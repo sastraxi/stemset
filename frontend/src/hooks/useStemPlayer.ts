@@ -58,6 +58,10 @@ export interface UseStemPlayerResult {
   toggleMute: (stemName: string) => void;
   toggleSolo: (stemName: string) => void;
 
+  // Master volume
+  masterVolume: number;
+  setMasterVolume: (volume: number) => void;
+
   // Effects
   effectsConfig: EffectsChainConfig;
   updateEqBand: (id: string, changes: Partial<{ gain: number; frequency: number; q: number; type: BiquadFilterType }>) => void;
@@ -82,9 +86,10 @@ export function useStemPlayer({
   sampleRate = 44100,
 }: UseStemPlayerOptions): UseStemPlayerResult {
   // 1. Audio context and master gain
-  const { getContext, getMasterInput } = useAudioContext({ sampleRate });
+  const { getContext, getMasterInput, getMasterOutput, masterVolume, setMasterVolume } = useAudioContext({ sampleRate });
   const audioContext = getContext();
   const masterInput = getMasterInput();
+  const masterOutput = getMasterOutput();
 
   // 2. Recording config (localStorage persistence)
   const { getConfig, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
@@ -178,6 +183,7 @@ export function useStemPlayer({
   const { eq, compressor, reverb, stereoExpander } = useAudioEffects({
     audioContext,
     masterInput,
+    masterOutput,
     initialConfig: {
       eqConfig: config.effects.eq,
       compressorConfig: config.effects.compressor,
@@ -300,6 +306,10 @@ export function useStemPlayer({
     resetStemGain,
     toggleMute,
     toggleSolo,
+
+    // Master volume
+    masterVolume,
+    setMasterVolume,
 
     // Effects
     effectsConfig: {

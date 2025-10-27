@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { EqPanel } from './effects/EqPanel';
 import { CompressorPanel } from './effects/CompressorPanel';
 import { ReverbPanel } from './effects/ReverbPanel';
+import { MasterVolumeControl } from './effects/MasterVolumeControl';
 import { QRCodeModal } from './QRCodeModal';
 
 interface StemPlayerProps {
@@ -75,6 +76,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       toggleMute,
       toggleSolo,
       formatTime,
+      masterVolume,
+      setMasterVolume,
       effectsConfig,
       updateEqBand,
       setEqEnabled,
@@ -312,6 +315,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         </div>
         <div className="player-panel master-effects">
           <div className="master-effects-row">
+            <MasterVolumeControl
+              volume={masterVolume}
+              onVolumeChange={setMasterVolume}
+            />
             <EqPanel
               config={effectsConfig.eq}
               onUpdateBand={updateEqBand}

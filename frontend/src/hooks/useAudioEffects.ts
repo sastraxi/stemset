@@ -18,6 +18,7 @@ export interface AudioEffectsConfig {
 export interface UseAudioEffectsOptions {
   audioContext: AudioContext | null;
   masterInput: GainNode | null;
+  masterOutput: GainNode | null;
   initialConfig: AudioEffectsConfig;
 }
 
@@ -32,11 +33,12 @@ export interface UseAudioEffectsResult {
  * Audio effects orchestrator hook.
  *
  * Composes all effect hooks and manages the audio graph routing:
- * masterInput → EQ → stereoExpander → reverb → compressor → destination
+ * masterInput → EQ → stereoExpander → reverb → compressor → masterOutput
  */
 export function useAudioEffects({
   audioContext,
   masterInput,
+  masterOutput,
   initialConfig,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
 
@@ -67,6 +69,7 @@ export function useAudioEffects({
     console.log('[useAudioEffects] Wiring effect chain...');
     console.log('[useAudioEffects] AudioContext:', audioContext);
     console.log('[useAudioEffects] Master input:', masterInput);
+    console.log('[useAudioEffects] Master output:', masterOutput);
 
     const allReady = allEffects.every(e => e.isReady);
     console.log('[useAudioEffects] All effects ready:', allReady);
@@ -77,7 +80,7 @@ export function useAudioEffects({
       compressor: compressor.isReady
     });
 
-    if (!audioContext || !masterInput || !allReady) {
+    if (!audioContext || !masterInput || !masterOutput || !allReady) {
       console.log('[useAudioEffects] Skipping wiring - missing dependencies');
       return;
     }
@@ -135,17 +138,17 @@ export function useAudioEffects({
       } // If disabled, currentNode just passes through to the next iteration.
     });
 
-    // 3. Connect the final node in the chain to the destination.
+    // 3. Connect the final node in the chain to the master output.
     try {
-      console.log('[useAudioEffects] Connecting final node to destination:', currentNode.constructor.name);
-      currentNode.connect(audioContext.destination);
+      console.log('[useAudioEffects] Connecting final node to master output:', currentNode.constructor.name);
+      currentNode.connect(masterOutput);
       console.log('[useAudioEffects] Audio chain wired successfully');
     } catch (e) {
-      console.error('[useAudioEffects] Failed to connect to destination:', e);
+      console.error('[useAudioEffects] Failed to connect to master output:', e);
       console.error('[useAudioEffects] Final node details:', {
         nodeType: currentNode.constructor.name,
         audioContextState: audioContext.state,
-        destinationChannelCount: audioContext.destination.channelCount
+        masterOutputType: masterOutput.constructor.name
       });
       throw e;
     }
@@ -153,6 +156,7 @@ export function useAudioEffects({
   }, [
     audioContext,
     masterInput,
+    masterOutput,
     eq.isReady, eq.config.enabled,
     stereoExpander.isReady, stereoExpander.config.enabled,
     reverb.isReady, reverb.config.enabled,
