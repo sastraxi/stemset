@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface ReverbConfig {
-  mix: number; // 0 to 1
-  decay: number; // 0.1 to 2.0 seconds
-  satAmount: number; // 0.1 to 3.0
+  impulse: string; // impulse response name (e.g., 'sparkling-hall')
+  mix: number; // 0 to 1 (wet/dry)
   enabled: boolean;
 }
 
@@ -14,8 +13,8 @@ export interface UseReverbEffectOptions {
 
 export interface UseReverbEffectResult {
   isReady: boolean;
-  inputNode: AudioWorkletNode | null;
-  outputNode: AudioWorkletNode | null;
+  inputNode: GainNode | null;
+  outputNode: GainNode | null;
   config: ReverbConfig;
   update: (changes: Partial<ReverbConfig>) => void;
   reset: () => void;
@@ -23,9 +22,8 @@ export interface UseReverbEffectResult {
 }
 
 export const DEFAULT_REVERB_CONFIG: ReverbConfig = {
+  impulse: 'sparkling-hall',
   mix: 0.3,
-  decay: 0.6,
-  satAmount: 1.5,
   enabled: false,
 };
 
@@ -38,45 +36,99 @@ export function useReverbEffect({
   });
 
   const [isReady, setIsReady] = useState(false);
-  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const workletLoadedRef = useRef(false);
+  const inputNodeRef = useRef<GainNode | null>(null);
+  const outputNodeRef = useRef<GainNode | null>(null);
+  const convolverRef = useRef<ConvolverNode | null>(null);
+  const wetGainRef = useRef<GainNode | null>(null);
+  const dryGainRef = useRef<GainNode | null>(null);
+  const impulseBufferRef = useRef<AudioBuffer | null>(null);
 
+  // Load impulse response
   useEffect(() => {
-    if (!audioContext || workletLoadedRef.current) return;
+    if (!audioContext || !config.impulse) return;
 
-    async function loadWorklet() {
+    async function loadImpulseResponse() {
       try {
-        if (!audioContext) return;
+        const response = await fetch(`/${config.impulse}.wav`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch impulse response: ${response.statusText}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContext!.decodeAudioData(arrayBuffer);
+        impulseBufferRef.current = audioBuffer;
 
-        await audioContext.audioWorklet.addModule('/plate-reverb-saturation.js');
-        workletLoadedRef.current = true;
-
-        const node = new AudioWorkletNode(audioContext, 'plate-reverb-saturator', { outputChannelCount: [2] });
-
-        workletNodeRef.current = node;
-        setIsReady(true);
+        // Update convolver if it exists
+        if (convolverRef.current) {
+          convolverRef.current.buffer = audioBuffer;
+        }
       } catch (error) {
-        console.error('[useReverbEffect] Failed to load AudioWorklet:', error);
+        console.error('[useReverbEffect] Failed to load impulse response:', error);
       }
     }
 
-    loadWorklet();
+    loadImpulseResponse();
+  }, [audioContext, config.impulse]);
+
+  // Set up audio nodes
+  useEffect(() => {
+    if (!audioContext) return;
+
+    try {
+      // Create nodes
+      const inputNode = audioContext.createGain();
+      const outputNode = audioContext.createGain();
+      const convolver = audioContext.createConvolver();
+      const wetGain = audioContext.createGain();
+      const dryGain = audioContext.createGain();
+
+      // Set up the routing:
+      // input -> [dry path] -> dryGain -> output
+      //       -> [wet path] -> convolver -> wetGain -> output
+      inputNode.connect(dryGain);
+      inputNode.connect(convolver);
+      convolver.connect(wetGain);
+      dryGain.connect(outputNode);
+      wetGain.connect(outputNode);
+
+      // Set impulse response if available
+      if (impulseBufferRef.current) {
+        convolver.buffer = impulseBufferRef.current;
+      }
+
+      // Store references
+      inputNodeRef.current = inputNode;
+      outputNodeRef.current = outputNode;
+      convolverRef.current = convolver;
+      wetGainRef.current = wetGain;
+      dryGainRef.current = dryGain;
+
+      setIsReady(true);
+    } catch (error) {
+      console.error('[useReverbEffect] Failed to create audio nodes:', error);
+    }
 
     return () => {
-      workletNodeRef.current?.disconnect();
+      inputNodeRef.current?.disconnect();
+      outputNodeRef.current?.disconnect();
+      convolverRef.current?.disconnect();
+      wetGainRef.current?.disconnect();
+      dryGainRef.current?.disconnect();
       setIsReady(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioContext]);
 
+  // Update mix parameter
   useEffect(() => {
-    if (!audioContext || !isReady || !workletNodeRef.current) return;
+    if (!audioContext || !isReady || !wetGainRef.current || !dryGainRef.current) return;
 
-    const { mix, decay, satAmount } = config;
-    workletNodeRef.current.parameters.get('mix')?.setTargetAtTime(mix, audioContext.currentTime, 0.01);
-    workletNodeRef.current.parameters.get('decay')?.setTargetAtTime(decay, audioContext.currentTime, 0.05);
-    workletNodeRef.current.parameters.get('satAmount')?.setTargetAtTime(satAmount, audioContext.currentTime, 0.01);
-  }, [config, audioContext, isReady]);
+    const { mix } = config;
+    const currentTime = audioContext.currentTime;
+
+    // Wet signal gain = mix
+    wetGainRef.current.gain.setTargetAtTime(mix, currentTime, 0.01);
+    // Dry signal gain = 1 - mix
+    dryGainRef.current.gain.setTargetAtTime(1 - mix, currentTime, 0.01);
+  }, [config.mix, audioContext, isReady]);
 
   const update = useCallback((changes: Partial<ReverbConfig>) => {
     setConfig(prev => ({ ...prev, ...changes }));
@@ -92,8 +144,8 @@ export function useReverbEffect({
 
   return {
     isReady,
-    inputNode: workletNodeRef.current,
-    outputNode: workletNodeRef.current, // For this simple effect, input and output are the same node
+    inputNode: inputNodeRef.current,
+    outputNode: outputNodeRef.current,
     config,
     update,
     reset,

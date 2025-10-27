@@ -8,8 +8,8 @@ export interface ReverbPanelProps {
 
 export function ReverbPanel({ config, onUpdate, onReset }: ReverbPanelProps) {
   return (
-    <div className="limiter-section">
-      <div className="limiter-header">
+    <div className="reverb-section">
+      <div className="reverb-header">
         <h4>Reverb</h4>
         <div className="effect-controls">
           <label className="effect-toggle">
@@ -25,8 +25,18 @@ export function ReverbPanel({ config, onUpdate, onReset }: ReverbPanelProps) {
           </button>
         </div>
       </div>
-      <div className="limiter-controls">
-        <div className="limiter-ceiling">
+      <div className="reverb-controls">
+        <div className="reverb-impulse">
+          <label>Impulse Response</label>
+          <select
+            value={config.impulse}
+            onChange={(e) => onUpdate({ impulse: e.target.value })}
+            className="impulse-select"
+          >
+            <option value="sparkling-hall">Sparkling Hall</option>
+          </select>
+        </div>
+        <div className="reverb-mix">
           <label>Mix {(config.mix * 100).toFixed(0)}%</label>
           <input
             type="range"
@@ -35,28 +45,6 @@ export function ReverbPanel({ config, onUpdate, onReset }: ReverbPanelProps) {
             step={0.01}
             value={config.mix}
             onChange={(e) => onUpdate({ mix: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Decay {config.decay.toFixed(2)}s</label>
-          <input
-            type="range"
-            min={0.1}
-            max={2.0}
-            step={0.05}
-            value={config.decay}
-            onChange={(e) => onUpdate({ decay: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Saturation {config.satAmount.toFixed(1)}</label>
-          <input
-            type="range"
-            min={0.1}
-            max={3.0}
-            step={0.1}
-            value={config.satAmount}
-            onChange={(e) => onUpdate({ satAmount: parseFloat(e.target.value) })}
           />
         </div>
       </div>

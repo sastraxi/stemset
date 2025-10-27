@@ -52,7 +52,8 @@
 }
 
 .eq-section,
-.limiter-section {
+.limiter-section,
+.reverb-section {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -62,7 +63,8 @@
 }
 
 .eq-section:hover,
-.limiter-section:hover {
+.limiter-section:hover,
+.reverb-section:hover {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -72,6 +74,10 @@
 
 .limiter-section {
   width: 300px;
+}
+
+.reverb-section {
+  width: 240px;
 }
 
 /* EQ Vertical Sliders */
@@ -142,7 +148,8 @@
 }
 
 .eq-header,
-.limiter-header {
+.limiter-header,
+.reverb-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -152,7 +159,8 @@
 }
 
 .eq-header h4,
-.limiter-header h4 {
+.limiter-header h4,
+.reverb-header h4 {
   font-size: 0.7rem;
   font-weight: 600;
   color: #e8e8e8;
@@ -187,7 +195,8 @@
 }
 
 .eq-header .reset-gain,
-.limiter-header .reset-gain {
+.limiter-header .reset-gain,
+.reverb-header .reset-gain {
   opacity: 0.3;
   transition: opacity 0.2s;
   font-size: 0.85rem;
@@ -195,7 +204,8 @@
 }
 
 .eq-section:hover .reset-gain,
-.limiter-section:hover .reset-gain {
+.limiter-section:hover .reset-gain,
+.reverb-section:hover .reset-gain {
   opacity: 1;
 }
 
@@ -384,4 +394,75 @@
     margin-top: -55px;
     margin-bottom: -55px;
   }
+}
+
+/* Reverb Styles */
+.reverb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.reverb-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+  padding-bottom: 0.75rem;
+}
+
+.reverb-impulse {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reverb-impulse label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.reverb-mix label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.reverb-mix input[type="range"] {
+  width: 100%;
+}
+
+.reverb-impulse input[type="range"] {
+  width: 100%;
+}
+
+.reverb-impulse .impulse-select {
+  width: 100%;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e8e8;
+  font-size: 0.8rem;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.reverb-impulse .impulse-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.reverb-impulse .impulse-select:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.reverb-impulse .impulse-select option {
+  background: #2a2a2a;
+  color: #e8e8e8;
 }
