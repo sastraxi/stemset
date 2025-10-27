@@ -78,10 +78,26 @@ export function usePlaybackController({
       playbackGenRef.current = thisPlaybackGen;
       manualEndModeRef.current = 'none';
 
+      console.log('[usePlaybackController] Starting playback for stems:', Array.from(stemNodes.keys()));
       stemNodes.forEach((node, name) => {
+        console.log(`[usePlaybackController] Creating source for stem: ${name}`);
         const src = audioContext.createBufferSource();
         src.buffer = node.buffer;
-        src.connect(node.gainNode);
+        
+        try {
+          console.log(`[usePlaybackController] Connecting source for ${name} to gain node`);
+          src.connect(node.gainNode);
+          console.log(`[usePlaybackController] Successfully connected source for ${name}`);
+        } catch (error) {
+          console.error('[usePlaybackController] Failed to connect source for stem:', name, error);
+          console.error('[usePlaybackController] Source details:', {
+            bufferLength: src.buffer?.length,
+            bufferChannels: src.buffer?.numberOfChannels,
+            gainNodeType: node.gainNode?.constructor.name,
+            audioContextState: audioContext.state
+          });
+          throw error; // Don't continue with broken playback
+        }
 
         // Handle natural end of playback
         src.onended = () => {

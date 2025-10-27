@@ -77,11 +77,19 @@ export function useReverbEffect({
         impulseBufferRef.current = audioBuffer;
 
         // Update convolver if it exists
-        if (convolverRef.current) {
+        if (convolverRef.current && audioBuffer) {
           convolverRef.current.buffer = audioBuffer;
         }
       } catch (error) {
         console.error('[useReverbEffect] Failed to load impulse response:', error);
+        console.error('[useReverbEffect] Failed to load impulse response details:', {
+          responseOk: false,
+          impulse: config.impulse,
+          audioContextState: audioContext?.state,
+          errorType: error instanceof Error ? error.constructor.name : typeof error
+        });
+        // Clear the buffer reference
+        impulseBufferRef.current = null;
       }
     }
 
@@ -92,26 +100,37 @@ export function useReverbEffect({
   useEffect(() => {
     if (!audioContext) return;
 
+    console.log('[useReverbEffect] Setting up audio nodes');
+    console.log('[useReverbEffect] AudioContext state:', audioContext.state);
+
     try {
       // Create nodes
+      console.log('[useReverbEffect] Creating audio nodes');
       const inputNode = audioContext.createGain();
       const outputNode = audioContext.createGain();
       const convolver = audioContext.createConvolver();
       const wetGain = audioContext.createGain();
       const dryGain = audioContext.createGain();
+      console.log('[useReverbEffect] Audio nodes created successfully');
 
       // Set up the routing:
       // input -> [dry path] -> dryGain -> output
       //       -> [wet path] -> convolver -> wetGain -> output
+      console.log('[useReverbEffect] Connecting reverb audio graph');
       inputNode.connect(dryGain);
       inputNode.connect(convolver);
       convolver.connect(wetGain);
       dryGain.connect(outputNode);
       wetGain.connect(outputNode);
+      console.log('[useReverbEffect] Reverb audio graph connected successfully');
 
       // Set impulse response if available
-      if (impulseBufferRef.current) {
-        convolver.buffer = impulseBufferRef.current;
+      if (impulseBufferRef.current && convolver) {
+        try {
+          convolver.buffer = impulseBufferRef.current;
+        } catch (error) {
+          console.error('[useReverbEffect] Failed to set convolver buffer:', error);
+        }
       }
 
       // Store references

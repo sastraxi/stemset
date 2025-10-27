@@ -69,6 +69,14 @@ export function useCompressorEffect({
         setIsReady(true);
       } catch (error) {
         console.error('[useCompressorEffect] Failed to load AudioWorklet:', error);
+        console.error('[useCompressorEffect] AudioContext state:', audioContext?.state);
+        console.error('[useCompressorEffect] AudioContext sample rate:', audioContext?.sampleRate);
+        console.error('[useCompressorEffect] Worklet loaded ref:', workletLoadedRef.current);
+        console.error('[useCompressorEffect] Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
       }
     }
 

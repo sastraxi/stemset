@@ -82,6 +82,14 @@ export function useStereoExpanderEffect({
         setIsReady(true);
       } catch (error) {
         console.error('[useStereoExpanderEffect] Failed to load AudioWorklet:', error);
+        console.error('[useStereoExpanderEffect] AudioContext state:', audioContext?.state);
+        console.error('[useStereoExpanderEffect] AudioContext sample rate:', audioContext?.sampleRate);
+        console.error('[useStereoExpanderEffect] Worklet loaded ref:', workletLoadedRef.current);
+        console.error('[useStereoExpanderEffect] Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
       }
     }
 
