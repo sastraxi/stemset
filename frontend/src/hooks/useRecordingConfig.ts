@@ -3,21 +3,24 @@ import {
   getRecordingState,
   updateRecordingState,
 } from '../lib/storage';
-import type { EqConfig } from './effects/useEqEffect';
-import type { CompressorConfig } from './effects/useCompressorEffect';
-import type { ReverbConfig } from './effects/useReverbEffect';
-import type { StereoExpanderConfig } from './effects/useStereoExpanderEffect';
+import type { RecordingUserConfig, StemUserConfig, EffectsChainConfig } from '../types';
+import {
+  DEFAULT_EQ_CONFIG,
+  DEFAULT_COMPRESSOR_CONFIG,
+  DEFAULT_REVERB_CONFIG,
+  DEFAULT_STEREO_EXPANDER_CONFIG,
+} from './effects';
 
-export interface RecordingConfig {
-  playbackPosition: number;
-  stemGains: Record<string, number>;
-  stemMutes: Record<string, boolean>;
-  stemSolos: Record<string, boolean>;
-  eqConfig?: EqConfig;
-  compressorConfig?: CompressorConfig;
-  reverbConfig?: ReverbConfig;
-  stereoExpanderConfig?: StereoExpanderConfig;
-}
+const DEFAULT_RECORDING_CONFIG: RecordingUserConfig = {
+  playbackPosition: 0,
+  stems: {},
+  effects: {
+    eq: DEFAULT_EQ_CONFIG,
+    compressor: DEFAULT_COMPRESSOR_CONFIG,
+    reverb: DEFAULT_REVERB_CONFIG,
+    stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
+  },
+};
 
 export interface UseRecordingConfigOptions {
   profileName: string;
@@ -25,19 +28,10 @@ export interface UseRecordingConfigOptions {
 }
 
 export interface UseRecordingConfigResult {
-  getConfig: () => RecordingConfig;
+  getConfig: () => RecordingUserConfig;
   savePlaybackPosition: (position: number) => void;
-  saveStemConfig: (
-    stemGains: Record<string, number>,
-    stemMutes: Record<string, boolean>,
-    stemSolos: Record<string, boolean>
-  ) => void;
-  saveEffectsConfig: (config: {
-    eqConfig?: EqConfig;
-    compressorConfig?: CompressorConfig;
-    reverbConfig?: ReverbConfig;
-    stereoExpanderConfig?: StereoExpanderConfig;
-  }) => void;
+  saveStemConfigs: (stems: Record<string, StemUserConfig>) => void;
+  saveEffectsConfig: (config: EffectsChainConfig) => void;
 }
 
 /**
@@ -57,20 +51,18 @@ export function useRecordingConfig({
 }: UseRecordingConfigOptions): UseRecordingConfigResult {
   // Debounce timers
   const playbackPositionDebounceRef = useRef<number | null>(null);
-  const stemConfigDebounceRef = useRef<number | null>(null);
+  const stemConfigsDebounceRef = useRef<number | null>(null);
   const effectsConfigDebounceRef = useRef<number | null>(null);
 
-  const getConfig = useCallback((): RecordingConfig => {
+  const getConfig = useCallback((): RecordingUserConfig => {
     const saved = getRecordingState(profileName, fileName);
+    if (!saved) return DEFAULT_RECORDING_CONFIG;
+
+    // Ensure all required fields exist (for backward compatibility)
     return {
-      playbackPosition: saved?.playbackPosition || 0,
-      stemGains: saved?.stemGains || {},
-      stemMutes: saved?.stemMutes || {},
-      stemSolos: saved?.stemSolos || {},
-      eqConfig: saved?.eqConfig as EqConfig | undefined,
-      compressorConfig: saved?.compressorConfig as CompressorConfig | undefined,
-      reverbConfig: saved?.reverbConfig as ReverbConfig | undefined,
-      stereoExpanderConfig: saved?.stereoExpanderConfig as StereoExpanderConfig | undefined,
+      playbackPosition: saved.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
+      stems: saved.stems ?? DEFAULT_RECORDING_CONFIG.stems,
+      effects: saved.effects ?? DEFAULT_RECORDING_CONFIG.effects,
     };
   }, [profileName, fileName]);
 
@@ -83,37 +75,28 @@ export function useRecordingConfig({
     }, 1000);
   }, [profileName, fileName]);
 
-  const saveStemConfig = useCallback((
-    stemGains: Record<string, number>,
-    stemMutes: Record<string, boolean>,
-    stemSolos: Record<string, boolean>
-  ) => {
-    if (stemConfigDebounceRef.current) {
-      clearTimeout(stemConfigDebounceRef.current);
+  const saveStemConfigs = useCallback((stems: Record<string, StemUserConfig>) => {
+    if (stemConfigsDebounceRef.current) {
+      clearTimeout(stemConfigsDebounceRef.current);
     }
-    stemConfigDebounceRef.current = window.setTimeout(() => {
-      updateRecordingState(profileName, fileName, { stemGains, stemMutes, stemSolos });
+    stemConfigsDebounceRef.current = window.setTimeout(() => {
+      updateRecordingState(profileName, fileName, { stems });
     }, 500);
   }, [profileName, fileName]);
 
-  const saveEffectsConfig = useCallback((config: {
-    eqConfig?: EqConfig;
-    compressorConfig?: CompressorConfig;
-    reverbConfig?: ReverbConfig;
-    stereoExpanderConfig?: StereoExpanderConfig;
-  }) => {
+  const saveEffectsConfig = useCallback((effects: EffectsChainConfig) => {
     if (effectsConfigDebounceRef.current) {
       clearTimeout(effectsConfigDebounceRef.current);
     }
     effectsConfigDebounceRef.current = window.setTimeout(() => {
-      updateRecordingState(profileName, fileName, config);
+      updateRecordingState(profileName, fileName, { effects });
     }, 500);
   }, [profileName, fileName]);
 
   return {
     getConfig,
     savePlaybackPosition,
-    saveStemConfig,
+    saveStemConfigs,
     saveEffectsConfig,
   };
 }

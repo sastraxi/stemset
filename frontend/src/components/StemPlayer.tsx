@@ -55,10 +55,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       toggleMute,
       toggleSolo,
       formatTime,
-      eqConfig,
-      compressorConfig,
-      reverbConfig,
-      stereoExpanderConfig,
+      effectsConfig,
       updateEqBand,
       setEqEnabled,
       resetEq,
@@ -121,10 +118,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         loadingMetrics,
         stemCount: stemOrder.length,
         stems: stemArray.map(s => ({ name: Object.keys(stems).find(k => stems[k] === s), gain: s.gain, initialGain: s.initialGain })),
-        eq: eqConfig,
-        compressor: compressorConfig,
-        reverb: reverbConfig,
-        stereoExpander: stereoExpanderConfig,
+        effects: effectsConfig,
         timestamp: new Date().toISOString(),
       };
       // Pretty print
@@ -137,10 +131,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
           console.info('Metadata fetch ms', loadingMetrics.metadataMs.toFixed(1));
           console.info('Overall ms', loadingMetrics.totalMs.toFixed(1));
         }
-        console.info('EQ', eqConfig);
-        console.info('Compressor', compressorConfig);
-        console.info('Reverb', reverbConfig);
-        console.info('Stereo Expander', stereoExpanderConfig);
+        console.info('Effects', effectsConfig);
         console.info('Stems', snapshot.stems);
         console.groupEnd();
       } catch (e) {
@@ -278,23 +269,23 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         <div className="player-panel master-effects">
           <div className="master-effects-row">
             <EqPanel
-              config={eqConfig}
+              config={effectsConfig.eq}
               onUpdateBand={updateEqBand}
               onSetEnabled={setEqEnabled}
               onReset={resetEq}
             />
             <StereoExpanderPanel
-              config={stereoExpanderConfig}
+              config={effectsConfig.stereoExpander}
               onUpdate={updateStereoExpander}
               onReset={resetStereoExpander}
             />
             <ReverbPanel
-              config={reverbConfig}
+              config={effectsConfig.reverb}
               onUpdate={updateReverb}
               onReset={resetReverb}
             />
             <CompressorPanel
-              config={compressorConfig}
+              config={effectsConfig.compressor}
               gainReduction={compressorGainReduction}
               onUpdate={updateCompressor}
               onReset={resetCompressor}

@@ -1,3 +1,7 @@
+// ============================================================================
+// API / Server Metadata Types (immutable, from backend)
+// ============================================================================
+
 export interface Profile {
   name: string;
   source_folder: string;
@@ -26,26 +30,61 @@ export interface StemsMetadata {
   display_name: string;
 }
 
-// Audio playback types
+// ============================================================================
+// Audio Layer Types (Web Audio API, derived from metadata)
+// ============================================================================
 
-export interface LoadedStemData {
+export interface StemAudioData {
   buffer: AudioBuffer;
-  metadata: StemMetadata | null;
+  metadata: StemMetadata;
 }
 
 export interface StemAudioNode {
   buffer: AudioBuffer;
   gainNode: GainNode;
   outputGainNode: GainNode;
-  initialGain: number;
+  initialGain: number;  // Computed from metadata.stem_gain_adjustment_db
 }
 
-export interface LoadedStem {
-  buffer: AudioBuffer;
-  gain: GainNode;
-  outputGain: GainNode;
+// ============================================================================
+// User Config Types (mutable, persisted to localStorage)
+// ============================================================================
+
+export interface StemUserConfig {
+  gain: number;      // Volume slider value (0-2)
+  muted: boolean;    // Mute button state
+  soloed: boolean;   // Solo button state
+}
+
+export interface EffectsChainConfig {
+  eq: import('./hooks/effects/useEqEffect').EqConfig;
+  compressor: import('./hooks/effects/useCompressorEffect').CompressorConfig;
+  reverb: import('./hooks/effects/useReverbEffect').ReverbConfig;
+  stereoExpander: import('./hooks/effects/useStereoExpanderEffect').StereoExpanderConfig;
+  // Future: order: Array<'eq' | 'compressor' | 'reverb' | 'stereoExpander'>;
+}
+
+export interface RecordingUserConfig {
+  playbackPosition: number;
+  stems: Record<string, StemUserConfig>;
+  effects: EffectsChainConfig;
+}
+
+// ============================================================================
+// View Model Types (UI layer, combines metadata + user config)
+// ============================================================================
+
+export interface StemViewModel {
+  // Identity
+  name: string;
+
+  // From metadata (immutable)
+  stemType: string;
+  waveformUrl: string;
   initialGain: number;
-  metadata: unknown;
+
+  // From user config (mutable)
+  gain: number;
   muted: boolean;
   soloed: boolean;
 }

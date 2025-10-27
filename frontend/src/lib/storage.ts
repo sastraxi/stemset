@@ -13,20 +13,9 @@ export interface PendingJob {
   timestamp: number;
 }
 
-// Per-recording playback state
-export interface RecordingState {
-  playbackPosition: number; // seconds
-  stemGains: Record<string, number>; // linear gain values
-  stemMutes: Record<string, boolean>; // mute states
-  stemSolos: Record<string, boolean>; // solo states
-  // Audio effects (opaque JSON blobs managed by effect hooks)
-  eqConfig?: unknown;
-  compressorConfig?: unknown;
-  reverbConfig?: unknown;
-  stereoExpanderConfig?: unknown;
-}
+import type { RecordingUserConfig } from '../types';
 
-export type RecordingsMap = Record<string, RecordingState>; // key: `${profile}::${fileName}`
+export type RecordingsMap = Record<string, RecordingUserConfig>; // key: `${profile}::${fileName}`
 
 // Storage keys with versioning
 const KEYS = {
@@ -153,7 +142,7 @@ export function getAllRecordings(): RecordingsMap {
 /**
  * Get state for a specific recording.
  */
-export function getRecordingState(profileName: string, fileName: string): RecordingState | null {
+export function getRecordingState(profileName: string, fileName: string): RecordingUserConfig | null {
   const all = getAllRecordings();
   const key = getRecordingKey(profileName, fileName);
   return all[key] || null;
@@ -162,7 +151,7 @@ export function getRecordingState(profileName: string, fileName: string): Record
 /**
  * Save state for a specific recording.
  */
-export function setRecordingState(profileName: string, fileName: string, state: RecordingState): void {
+export function setRecordingState(profileName: string, fileName: string, state: RecordingUserConfig): void {
   const all = getAllRecordings();
   const key = getRecordingKey(profileName, fileName);
   all[key] = state;
@@ -175,19 +164,25 @@ export function setRecordingState(profileName: string, fileName: string, state: 
 export function updateRecordingState(
   profileName: string,
   fileName: string,
-  updates: Partial<RecordingState>
+  updates: Partial<RecordingUserConfig>
 ): void {
-  const existing = getRecordingState(profileName, fileName) || {
-    playbackPosition: 0,
-    stemGains: {},
-    stemMutes: {},
-    stemSolos: {},
-    eqConfig: undefined,
-    compressorConfig: undefined,
-    reverbConfig: undefined,
-    stereoExpanderConfig: undefined,
-  };
-  setRecordingState(profileName, fileName, { ...existing, ...updates });
+  const existing = getRecordingState(profileName, fileName);
+  if (!existing) {
+    // Create minimal default config to merge with updates
+    const defaultConfig: RecordingUserConfig = {
+      playbackPosition: 0,
+      stems: {},
+      effects: updates.effects || {
+        eq: { bands: [], enabled: true },
+        compressor: { threshold: -6, attack: 0.005, release: 0.1, bodyBlend: 0, airBlend: 0.1, enabled: true },
+        reverb: { mix: 0.3, decay: 0.6, satAmount: 1.5, enabled: false },
+        stereoExpander: { lowMidCrossover: 300, midHighCrossover: 3000, expLow: 1, compLow: 0.2, expMid: 1.2, compMid: 0.3, expHigh: 1.6, compHigh: 0.1, enabled: false },
+      },
+    };
+    setRecordingState(profileName, fileName, { ...defaultConfig, ...updates });
+  } else {
+    setRecordingState(profileName, fileName, { ...existing, ...updates });
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { StemMetadata, LoadedStemData } from '../types';
+import type { StemMetadata, StemAudioData } from '../types';
 import { getFileMetadata } from '../api';
 
 export interface StemTiming {
@@ -28,7 +28,7 @@ export interface UseAudioLoaderOptions {
 export interface UseAudioLoaderResult {
   isLoading: boolean;
   loadingMetrics: LoadingMetrics | null;
-  stems: Map<string, LoadedStemData>;
+  stems: Map<string, StemAudioData>;
   duration: number;
   metadataBaseUrl: string;
 }
@@ -54,7 +54,7 @@ export function useAudioLoader({
 }: UseAudioLoaderOptions): UseAudioLoaderResult {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMetrics, setLoadingMetrics] = useState<LoadingMetrics | null>(null);
-  const [stems, setStems] = useState<Map<string, LoadedStemData>>(new Map());
+  const [stems, setStems] = useState<Map<string, StemAudioData>>(new Map());
   const [duration, setDuration] = useState(0);
   const [metadataBaseUrl, setMetadataBaseUrl] = useState('');
 
@@ -99,7 +99,7 @@ export function useAudioLoader({
         const baseUrl = metadataUrl.substring(0, metadataUrl.lastIndexOf('/') + 1);
         setMetadataBaseUrl(baseUrl);
 
-        const newMap = new Map<string, LoadedStemData>();
+        const newMap = new Map<string, StemAudioData>();
         const stemEntries = Object.entries(metadata).map(([name, meta]) => [
           name,
           baseUrl + meta.stem_url,
@@ -131,7 +131,7 @@ export function useAudioLoader({
 
               newMap.set(name as string, {
                 buffer,
-                metadata: meta as StemMetadata | null,
+                metadata: meta as StemMetadata,
               });
 
               // Set duration from first loaded buffer

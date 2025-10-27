@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { LoadedStemData, StemAudioNode } from '../types';
+import type { StemAudioData, StemAudioNode } from '../types';
 
 export interface UseStemAudioNodesOptions {
   audioContext: AudioContext | null;
   masterInput: GainNode | null;
-  stems: Map<string, LoadedStemData>;
+  stems: Map<string, StemAudioData>;
 }
 
 export interface UseStemAudioNodesResult {

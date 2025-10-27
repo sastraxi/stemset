@@ -37,7 +37,7 @@ const DEFAULT_BANDS: EqBand[] = [
   { id: 'high', frequency: 10000, type: 'highshelf', gain: 0, q: 1 },
 ];
 
-const DEFAULT_CONFIG: EqConfig = {
+export const DEFAULT_EQ_CONFIG: EqConfig = {
   bands: DEFAULT_BANDS,
   enabled: true,
 };
@@ -47,7 +47,7 @@ export function useEqEffect({
   initialConfig,
 }: UseEqEffectOptions): UseEqEffectResult {
   const [config, setConfig] = useState<EqConfig>(() => {
-    return initialConfig || DEFAULT_CONFIG;
+    return initialConfig || DEFAULT_EQ_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -108,7 +108,7 @@ export function useEqEffect({
   }, []);
 
   const reset = useCallback(() => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig(DEFAULT_EQ_CONFIG);
   }, []);
 
   return {

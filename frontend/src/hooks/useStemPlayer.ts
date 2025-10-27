@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAudioContext } from './useAudioContext';
 import { useRecordingConfig } from './useRecordingConfig';
 import { useAudioLoader } from './useAudioLoader';
@@ -6,10 +6,7 @@ import type { LoadingMetrics } from './useAudioLoader';
 import { useStemAudioNodes } from './useStemAudioNodes';
 import { usePlaybackController } from './usePlaybackController';
 import { useAudioEffects } from './useAudioEffects';
-import type { EqConfig } from './effects/useEqEffect';
-import type { CompressorConfig } from './effects/useCompressorEffect';
-import type { ReverbConfig } from './effects/useReverbEffect';
-import type { StereoExpanderConfig } from './effects/useStereoExpanderEffect';
+import type { StemViewModel, EffectsChainConfig } from '../types';
 
 /**
  * Orchestrator hook for multi-stem audio player.
@@ -34,14 +31,6 @@ export interface UseStemPlayerOptions {
   sampleRate?: number;
 }
 
-export interface StemState {
-  gain: number;
-  muted: boolean;
-  soloed: boolean;
-  initialGain: number;
-  waveformUrl: string;
-}
-
 export interface UseStemPlayerResult {
   // Loading state
   isLoading: boolean;
@@ -52,8 +41,8 @@ export interface UseStemPlayerResult {
   currentTime: number;
   duration: number;
 
-  // Stem state
-  stems: Record<string, StemState>;
+  // Stem view models (merged metadata + user config)
+  stems: Record<string, StemViewModel>;
   stemOrder: string[]; // For consistent ordering
 
   // Playback controls
@@ -70,20 +59,17 @@ export interface UseStemPlayerResult {
   toggleSolo: (stemName: string) => void;
 
   // Effects
-  eqConfig: EqConfig;
-  compressorConfig: CompressorConfig;
-  reverbConfig: ReverbConfig;
-  stereoExpanderConfig: StereoExpanderConfig;
+  effectsConfig: EffectsChainConfig;
   updateEqBand: (id: string, changes: Partial<{ gain: number; frequency: number; q: number; type: BiquadFilterType }>) => void;
   setEqEnabled: (enabled: boolean) => void;
   resetEq: () => void;
-  updateCompressor: (changes: Partial<CompressorConfig>) => void;
+  updateCompressor: (changes: Partial<EffectsChainConfig['compressor']>) => void;
   setCompressorEnabled: (enabled: boolean) => void;
   resetCompressor: () => void;
-  updateReverb: (changes: Partial<ReverbConfig>) => void;
+  updateReverb: (changes: Partial<EffectsChainConfig['reverb']>) => void;
   setReverbEnabled: (enabled: boolean) => void;
   resetReverb: () => void;
-  updateStereoExpander: (changes: Partial<StereoExpanderConfig>) => void;
+  updateStereoExpander: (changes: Partial<EffectsChainConfig['stereoExpander']>) => void;
   setStereoExpanderEnabled: (enabled: boolean) => void;
   resetStereoExpander: () => void;
   compressorGainReduction: number;
@@ -101,7 +87,7 @@ export function useStemPlayer({
   const masterInput = getMasterInput();
 
   // 2. Recording config (localStorage persistence)
-  const { getConfig, savePlaybackPosition, saveStemConfig, saveEffectsConfig } = useRecordingConfig({
+  const { getConfig, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
     profileName,
     fileName,
   });
@@ -121,31 +107,38 @@ export function useStemPlayer({
     stems: loadedStems,
   });
 
-  // 5. Stem state (managed at this level)
-  const [stems, setStems] = useState<Record<string, StemState>>({});
+  // 5. Stem view models (merge metadata + user config)
+  const [stems, setStems] = useState<Record<string, StemViewModel>>({});
   const [stemOrder, setStemOrder] = useState<string[]>([]);
 
-  // Initialize stem state when audio nodes are created
+  // Initialize stem view models when audio nodes are created
   useEffect(() => {
     if (stemNodes.size === 0) return;
 
     const config = getConfig();
-    const newStems: Record<string, StemState> = {};
+    const newStems: Record<string, StemViewModel> = {};
     const order: string[] = [];
 
     stemNodes.forEach((node, name) => {
-      const savedGain = config.stemGains[name];
+      const savedStem = config.stems[name];
       const loadedStem = loadedStems.get(name);
-      const waveformUrl = loadedStem?.metadata?.waveform_url
-        ? metadataBaseUrl + loadedStem.metadata.waveform_url
-        : '';
+      const metadata = loadedStem?.metadata;
 
       newStems[name] = {
-        gain: savedGain !== undefined ? savedGain : node.initialGain,
-        muted: config.stemMutes[name] || false,
-        soloed: config.stemSolos[name] || false,
+        // Identity
+        name,
+
+        // From metadata (immutable)
+        stemType: metadata?.stem_type || 'unknown',
+        waveformUrl: metadata?.waveform_url
+          ? metadataBaseUrl + metadata.waveform_url
+          : '',
         initialGain: node.initialGain,
-        waveformUrl,
+
+        // From user config (mutable)
+        gain: savedStem?.gain ?? node.initialGain,
+        muted: savedStem?.muted ?? false,
+        soloed: savedStem?.soloed ?? false,
       };
       order.push(name);
     });
@@ -186,34 +179,18 @@ export function useStemPlayer({
     audioContext,
     masterInput,
     initialConfig: {
-      eqConfig: config.eqConfig,
-      compressorConfig: config.compressorConfig,
-      reverbConfig: config.reverbConfig,
-      stereoExpanderConfig: config.stereoExpanderConfig,
+      eqConfig: config.effects.eq,
+      compressorConfig: config.effects.compressor,
+      reverbConfig: config.effects.reverb,
+      stereoExpanderConfig: config.effects.stereoExpander,
     },
   });
 
   // 8. Playback control
-  const loadedStemsForPlayback = useMemo(() => {
-    const map = new Map();
-    stemNodes.forEach((node, name) => {
-      map.set(name, {
-        buffer: node.buffer,
-        gain: node.gainNode,
-        outputGain: node.outputGainNode,
-        initialGain: node.initialGain,
-        metadata: null,
-        muted: stems[name]?.muted || false,
-        soloed: stems[name]?.soloed || false,
-      });
-    });
-    return map;
-  }, [stemNodes, stems]);
-
   const { isPlaying, currentTime, play, pause, stop, seek, formatTime } = usePlaybackController({
     audioContext,
     duration,
-    loadedStems: loadedStemsForPlayback,
+    stemNodes,
   });
 
   // 9. Persist playback position
@@ -223,31 +200,31 @@ export function useStemPlayer({
     }
   }, [currentTime, isLoading, savePlaybackPosition]);
 
-  // 10. Persist stem state
+  // 10. Persist stem configs
   useEffect(() => {
     if (!isLoading && Object.keys(stems).length > 0) {
-      const stemGains: Record<string, number> = {};
-      const stemMutes: Record<string, boolean> = {};
-      const stemSolos: Record<string, boolean> = {};
+      const stemConfigs: Record<string, import('../types').StemUserConfig> = {};
 
-      Object.entries(stems).forEach(([name, state]) => {
-        stemGains[name] = state.gain;
-        stemMutes[name] = state.muted;
-        stemSolos[name] = state.soloed;
+      Object.entries(stems).forEach(([name, viewModel]) => {
+        stemConfigs[name] = {
+          gain: viewModel.gain,
+          muted: viewModel.muted,
+          soloed: viewModel.soloed,
+        };
       });
 
-      saveStemConfig(stemGains, stemMutes, stemSolos);
+      saveStemConfigs(stemConfigs);
     }
-  }, [stems, isLoading, saveStemConfig]);
+  }, [stems, isLoading, saveStemConfigs]);
 
   // 11. Persist effects config
   useEffect(() => {
     if (!isLoading) {
       saveEffectsConfig({
-        eqConfig: eq.config,
-        compressorConfig: compressor.config,
-        reverbConfig: reverb.config,
-        stereoExpanderConfig: stereoExpander.config,
+        eq: eq.config,
+        compressor: compressor.config,
+        reverb: reverb.config,
+        stereoExpander: stereoExpander.config,
       });
     }
   }, [
@@ -316,10 +293,12 @@ export function useStemPlayer({
     toggleSolo,
 
     // Effects
-    eqConfig: eq.config,
-    compressorConfig: compressor.config,
-    reverbConfig: reverb.config,
-    stereoExpanderConfig: stereoExpander.config,
+    effectsConfig: {
+      eq: eq.config,
+      compressor: compressor.config,
+      reverb: reverb.config,
+      stereoExpander: stereoExpander.config,
+    },
     updateEqBand: eq.updateBand,
     setEqEnabled: eq.setEnabled,
     resetEq: eq.reset,

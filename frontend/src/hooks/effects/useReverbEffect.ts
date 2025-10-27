@@ -22,7 +22,7 @@ export interface UseReverbEffectResult {
   setEnabled: (enabled: boolean) => void;
 }
 
-const DEFAULT_CONFIG: ReverbConfig = {
+export const DEFAULT_REVERB_CONFIG: ReverbConfig = {
   mix: 0.3,
   decay: 0.6,
   satAmount: 1.5,
@@ -34,7 +34,7 @@ export function useReverbEffect({
   initialConfig,
 }: UseReverbEffectOptions): UseReverbEffectResult {
   const [config, setConfig] = useState<ReverbConfig>(() => {
-    return initialConfig || DEFAULT_CONFIG;
+    return initialConfig || DEFAULT_REVERB_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -83,7 +83,7 @@ export function useReverbEffect({
   }, []);
 
   const reset = useCallback(() => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig(DEFAULT_REVERB_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {

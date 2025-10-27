@@ -25,7 +25,7 @@ export interface UseCompressorEffectResult {
   gainReduction: number;
 }
 
-const DEFAULT_CONFIG: CompressorConfig = {
+export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
   threshold: -6,
   attack: 0.005,
   release: 0.1,
@@ -39,7 +39,7 @@ export function useCompressorEffect({
   initialConfig,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
   const [config, setConfig] = useState<CompressorConfig>(() => {
-    return initialConfig || DEFAULT_CONFIG;
+    return initialConfig || DEFAULT_COMPRESSOR_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -114,7 +114,7 @@ export function useCompressorEffect({
   }, []);
 
   const reset = useCallback(() => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig(DEFAULT_COMPRESSOR_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {

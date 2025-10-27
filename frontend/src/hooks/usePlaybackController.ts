@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
-import type { LoadedStem } from '../types';
+import type { StemAudioNode } from '../types';
 
 export interface UsePlaybackControllerOptions {
   audioContext: AudioContext | null;
   duration: number;
-  loadedStems: Map<string, LoadedStem>;
+  stemNodes: Map<string, StemAudioNode>;
 }
 
 export interface UsePlaybackControllerResult {
@@ -34,7 +34,7 @@ export interface UsePlaybackControllerResult {
 export function usePlaybackController({
   audioContext,
   duration,
-  loadedStems,
+  stemNodes,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -76,10 +76,10 @@ export function usePlaybackController({
       playbackGenRef.current = thisPlaybackGen;
       manualEndModeRef.current = 'none';
 
-      loadedStems.forEach((stem, name) => {
+      stemNodes.forEach((node, name) => {
         const src = audioContext.createBufferSource();
-        src.buffer = stem.buffer;
-        src.connect(stem.gain);
+        src.buffer = node.buffer;
+        src.connect(node.gainNode);
 
         // Handle natural end of playback
         src.onended = () => {
@@ -130,14 +130,14 @@ export function usePlaybackController({
 
       rafRef.current = requestAnimationFrame(tick);
     },
-    [audioContext, duration, loadedStems, stopAllSources]
+    [audioContext, duration, stemNodes, stopAllSources]
   );
 
   const play = useCallback(() => {
     if (isPlaying) return;
     if (!audioContext) return;
 
-    if (loadedStems.size === 0) return;
+    if (stemNodes.size === 0) return;
 
     // Resume context if suspended
     if (audioContext.state === 'suspended') {
@@ -147,7 +147,7 @@ export function usePlaybackController({
     setIsPlaying(true);
     isPlayingRef.current = true;
     startSources(pausedAtRef.current);
-  }, [isPlaying, audioContext, loadedStems.size, startSources]);
+  }, [isPlaying, audioContext, stemNodes.size, startSources]);
 
   const pause = useCallback(() => {
     if (!isPlaying) return;

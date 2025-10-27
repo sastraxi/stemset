@@ -27,7 +27,7 @@ export interface UseStereoExpanderEffectResult {
   setEnabled: (enabled: boolean) => void;
 }
 
-const DEFAULT_CONFIG: StereoExpanderConfig = {
+export const DEFAULT_STEREO_EXPANDER_CONFIG: StereoExpanderConfig = {
   lowMidCrossover: 300,
   midHighCrossover: 3000,
   expLow: 1.0,
@@ -44,7 +44,7 @@ export function useStereoExpanderEffect({
   initialConfig,
 }: UseStereoExpanderEffectOptions): UseStereoExpanderEffectResult {
   const [config, setConfig] = useState<StereoExpanderConfig>(() => {
-    return initialConfig || DEFAULT_CONFIG;
+    return initialConfig || DEFAULT_STEREO_EXPANDER_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -98,7 +98,7 @@ export function useStereoExpanderEffect({
   }, []);
 
   const reset = useCallback(() => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig(DEFAULT_STEREO_EXPANDER_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
