@@ -1,4 +1,4 @@
-import { useParams } from '@tanstack/react-router'
+import { useParams, useSearch } from '@tanstack/react-router'
 import { AuthenticatedApp } from './AuthenticatedApp'
 import { useAuth } from '../contexts/AuthContext'
 import { LoginPage } from './LoginPage'
@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 
 export function RecordingPage() {
     const { profileName, recordingName } = useParams({ from: '/p/$profileName/$recordingName' })
+    const { source } = useSearch({ from: '/p/$profileName/$recordingName' })
     const { authStatus, loading: authLoading, logout } = useAuth()
 
     // Show login page if not authenticated
@@ -25,6 +26,7 @@ export function RecordingPage() {
                 onLogout={logout}
                 initialProfile={profileName}
                 initialRecording={recordingName}
+                sourceParam={source}
             />
         </>
     )

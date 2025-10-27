@@ -6,6 +6,7 @@ import { InlineEdit } from './InlineEdit'
 import { UserNav } from './UserNav'
 import { ProfileSelector } from './ProfileSelector'
 import { Upload, resumePendingJobs } from './Upload'
+import { QRUploadOverlay } from './QRUploadOverlay'
 import { Spinner } from './Spinner'
 import { Button } from './ui/button'
 import { useProfiles, useProfileFilesWithDisplayNames, useUpdateDisplayName } from '../hooks/queries'
@@ -29,13 +30,15 @@ interface AuthenticatedAppProps {
     onLogout: () => void
     initialProfile?: string
     initialRecording?: string
+    sourceParam?: string
 }
 
 export function AuthenticatedApp({
     user,
     onLogout,
     initialProfile,
-    initialRecording
+    initialRecording,
+    sourceParam
 }: AuthenticatedAppProps) {
     const [selectedProfile, setSelectedProfile] = useState<string | null>(initialProfile || null)
     const [selectedFile, setSelectedFile] = useState<StemFileWithDisplayName | null>(null)
@@ -324,6 +327,16 @@ export function AuthenticatedApp({
                     )}
                 </main>
             </div>
+
+            {/* QR Upload Overlay - shown when accessed via QR code */}
+            {sourceParam === 'qr' && selectedFile && selectedProfile && (
+                <QRUploadOverlay
+                    profileName={selectedProfile}
+                    recordingName={selectedFile.name}
+                    onUploadComplete={handleRefresh}
+                    onNavigateToRecording={handleNavigateToRecording}
+                />
+            )}
         </div>
     )
 }

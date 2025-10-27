@@ -7,7 +7,8 @@ export const Route = createFileRoute('/p/$profileName/$recordingName')({
   validateSearch: (search) => {
     return {
       t: typeof search.t === 'number' ? search.t : undefined,
-    } as { t?: number }
+      source: typeof search.source === 'string' ? search.source : undefined,
+    } as { t?: number; source?: string }
   },
   beforeLoad: ({ params, search }) => {
     // If there's a time parameter in the URL, update localStorage before rendering

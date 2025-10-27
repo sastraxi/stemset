@@ -2,7 +2,7 @@ import { useStemPlayer } from '../hooks/useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { Spinner } from './Spinner';
-import { Volume2, VolumeX, Music, Share } from 'lucide-react';
+import { Volume2, VolumeX, Music, Share, QrCode } from 'lucide-react';
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import { EqPanel } from './effects/EqPanel';
 import { CompressorPanel } from './effects/CompressorPanel';
 import { ReverbPanel } from './effects/ReverbPanel';
 import { StereoExpanderPanel } from './effects/StereoExpanderPanel';
+import { QRCodeModal } from './QRCodeModal';
 
 interface StemPlayerProps {
   profileName: string;
@@ -31,6 +32,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
   ({ profileName, fileName, metadataUrl, onLoadingChange }, ref) => {
     const [previewTime, setPreviewTime] = useState<number | null>(null);
     const [showTimeRemaining, setShowTimeRemaining] = useState(false);
+    const [showQRModal, setShowQRModal] = useState(false);
     const playerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -45,6 +47,15 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       const currentPath = `/p/${profileName}/${fileName}`;
       const url = new URL(currentPath, baseUrl);
       url.searchParams.set('t', Math.floor(time).toString());
+      return url.toString();
+    }, [profileName, fileName]);
+
+    // Generate QR URL for social sharing (points to upload page with source=qr)
+    const generateQRUrl = useCallback(() => {
+      const baseUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+      const currentPath = `/p/${profileName}/${fileName}`;
+      const url = new URL(currentPath, baseUrl);
+      url.searchParams.set('source', 'qr');
       return url.toString();
     }, [profileName, fileName]);
 
@@ -163,6 +174,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
     const playbackControlsContainer = document.getElementById('playback-controls-container');
     const playbackControls = (
       <>
+        <button
+          onClick={() => setShowQRModal(true)}
+          className="share-button"
+          title="Show QR code for social sharing"
+        >
+          <QrCode className="h-4 w-4" />
+        </button>
         <button
           onClick={async () => {
             const shareUrl = generateShareUrl(currentTime);
@@ -319,6 +337,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
             />
           </div>
         </div>
+
+        {/* QR Code Modal */}
+        <QRCodeModal
+          isOpen={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          url={generateQRUrl()}
+        />
       </>
     );
   });
