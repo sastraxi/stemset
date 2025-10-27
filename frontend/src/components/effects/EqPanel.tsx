@@ -1,13 +1,13 @@
-import type { EqBand, EqSettings } from '../../hooks/effects/useEqEffect';
+import type { EqBand, EqConfig } from '../../hooks/effects/useEqEffect';
 
 export interface EqPanelProps {
-  settings: EqSettings;
+  config: EqConfig;
   onUpdateBand: (id: string, changes: Partial<Pick<EqBand, 'gain' | 'frequency' | 'q' | 'type'>>) => void;
   onSetEnabled: (enabled: boolean) => void;
   onReset: () => void;
 }
 
-export function EqPanel({ settings, onUpdateBand, onSetEnabled, onReset }: EqPanelProps) {
+export function EqPanel({ config, onUpdateBand, onSetEnabled, onReset }: EqPanelProps) {
   return (
     <div className="eq-section">
       <div className="eq-header">
@@ -16,7 +16,7 @@ export function EqPanel({ settings, onUpdateBand, onSetEnabled, onReset }: EqPan
           <label className="effect-toggle">
             <input
               type="checkbox"
-              checked={settings.enabled}
+              checked={config.enabled}
               onChange={(e) => onSetEnabled(e.target.checked)}
             />
             <span>On</span>
@@ -27,7 +27,7 @@ export function EqPanel({ settings, onUpdateBand, onSetEnabled, onReset }: EqPan
         </div>
       </div>
       <div className="eq-bands vertical">
-        {settings.bands.map((b) => (
+        {config.bands.map((b) => (
           <div key={b.id} className="eq-band-vertical">
             <label className="eq-band-label">
               {b.id}

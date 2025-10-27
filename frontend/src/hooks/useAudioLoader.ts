@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { StemMetadata } from '../types';
+import type { StemMetadata, LoadedStemData } from '../types';
 import { getFileMetadata } from '../api';
 
 export interface StemTiming {
@@ -16,11 +16,6 @@ export interface LoadingMetrics {
   totalMs: number;
   stems: StemTiming[];
   metadataMs: number;
-}
-
-export interface LoadedStemData {
-  buffer: AudioBuffer;
-  metadata: StemMetadata | null;
 }
 
 export interface UseAudioLoaderOptions {

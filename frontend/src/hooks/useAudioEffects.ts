@@ -1,24 +1,24 @@
 import { useEffect } from 'react';
 import { useEqEffect } from './effects/useEqEffect';
-import type { UseEqEffectResult } from './effects/useEqEffect';
+import type { UseEqEffectResult, EqConfig } from './effects/useEqEffect';
 import { useCompressorEffect } from './effects/useCompressorEffect';
-import type { UseCompressorEffectResult } from './effects/useCompressorEffect';
+import type { UseCompressorEffectResult, CompressorConfig } from './effects/useCompressorEffect';
 import { useReverbEffect } from './effects/useReverbEffect';
-import type { UseReverbEffectResult } from './effects/useReverbEffect';
+import type { UseReverbEffectResult, ReverbConfig } from './effects/useReverbEffect';
 import { useStereoExpanderEffect } from './effects/useStereoExpanderEffect';
-import type { UseStereoExpanderEffectResult } from './effects/useStereoExpanderEffect';
+import type { UseStereoExpanderEffectResult, StereoExpanderConfig } from './effects/useStereoExpanderEffect';
 
 export interface AudioEffectsConfig {
-  eqConfig?: unknown;
-  compressorConfig?: unknown;
-  reverbConfig?: unknown;
-  stereoExpanderConfig?: unknown;
+  eqConfig?: EqConfig;
+  compressorConfig?: CompressorConfig;
+  reverbConfig?: ReverbConfig;
+  stereoExpanderConfig?: StereoExpanderConfig;
 }
 
 export interface UseAudioEffectsOptions {
   audioContext: AudioContext | null;
   masterInput: GainNode | null;
-  savedEffectsConfig: AudioEffectsConfig;
+  initialConfig: AudioEffectsConfig;
 }
 
 export interface UseAudioEffectsResult {
@@ -26,7 +26,6 @@ export interface UseAudioEffectsResult {
   compressor: Omit<UseCompressorEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
   reverb: Omit<UseReverbEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
   stereoExpander: Omit<UseStereoExpanderEffectResult, 'inputNode' | 'outputNode' | 'isReady'>;
-  getCurrentEffectsConfig: () => AudioEffectsConfig;
 }
 
 /**
@@ -38,27 +37,27 @@ export interface UseAudioEffectsResult {
 export function useAudioEffects({
   audioContext,
   masterInput,
-  savedEffectsConfig,
+  initialConfig,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
 
   const eq = useEqEffect({
     audioContext,
-    initialConfig: savedEffectsConfig.eqConfig,
+    initialConfig: initialConfig.eqConfig,
   });
 
   const stereoExpander = useStereoExpanderEffect({
     audioContext,
-    initialConfig: savedEffectsConfig.stereoExpanderConfig,
+    initialConfig: initialConfig.stereoExpanderConfig,
   });
 
   const reverb = useReverbEffect({
     audioContext,
-    initialConfig: savedEffectsConfig.reverbConfig,
+    initialConfig: initialConfig.reverbConfig,
   });
 
   const compressor = useCompressorEffect({
     audioContext,
-    initialConfig: savedEffectsConfig.compressorConfig,
+    initialConfig: initialConfig.compressorConfig,
   });
 
   const allEffects = [eq, stereoExpander, reverb, compressor];
@@ -80,7 +79,7 @@ export function useAudioEffects({
     let currentNode: AudioNode = masterInput;
 
     allEffects.forEach(effect => {
-      if (effect.settings.enabled) {
+      if (effect.config.enabled) {
         // Connect the previous node to this effect's input
         currentNode.connect(effect.inputNode!);
         // The new current node is this effect's output
@@ -94,29 +93,19 @@ export function useAudioEffects({
   }, [
     audioContext,
     masterInput,
-    eq.isReady, eq.settings.enabled,
-    stereoExpander.isReady, stereoExpander.settings.enabled,
-    reverb.isReady, reverb.settings.enabled,
-    compressor.isReady, compressor.settings.enabled,
+    eq.isReady, eq.config.enabled,
+    stereoExpander.isReady, stereoExpander.config.enabled,
+    reverb.isReady, reverb.config.enabled,
+    compressor.isReady, compressor.config.enabled,
     // Note: We don't need the nodes themselves in the dependency array because
     // they are stored in refs and never change. This effect only re-runs when
     // readiness or enabled status changes.
   ]);
-
-  const getCurrentEffectsConfig = (): AudioEffectsConfig => {
-    return {
-      eqConfig: eq.settings,
-      compressorConfig: compressor.settings,
-      reverbConfig: reverb.settings,
-      stereoExpanderConfig: stereoExpander.settings,
-    };
-  };
 
   return {
     eq,
     compressor,
     reverb,
     stereoExpander,
-    getCurrentEffectsConfig,
   };
 }

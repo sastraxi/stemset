@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export interface CompressorSettings {
+export interface CompressorConfig {
   threshold: number; // dB, -40 to 0
   attack: number; // seconds, 0.001 to 0.1
   release: number; // seconds, 0.01 to 1.0
@@ -11,21 +11,21 @@ export interface CompressorSettings {
 
 export interface UseCompressorEffectOptions {
   audioContext: AudioContext | null;
-  initialConfig?: unknown;
+  initialConfig?: CompressorConfig;
 }
 
 export interface UseCompressorEffectResult {
   isReady: boolean;
   inputNode: AudioWorkletNode | null;
   outputNode: GainNode | null;
-  settings: CompressorSettings;
-  update: (changes: Partial<CompressorSettings>) => void;
+  config: CompressorConfig;
+  update: (changes: Partial<CompressorConfig>) => void;
   reset: () => void;
   setEnabled: (enabled: boolean) => void;
   gainReduction: number;
 }
 
-const DEFAULT_SETTINGS: CompressorSettings = {
+const DEFAULT_CONFIG: CompressorConfig = {
   threshold: -6,
   attack: 0.005,
   release: 0.1,
@@ -38,14 +38,8 @@ export function useCompressorEffect({
   audioContext,
   initialConfig,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
-  const [settings, setSettings] = useState<CompressorSettings>(() => {
-    if (initialConfig && typeof initialConfig === 'object' && initialConfig !== null) {
-      const config = initialConfig as CompressorSettings;
-      if (typeof config.threshold === 'number') {
-        return { ...DEFAULT_SETTINGS, ...config };
-      }
-    }
-    return DEFAULT_SETTINGS;
+  const [config, setConfig] = useState<CompressorConfig>(() => {
+    return initialConfig || DEFAULT_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -100,7 +94,7 @@ export function useCompressorEffect({
   useEffect(() => {
     if (!audioContext || !isReady || !workletNodeRef.current || !makeupGainRef.current) return;
 
-    const { threshold, attack, release, bodyBlend, airBlend } = settings;
+    const { threshold, attack, release, bodyBlend, airBlend } = config;
     workletNodeRef.current.parameters.get('threshold')?.setTargetAtTime(threshold, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('attack')?.setTargetAtTime(attack, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('release')?.setTargetAtTime(release, audioContext.currentTime, 0.05);
@@ -110,28 +104,28 @@ export function useCompressorEffect({
     const makeupGainLinear = Math.pow(10, -threshold / 20);
     makeupGainRef.current.gain.setTargetAtTime(makeupGainLinear, audioContext.currentTime, 0.01);
 
-    if (!settings.enabled) {
+    if (!config.enabled) {
       setGainReduction(0);
     }
-  }, [settings, audioContext, isReady]);
+  }, [config, audioContext, isReady]);
 
-  const update = useCallback((changes: Partial<CompressorSettings>) => {
-    setSettings(prev => ({ ...prev, ...changes }));
+  const update = useCallback((changes: Partial<CompressorConfig>) => {
+    setConfig(prev => ({ ...prev, ...changes }));
   }, []);
 
   const reset = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
+    setConfig(DEFAULT_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
-    setSettings(prev => ({ ...prev, enabled }));
+    setConfig(prev => ({ ...prev, enabled }));
   }, []);
 
   return {
     isReady,
     inputNode: workletNodeRef.current,
     outputNode: makeupGainRef.current,
-    settings,
+    config,
     update,
     reset,
     setEnabled,

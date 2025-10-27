@@ -309,6 +309,7 @@ export function AuthenticatedApp({
                                 </div>
                             )}
                             <StemPlayer
+                                key={`${selectedProfile}::${selectedFile.name}`}
                                 ref={stemPlayerRef}
                                 profileName={selectedProfile}
                                 fileName={selectedFile.name}

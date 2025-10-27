@@ -1,4 +1,4 @@
-import { useStemPlayer } from './useStemPlayer';
+import { useStemPlayer } from '../hooks/useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { Spinner } from './Spinner';
@@ -44,7 +44,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       isPlaying,
       currentTime,
       duration,
-      stems: stemEntries,
+      stems,
+      stemOrder,
       play,
       pause,
       stop,
@@ -54,10 +55,20 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       toggleMute,
       toggleSolo,
       formatTime,
-      eq,
-      compressor,
-      reverb,
-      stereoExpander,
+      eqConfig,
+      compressorConfig,
+      reverbConfig,
+      stereoExpanderConfig,
+      updateEqBand,
+      setEqEnabled,
+      resetEq,
+      updateCompressor,
+      resetCompressor,
+      updateReverb,
+      resetReverb,
+      updateStereoExpander,
+      resetStereoExpander,
+      compressorGainReduction,
     } = useStemPlayer({ profileName, fileName, metadataUrl });
 
     // Notify parent of loading state changes
@@ -103,16 +114,17 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
     if (!isLoading && !hasLoggedRef.current.has(key)) {
       hasLoggedRef.current.add(key);
       // Assemble snapshot
+      const stemArray = stemOrder.map(name => stems[name]);
       const snapshot = {
         profileName,
         fileName,
         loadingMetrics,
-        stemCount: stemEntries.length,
-        stems: stemEntries.map(s => ({ name: s.name, gain: s.gain, initialGain: s.initialGain })),
-        eq: eq.settings,
-        compressor: compressor.settings,
-        reverb: reverb.settings,
-        stereoExpander: stereoExpander.settings,
+        stemCount: stemOrder.length,
+        stems: stemArray.map(s => ({ name: Object.keys(stems).find(k => stems[k] === s), gain: s.gain, initialGain: s.initialGain })),
+        eq: eqConfig,
+        compressor: compressorConfig,
+        reverb: reverbConfig,
+        stereoExpander: stereoExpanderConfig,
         timestamp: new Date().toISOString(),
       };
       // Pretty print
@@ -125,10 +137,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
           console.info('Metadata fetch ms', loadingMetrics.metadataMs.toFixed(1));
           console.info('Overall ms', loadingMetrics.totalMs.toFixed(1));
         }
-        console.info('EQ', eq.settings);
-        console.info('Compressor', compressor.settings);
-        console.info('Reverb', reverb.settings);
-        console.info('Stereo Expander', stereoExpander.settings);
+        console.info('EQ', eqConfig);
+        console.info('Compressor', compressorConfig);
+        console.info('Reverb', reverbConfig);
+        console.info('Stereo Expander', stereoExpanderConfig);
         console.info('Stems', snapshot.stems);
         console.groupEnd();
       } catch (e) {
@@ -162,7 +174,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         </div>
         <button
           onClick={isPlaying ? pause : play}
-          disabled={stemEntries.length === 0}
+          disabled={stemOrder.length === 0}
           className="playback-button"
           title={isPlaying ? "Pause" : "Play"}
         >
@@ -199,90 +211,93 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
               />
             </div>
 
-            {stemEntries.map((stem, stemIndex) => (
-              <div key={stem.name} className={"waveform-row"}>
-                <div className="waveform-controls">
-                  <label className="waveform-stem-label">{stem.name}</label>
-                  <div className="waveform-volume-control">
-                    <input
-                      type="range"
-                      min={0}
-                      max={2}
-                      step={0.01}
-                      value={stem.gain}
-                      onChange={(e) => setStemGain(stem.name, parseFloat(e.target.value))}
-                      className="volume-slider"
-                      disabled={stem.muted}
-                    />
-                    <span className="volume-label">
-                      {stem.muted ? 'Muted' : `${(stem.gain * 100).toFixed(0)}%`}
-                    </span>
+            {stemOrder.map((stemName, stemIndex) => {
+              const stem = stems[stemName];
+              return (
+                <div key={stemName} className={"waveform-row"}>
+                  <div className="waveform-controls">
+                    <label className="waveform-stem-label">{stemName}</label>
+                    <div className="waveform-volume-control">
+                      <input
+                        type="range"
+                        min={0}
+                        max={2}
+                        step={0.01}
+                        value={stem.gain}
+                        onChange={(e) => setStemGain(stemName, parseFloat(e.target.value))}
+                        className="volume-slider"
+                        disabled={stem.muted}
+                      />
+                      <span className="volume-label">
+                        {stem.muted ? 'Muted' : `${(stem.gain * 100).toFixed(0)}%`}
+                      </span>
+                    </div>
+                    <div className="waveform-control-buttons flex gap-1">
+                      <button
+                        onClick={() => toggleMute(stemName)}
+                        className={`mute-button ${stem.muted ? 'muted' : ''}`}
+                        title={stem.muted ? "Unmute" : "Mute"}
+                      >
+                        {stem.muted ?
+                          <VolumeX className="h-4 w-4" color={stem.muted ? "#ff6666" : "currentColor"} /> :
+                          <Volume2 className="h-4 w-4" color="currentColor" />
+                        }
+                      </button>
+                      <button
+                        onClick={() => toggleSolo(stemName)}
+                        className={`solo-button ${stem.soloed ? 'soloed' : ''}`}
+                        title={stem.soloed ? "Unsolo" : "Solo"}
+                      >
+                        <Music className="h-4 w-4" color={stem.soloed ? "#ffb347" : "currentColor"} />
+                      </button>
+                      <button
+                        onClick={() => resetStemGain(stemName)}
+                        className="reset-gain"
+                        title="Reset to initial gain"
+                      >
+                        ↺
+                      </button>
+                    </div>
                   </div>
-                  <div className="waveform-control-buttons flex gap-1">
-                    <button
-                      onClick={() => toggleMute(stem.name)}
-                      className={`mute-button ${stem.muted ? 'muted' : ''}`}
-                      title={stem.muted ? "Unmute" : "Mute"}
-                    >
-                      {stem.muted ?
-                        <VolumeX className="h-4 w-4" color={stem.muted ? "#ff6666" : "currentColor"} /> :
-                        <Volume2 className="h-4 w-4" color="currentColor" />
-                      }
-                    </button>
-                    <button
-                      onClick={() => toggleSolo(stem.name)}
-                      className={`solo-button ${stem.soloed ? 'soloed' : ''}`}
-                      title={stem.soloed ? "Unsolo" : "Solo"}
-                    >
-                      <Music className="h-4 w-4" color={stem.soloed ? "#ffb347" : "currentColor"} />
-                    </button>
-                    <button
-                      onClick={() => resetStemGain(stem.name)}
-                      className="reset-gain"
-                      title="Reset to initial gain"
-                    >
-                      ↺
-                    </button>
-                  </div>
+                  <WaveformVisualization
+                    waveformUrl={stem.waveformUrl}
+                    stemName={stemName}
+                    currentTime={currentTime}
+                    duration={duration}
+                    previewTime={previewTime || undefined}
+                    onSeek={seek}
+                    onPreview={setPreviewTime}
+                    waveformClasses={stemIndex === stemOrder.length - 1 ? "rounded-b-lg overflow-hidden" : ""}
+                  />
                 </div>
-                <WaveformVisualization
-                  waveformUrl={stem.waveformUrl}
-                  stemName={stem.name}
-                  currentTime={currentTime}
-                  duration={duration}
-                  previewTime={previewTime || undefined}
-                  onSeek={seek}
-                  onPreview={setPreviewTime}
-                  waveformClasses={stemIndex === stemEntries.length - 1 ? "rounded-b-lg overflow-hidden" : ""}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </div>
         <div className="player-panel master-effects">
           <div className="master-effects-row">
             <EqPanel
-              settings={eq.settings}
-              onUpdateBand={eq.updateBand}
-              onSetEnabled={eq.setEnabled}
-              onReset={eq.reset}
+              config={eqConfig}
+              onUpdateBand={updateEqBand}
+              onSetEnabled={setEqEnabled}
+              onReset={resetEq}
             />
             <StereoExpanderPanel
-              settings={stereoExpander.settings}
-              onUpdate={stereoExpander.update}
-              onReset={stereoExpander.reset}
+              config={stereoExpanderConfig}
+              onUpdate={updateStereoExpander}
+              onReset={resetStereoExpander}
             />
             <ReverbPanel
-              settings={reverb.settings}
-              onUpdate={reverb.update}
-              onReset={reverb.reset}
+              config={reverbConfig}
+              onUpdate={updateReverb}
+              onReset={resetReverb}
             />
             <CompressorPanel
-              settings={compressor.settings}
-              gainReduction={compressor.gainReduction}
-              onUpdate={compressor.update}
-              onReset={compressor.reset}
+              config={compressorConfig}
+              gainReduction={compressorGainReduction}
+              onUpdate={updateCompressor}
+              onReset={resetCompressor}
             />
           </div>
         </div>

@@ -25,3 +25,27 @@ export interface StemsMetadata {
   stems: Record<string, StemMetadata>;
   display_name: string;
 }
+
+// Audio playback types
+
+export interface LoadedStemData {
+  buffer: AudioBuffer;
+  metadata: StemMetadata | null;
+}
+
+export interface StemAudioNode {
+  buffer: AudioBuffer;
+  gainNode: GainNode;
+  outputGainNode: GainNode;
+  initialGain: number;
+}
+
+export interface LoadedStem {
+  buffer: AudioBuffer;
+  gain: GainNode;
+  outputGain: GainNode;
+  initialGain: number;
+  metadata: unknown;
+  muted: boolean;
+  soloed: boolean;
+}

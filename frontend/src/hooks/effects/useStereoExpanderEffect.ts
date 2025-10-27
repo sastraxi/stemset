@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export interface StereoExpanderSettings {
+export interface StereoExpanderConfig {
   lowMidCrossover: number; // Hz, 50 to 2000
   midHighCrossover: number; // Hz, 800 to 12000
   expLow: number; // 0.5 to 2.0 (1.0 = unchanged)
@@ -14,20 +14,20 @@ export interface StereoExpanderSettings {
 
 export interface UseStereoExpanderEffectOptions {
   audioContext: AudioContext | null;
-  initialConfig?: unknown;
+  initialConfig?: StereoExpanderConfig;
 }
 
 export interface UseStereoExpanderEffectResult {
   isReady: boolean;
   inputNode: AudioWorkletNode | null;
   outputNode: AudioWorkletNode | null;
-  settings: StereoExpanderSettings;
-  update: (changes: Partial<StereoExpanderSettings>) => void;
+  config: StereoExpanderConfig;
+  update: (changes: Partial<StereoExpanderConfig>) => void;
   reset: () => void;
   setEnabled: (enabled: boolean) => void;
 }
 
-const DEFAULT_SETTINGS: StereoExpanderSettings = {
+const DEFAULT_CONFIG: StereoExpanderConfig = {
   lowMidCrossover: 300,
   midHighCrossover: 3000,
   expLow: 1.0,
@@ -43,14 +43,8 @@ export function useStereoExpanderEffect({
   audioContext,
   initialConfig,
 }: UseStereoExpanderEffectOptions): UseStereoExpanderEffectResult {
-  const [settings, setSettings] = useState<StereoExpanderSettings>(() => {
-    if (initialConfig && typeof initialConfig === 'object' && initialConfig !== null) {
-      const config = initialConfig as StereoExpanderSettings;
-      if (typeof config.lowMidCrossover === 'number') {
-        return { ...DEFAULT_SETTINGS, ...config };
-      }
-    }
-    return DEFAULT_SETTINGS;
+  const [config, setConfig] = useState<StereoExpanderConfig>(() => {
+    return initialConfig || DEFAULT_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -62,6 +56,8 @@ export function useStereoExpanderEffect({
 
     async function loadWorklet() {
       try {
+        if (!audioContext) return;
+
         await audioContext.audioWorklet.addModule('/multiband-stereo-expander.js');
         workletLoadedRef.current = true;
 
@@ -86,7 +82,7 @@ export function useStereoExpanderEffect({
   useEffect(() => {
     if (!audioContext || !isReady || !workletNodeRef.current) return;
 
-    const { lowMidCrossover, midHighCrossover, expLow, compLow, expMid, compMid, expHigh, compHigh } = settings;
+    const { lowMidCrossover, midHighCrossover, expLow, compLow, expMid, compMid, expHigh, compHigh } = config;
     workletNodeRef.current.parameters.get('lowMidCrossover')?.setTargetAtTime(lowMidCrossover, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('midHighCrossover')?.setTargetAtTime(midHighCrossover, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('expLow')?.setTargetAtTime(expLow, audioContext.currentTime, 0.01);
@@ -95,25 +91,25 @@ export function useStereoExpanderEffect({
     workletNodeRef.current.parameters.get('compMid')?.setTargetAtTime(compMid, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('expHigh')?.setTargetAtTime(expHigh, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('compHigh')?.setTargetAtTime(compHigh, audioContext.currentTime, 0.01);
-  }, [settings, audioContext, isReady]);
+  }, [config, audioContext, isReady]);
 
-  const update = useCallback((changes: Partial<StereoExpanderSettings>) => {
-    setSettings(prev => ({ ...prev, ...changes }));
+  const update = useCallback((changes: Partial<StereoExpanderConfig>) => {
+    setConfig(prev => ({ ...prev, ...changes }));
   }, []);
 
   const reset = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
+    setConfig(DEFAULT_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
-    setSettings(prev => ({ ...prev, enabled }));
+    setConfig(prev => ({ ...prev, enabled }));
   }, []);
 
   return {
     isReady,
     inputNode: workletNodeRef.current,
     outputNode: workletNodeRef.current,
-    settings,
+    config,
     update,
     reset,
     setEnabled,

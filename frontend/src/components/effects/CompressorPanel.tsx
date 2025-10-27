@@ -1,13 +1,13 @@
-import type { CompressorSettings } from '../../hooks/effects/useCompressorEffect';
+import type { CompressorConfig } from '../../hooks/effects/useCompressorEffect';
 
 export interface CompressorPanelProps {
-  settings: CompressorSettings;
+  config: CompressorConfig;
   gainReduction: number;
-  onUpdate: (changes: Partial<CompressorSettings>) => void;
+  onUpdate: (changes: Partial<CompressorConfig>) => void;
   onReset: () => void;
 }
 
-export function CompressorPanel({ settings, gainReduction, onUpdate, onReset }: CompressorPanelProps) {
+export function CompressorPanel({ config, gainReduction, onUpdate, onReset }: CompressorPanelProps) {
   return (
     <div className="limiter-section">
       <div className="limiter-header">
@@ -16,7 +16,7 @@ export function CompressorPanel({ settings, gainReduction, onUpdate, onReset }: 
           <label className="effect-toggle">
             <input
               type="checkbox"
-              checked={settings.enabled}
+              checked={config.enabled}
               onChange={(e) => onUpdate({ enabled: e.target.checked })}
             />
             <span>On</span>
@@ -28,57 +28,57 @@ export function CompressorPanel({ settings, gainReduction, onUpdate, onReset }: 
       </div>
       <div className="limiter-controls">
         <div className="limiter-ceiling">
-          <label>Threshold {settings.threshold} dB</label>
+          <label>Threshold {config.threshold} dB</label>
           <input
             type="range"
             min={-40}
             max={0}
             step={1}
-            value={settings.threshold}
+            value={config.threshold}
             onChange={(e) => onUpdate({ threshold: parseFloat(e.target.value) })}
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Attack {Math.floor(settings.attack * 1000)}ms</label>
+          <label>Attack {Math.floor(config.attack * 1000)}ms</label>
           <input
             type="range"
             min={0.001}
             max={0.1}
             step={0.001}
-            value={settings.attack}
+            value={config.attack}
             onChange={(e) => onUpdate({ attack: parseFloat(e.target.value) })}
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Release {Math.floor(settings.release * 1000)}ms</label>
+          <label>Release {Math.floor(config.release * 1000)}ms</label>
           <input
             type="range"
             min={0.01}
             max={1.0}
             step={0.01}
-            value={settings.release}
+            value={config.release}
             onChange={(e) => onUpdate({ release: parseFloat(e.target.value) })}
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Body {(settings.bodyBlend * 100).toFixed(0)}%</label>
+          <label>Body {(config.bodyBlend * 100).toFixed(0)}%</label>
           <input
             type="range"
             min={0}
             max={1}
             step={0.01}
-            value={settings.bodyBlend}
+            value={config.bodyBlend}
             onChange={(e) => onUpdate({ bodyBlend: parseFloat(e.target.value) })}
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Air {(settings.airBlend * 100).toFixed(0)}%</label>
+          <label>Air {(config.airBlend * 100).toFixed(0)}%</label>
           <input
             type="range"
             min={0}
             max={1}
             step={0.01}
-            value={settings.airBlend}
+            value={config.airBlend}
             onChange={(e) => onUpdate({ airBlend: parseFloat(e.target.value) })}
           />
         </div>

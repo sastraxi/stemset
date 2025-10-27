@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
-import type { LoadedStem } from './useStemManager';
+import type { LoadedStem } from '../types';
 
 export interface UsePlaybackControllerOptions {
   audioContext: AudioContext | null;
   duration: number;
-  getLoadedStems: () => Map<string, LoadedStem>;
+  loadedStems: Map<string, LoadedStem>;
 }
 
 export interface UsePlaybackControllerResult {
@@ -34,7 +34,7 @@ export interface UsePlaybackControllerResult {
 export function usePlaybackController({
   audioContext,
   duration,
-  getLoadedStems,
+  loadedStems,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -76,9 +76,7 @@ export function usePlaybackController({
       playbackGenRef.current = thisPlaybackGen;
       manualEndModeRef.current = 'none';
 
-      const stems = getLoadedStems();
-
-      stems.forEach((stem, name) => {
+      loadedStems.forEach((stem, name) => {
         const src = audioContext.createBufferSource();
         src.buffer = stem.buffer;
         src.connect(stem.gain);
@@ -132,15 +130,14 @@ export function usePlaybackController({
 
       rafRef.current = requestAnimationFrame(tick);
     },
-    [audioContext, duration, getLoadedStems, stopAllSources]
+    [audioContext, duration, loadedStems, stopAllSources]
   );
 
   const play = useCallback(() => {
     if (isPlaying) return;
     if (!audioContext) return;
 
-    const stems = getLoadedStems();
-    if (stems.size === 0) return;
+    if (loadedStems.size === 0) return;
 
     // Resume context if suspended
     if (audioContext.state === 'suspended') {
@@ -150,7 +147,7 @@ export function usePlaybackController({
     setIsPlaying(true);
     isPlayingRef.current = true;
     startSources(pausedAtRef.current);
-  }, [isPlaying, audioContext, getLoadedStems, startSources]);
+  }, [isPlaying, audioContext, loadedStems.size, startSources]);
 
   const pause = useCallback(() => {
     if (!isPlaying) return;

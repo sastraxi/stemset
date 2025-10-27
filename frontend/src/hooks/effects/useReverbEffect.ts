@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export interface ReverbSettings {
+export interface ReverbConfig {
   mix: number; // 0 to 1
   decay: number; // 0.1 to 2.0 seconds
   satAmount: number; // 0.1 to 3.0
@@ -9,20 +9,20 @@ export interface ReverbSettings {
 
 export interface UseReverbEffectOptions {
   audioContext: AudioContext | null;
-  initialConfig?: unknown;
+  initialConfig?: ReverbConfig;
 }
 
 export interface UseReverbEffectResult {
   isReady: boolean;
   inputNode: AudioWorkletNode | null;
   outputNode: AudioWorkletNode | null;
-  settings: ReverbSettings;
-  update: (changes: Partial<ReverbSettings>) => void;
+  config: ReverbConfig;
+  update: (changes: Partial<ReverbConfig>) => void;
   reset: () => void;
   setEnabled: (enabled: boolean) => void;
 }
 
-const DEFAULT_SETTINGS: ReverbSettings = {
+const DEFAULT_CONFIG: ReverbConfig = {
   mix: 0.3,
   decay: 0.6,
   satAmount: 1.5,
@@ -33,14 +33,8 @@ export function useReverbEffect({
   audioContext,
   initialConfig,
 }: UseReverbEffectOptions): UseReverbEffectResult {
-  const [settings, setSettings] = useState<ReverbSettings>(() => {
-    if (initialConfig && typeof initialConfig === 'object' && initialConfig !== null) {
-      const config = initialConfig as ReverbSettings;
-      if (typeof config.mix === 'number') {
-        return { ...DEFAULT_SETTINGS, ...config };
-      }
-    }
-    return DEFAULT_SETTINGS;
+  const [config, setConfig] = useState<ReverbConfig>(() => {
+    return initialConfig || DEFAULT_CONFIG;
   });
 
   const [isReady, setIsReady] = useState(false);
@@ -52,6 +46,8 @@ export function useReverbEffect({
 
     async function loadWorklet() {
       try {
+        if (!audioContext) return;
+
         await audioContext.audioWorklet.addModule('/plate-reverb-saturation.js');
         workletLoadedRef.current = true;
 
@@ -76,29 +72,29 @@ export function useReverbEffect({
   useEffect(() => {
     if (!audioContext || !isReady || !workletNodeRef.current) return;
 
-    const { mix, decay, satAmount } = settings;
+    const { mix, decay, satAmount } = config;
     workletNodeRef.current.parameters.get('mix')?.setTargetAtTime(mix, audioContext.currentTime, 0.01);
     workletNodeRef.current.parameters.get('decay')?.setTargetAtTime(decay, audioContext.currentTime, 0.05);
     workletNodeRef.current.parameters.get('satAmount')?.setTargetAtTime(satAmount, audioContext.currentTime, 0.01);
-  }, [settings, audioContext, isReady]);
+  }, [config, audioContext, isReady]);
 
-  const update = useCallback((changes: Partial<ReverbSettings>) => {
-    setSettings(prev => ({ ...prev, ...changes }));
+  const update = useCallback((changes: Partial<ReverbConfig>) => {
+    setConfig(prev => ({ ...prev, ...changes }));
   }, []);
 
   const reset = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
+    setConfig(DEFAULT_CONFIG);
   }, []);
 
   const setEnabled = useCallback((enabled: boolean) => {
-    setSettings(prev => ({ ...prev, enabled }));
+    setConfig(prev => ({ ...prev, enabled }));
   }, []);
 
   return {
     isReady,
     inputNode: workletNodeRef.current,
     outputNode: workletNodeRef.current, // For this simple effect, input and output are the same node
-    settings,
+    config,
     update,
     reset,
     setEnabled,
