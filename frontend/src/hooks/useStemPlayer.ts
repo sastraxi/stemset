@@ -191,6 +191,7 @@ export function useStemPlayer({
     audioContext,
     duration,
     stemNodes,
+    initialPosition: config.playbackPosition,
   });
 
   // 9. Persist playback position

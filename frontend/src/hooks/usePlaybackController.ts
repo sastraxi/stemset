@@ -5,6 +5,7 @@ export interface UsePlaybackControllerOptions {
   audioContext: AudioContext | null;
   duration: number;
   stemNodes: Map<string, StemAudioNode>;
+  initialPosition?: number;  // Initial playback position in seconds
 }
 
 export interface UsePlaybackControllerResult {
@@ -35,16 +36,17 @@ export function usePlaybackController({
   audioContext,
   duration,
   stemNodes,
+  initialPosition = 0,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(initialPosition);
 
   // Audio source management
   const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
 
   // Timing state
   const startTimeRef = useRef<number>(0); // AudioContext.currentTime - offset when play starts
-  const pausedAtRef = useRef<number>(0); // Position in seconds when paused
+  const pausedAtRef = useRef<number>(initialPosition); // Position in seconds when paused
 
   // RAF and playback management
   const rafRef = useRef<number | null>(null);
