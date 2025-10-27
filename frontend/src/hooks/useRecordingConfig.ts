@@ -59,10 +59,16 @@ export function useRecordingConfig({
     if (!saved) return DEFAULT_RECORDING_CONFIG;
 
     // Ensure all required fields exist (for backward compatibility)
+    // Deep merge effects to handle new compressor parameters
     return {
       playbackPosition: saved.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
       stems: saved.stems ?? DEFAULT_RECORDING_CONFIG.stems,
-      effects: saved.effects ?? DEFAULT_RECORDING_CONFIG.effects,
+      effects: {
+        eq: { ...DEFAULT_EQ_CONFIG, ...(saved.effects?.eq || {}) },
+        compressor: { ...DEFAULT_COMPRESSOR_CONFIG, ...(saved.effects?.compressor || {}) },
+        reverb: { ...DEFAULT_REVERB_CONFIG, ...(saved.effects?.reverb || {}) },
+        stereoExpander: { ...DEFAULT_STEREO_EXPANDER_CONFIG, ...(saved.effects?.stereoExpander || {}) },
+      },
     };
   }, [profileName, fileName]);
 

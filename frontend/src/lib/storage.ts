@@ -174,7 +174,7 @@ export function updateRecordingState(
       stems: {},
       effects: updates.effects || {
         eq: { bands: [], enabled: true },
-        compressor: { threshold: -6, attack: 0.005, release: 0.1, bodyBlend: 0, airBlend: 0.1, enabled: true },
+        compressor: { threshold: -6, attack: 0.005, hold: 0.02, release: 0.1, enabled: true },
         reverb: { mix: 0.3, decay: 0.6, satAmount: 1.5, enabled: false },
         stereoExpander: { lowMidCrossover: 300, midHighCrossover: 3000, expLow: 1, compLow: 0.2, expMid: 1.2, compMid: 0.3, expHigh: 1.6, compHigh: 0.1, enabled: false },
       },

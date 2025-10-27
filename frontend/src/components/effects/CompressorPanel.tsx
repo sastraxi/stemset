@@ -31,7 +31,7 @@ export function CompressorPanel({ config, gainReduction, onUpdate, onReset }: Co
           <label>Threshold {config.threshold} dB</label>
           <input
             type="range"
-            min={-40}
+            min={-48}
             max={0}
             step={1}
             value={config.threshold}
@@ -39,18 +39,29 @@ export function CompressorPanel({ config, gainReduction, onUpdate, onReset }: Co
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Attack {Math.floor(config.attack * 1000)}ms</label>
+          <label>Attack {(config.attack * 1000).toFixed(1)}ms</label>
           <input
             type="range"
             min={0.001}
-            max={0.1}
+            max={0.05}
             step={0.001}
             value={config.attack}
             onChange={(e) => onUpdate({ attack: parseFloat(e.target.value) })}
           />
         </div>
         <div className="limiter-ceiling">
-          <label>Release {Math.floor(config.release * 1000)}ms</label>
+          <label>Hold {(config.hold * 1000).toFixed(1)}ms</label>
+          <input
+            type="range"
+            min={0.001}
+            max={0.1}
+            step={0.001}
+            value={config.hold}
+            onChange={(e) => onUpdate({ hold: parseFloat(e.target.value) })}
+          />
+        </div>
+        <div className="limiter-ceiling">
+          <label>Release {(config.release * 1000).toFixed(0)}ms</label>
           <input
             type="range"
             min={0.01}
@@ -58,28 +69,6 @@ export function CompressorPanel({ config, gainReduction, onUpdate, onReset }: Co
             step={0.01}
             value={config.release}
             onChange={(e) => onUpdate({ release: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Body {(config.bodyBlend * 100).toFixed(0)}%</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={config.bodyBlend}
-            onChange={(e) => onUpdate({ bodyBlend: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Air {(config.airBlend * 100).toFixed(0)}%</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={config.airBlend}
-            onChange={(e) => onUpdate({ airBlend: parseFloat(e.target.value) })}
           />
         </div>
         <div className="flex-grow" />
