@@ -301,11 +301,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
               onSetEnabled={setEqEnabled}
               onReset={resetEq}
             />
-            <StereoExpanderPanel
+            {/* <StereoExpanderPanel
               config={effectsConfig.stereoExpander}
               onUpdate={updateStereoExpander}
               onReset={resetStereoExpander}
-            />
+            /> */}
             <ReverbPanel
               config={effectsConfig.reverb}
               onUpdate={updateReverb}
