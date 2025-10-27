@@ -83,7 +83,7 @@ export function usePlaybackController({
         console.log(`[usePlaybackController] Creating source for stem: ${name}`);
         const src = audioContext.createBufferSource();
         src.buffer = node.buffer;
-        
+
         try {
           console.log(`[usePlaybackController] Connecting source for ${name} to gain node`);
           src.connect(node.gainNode);

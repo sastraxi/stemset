@@ -46,7 +46,7 @@ processing = [
     "watchdog>=3.0.0",
     "opuslib>=3.0.1",
     "onnxruntime>=1.23.1",
-    "onnxruntime-gpu>=1.23.1",
+    # "onnxruntime-gpu>=1.23.1",  # <-- Assuming this will get installed on GPU workers by the above
     "numpy>=2.3.4",
     "pillow>=10.0.0",
 ]

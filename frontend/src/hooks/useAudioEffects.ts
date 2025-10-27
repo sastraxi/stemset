@@ -67,7 +67,7 @@ export function useAudioEffects({
     console.log('[useAudioEffects] Wiring effect chain...');
     console.log('[useAudioEffects] AudioContext:', audioContext);
     console.log('[useAudioEffects] Master input:', masterInput);
-    
+
     const allReady = allEffects.every(e => e.isReady);
     console.log('[useAudioEffects] All effects ready:', allReady);
     console.log('[useAudioEffects] Effect ready states:', {
@@ -76,7 +76,7 @@ export function useAudioEffects({
       reverb: reverb.isReady,
       compressor: compressor.isReady
     });
-    
+
     if (!audioContext || !masterInput || !allReady) {
       console.log('[useAudioEffects] Skipping wiring - missing dependencies');
       return;
@@ -111,7 +111,7 @@ export function useAudioEffects({
         inputNode: effect.inputNode,
         outputNode: effect.outputNode
       });
-      
+
       if (effect.config.enabled && effect.inputNode && effect.outputNode) {
         try {
           // Connect the previous node to this effect's input

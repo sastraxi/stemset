@@ -29,8 +29,9 @@ def main() -> None:
 
     # Find a small existing file (metadata.json is small)
     media_path = Path("media")
-    test_file = None
-
+    test_file: Path | None = None
+    profile_name = ""
+    song_name = ""
     for profile_dir in media_path.iterdir():
         if profile_dir.is_dir():
             for song_dir in profile_dir.iterdir():
