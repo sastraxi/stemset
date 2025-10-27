@@ -11,7 +11,7 @@ export function CompressorPanel({ config, gainReduction, onUpdate, onReset }: Co
   return (
     <div className="limiter-section">
       <div className="limiter-header">
-        <h4>Compressor</h4>
+        <h4>Limiter</h4>
         <div className="effect-controls">
           <label className="effect-toggle">
             <input

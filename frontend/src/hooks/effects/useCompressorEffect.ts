@@ -29,7 +29,7 @@ export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
   attack: 0.005,
   hold: 0.02,
   release: 0.1,
-  enabled: true,
+  enabled: false,
 };
 
 export function useCompressorEffect({

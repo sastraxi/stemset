@@ -63,6 +63,21 @@ export function useStereoExpanderEffect({
 
         const node = new AudioWorkletNode(audioContext, 'multiband-stereo-expander', { outputChannelCount: [2] });
 
+        // Create a simple synthetic reverb impulse response
+        // This creates a basic hall reverb simulation
+        const reverbLength = Math.floor(audioContext.sampleRate * 0.5); // 5000ms reverb tail
+        const reverbBuffer = new Float32Array(reverbLength);
+
+        for (let i = 0; i < reverbLength; i++) {
+          // Exponential decay with some randomness for diffusion
+          const decay = Math.exp(-3 * i / reverbLength);
+          const diffusion = (Math.random() - 0.5) * 0.1;
+          reverbBuffer[i] = decay * (0.8 + diffusion);
+        }
+
+        // Send the reverb buffer to the worklet
+        node.port.postMessage({ reverbBuffer });
+
         workletNodeRef.current = node;
         setIsReady(true);
       } catch (error) {

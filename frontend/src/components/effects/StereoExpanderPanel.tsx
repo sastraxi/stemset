@@ -1,5 +1,74 @@
 import type { StereoExpanderConfig } from '../../hooks/effects/useStereoExpanderEffect';
 
+interface BandColumnProps {
+  title: string;
+  widthValue: number;
+  compValue: number;
+  onWidthChange: (value: number) => void;
+  onCompChange: (value: number) => void;
+}
+
+interface CrossoverColumnProps {
+  label: string;
+  value: number;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}
+
+function BandColumn({ title, widthValue, compValue, onWidthChange, onCompChange }: BandColumnProps) {
+  return (
+    <div className="stereo-band-column">
+      <div className="limiter-ceiling">
+        <label>Width {widthValue.toFixed(1)}x</label>
+        <input
+          type="range"
+          min={0.5}
+          max={2.0}
+          step={0.1}
+          value={widthValue}
+          onChange={(e) => onWidthChange(parseFloat(e.target.value))}
+        />
+      </div>
+      <div className="limiter-ceiling">
+        <label>Comp {(compValue * 100).toFixed(0)}%</label>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={compValue}
+          onChange={(e) => onCompChange(parseFloat(e.target.value))}
+        />
+      </div>
+      <div className="band-header"><span>{title}</span></div>
+    </div>
+  );
+}
+
+function CrossoverColumn({ label, value, unit, min, max, step, onChange }: CrossoverColumnProps) {
+  const displayValue = unit === 'kHz' ? (value / 1000).toFixed(1) : value.toString();
+
+  return (
+    <div className="crossover-column">
+      <div className="crossover-vertical">
+        <input
+          type="range"
+          className="crossover-slider-vertical"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+        />
+        <label className="crossover-label">{label}<br />{displayValue}{unit}</label>
+      </div>
+    </div>
+  );
+}
+
 export interface StereoExpanderPanelProps {
   config: StereoExpanderConfig;
   onUpdate: (changes: Partial<StereoExpanderConfig>) => void;
@@ -8,7 +77,7 @@ export interface StereoExpanderPanelProps {
 
 export function StereoExpanderPanel({ config, onUpdate, onReset }: StereoExpanderPanelProps) {
   return (
-    <div className="limiter-section">
+    <div className="stereo-expander-section">
       <div className="limiter-header">
         <h4>Stereo Expander</h4>
         <div className="effect-controls">
@@ -25,95 +94,51 @@ export function StereoExpanderPanel({ config, onUpdate, onReset }: StereoExpande
           </button>
         </div>
       </div>
-      <div className="limiter-controls">
-        <div className="limiter-ceiling">
-          <label>Low/Mid Crossover {config.lowMidCrossover}Hz</label>
-          <input
-            type="range"
-            min={50}
-            max={2000}
-            step={10}
-            value={config.lowMidCrossover}
-            onChange={(e) => onUpdate({ lowMidCrossover: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Mid/High Crossover {config.midHighCrossover}Hz</label>
-          <input
-            type="range"
-            min={800}
-            max={12000}
-            step={100}
-            value={config.midHighCrossover}
-            onChange={(e) => onUpdate({ midHighCrossover: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Low Width {config.expLow.toFixed(1)}x</label>
-          <input
-            type="range"
-            min={0.5}
-            max={2.0}
-            step={0.1}
-            value={config.expLow}
-            onChange={(e) => onUpdate({ expLow: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Low Comp {(config.compLow * 100).toFixed(0)}%</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={config.compLow}
-            onChange={(e) => onUpdate({ compLow: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Mid Width {config.expMid.toFixed(1)}x</label>
-          <input
-            type="range"
-            min={0.5}
-            max={2.0}
-            step={0.1}
-            value={config.expMid}
-            onChange={(e) => onUpdate({ expMid: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>Mid Comp {(config.compMid * 100).toFixed(0)}%</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={config.compMid}
-            onChange={(e) => onUpdate({ compMid: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>High Width {config.expHigh.toFixed(1)}x</label>
-          <input
-            type="range"
-            min={0.5}
-            max={2.0}
-            step={0.1}
-            value={config.expHigh}
-            onChange={(e) => onUpdate({ expHigh: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className="limiter-ceiling">
-          <label>High Comp {(config.compHigh * 100).toFixed(0)}%</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={config.compHigh}
-            onChange={(e) => onUpdate({ compHigh: parseFloat(e.target.value) })}
-          />
-        </div>
+
+      <div className="stereo-expander-grid">
+        <BandColumn
+          title="Low"
+          widthValue={config.expLow}
+          compValue={config.compLow}
+          onWidthChange={(value) => onUpdate({ expLow: value })}
+          onCompChange={(value) => onUpdate({ compLow: value })}
+        />
+
+        <CrossoverColumn
+          label="L/M"
+          value={config.lowMidCrossover}
+          unit="Hz"
+          min={50}
+          max={2000}
+          step={10}
+          onChange={(value) => onUpdate({ lowMidCrossover: value })}
+        />
+
+        <BandColumn
+          title="Mid"
+          widthValue={config.expMid}
+          compValue={config.compMid}
+          onWidthChange={(value) => onUpdate({ expMid: value })}
+          onCompChange={(value) => onUpdate({ compMid: value })}
+        />
+
+        <CrossoverColumn
+          label="M/H"
+          value={config.midHighCrossover}
+          unit="kHz"
+          min={800}
+          max={12000}
+          step={100}
+          onChange={(value) => onUpdate({ midHighCrossover: value })}
+        />
+
+        <BandColumn
+          title="High"
+          widthValue={config.expHigh}
+          compValue={config.compHigh}
+          onWidthChange={(value) => onUpdate({ expHigh: value })}
+          onCompChange={(value) => onUpdate({ compHigh: value })}
+        />
       </div>
     </div>
   );
