@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { EqPanel } from './effects/EqPanel';
 import { CompressorPanel } from './effects/CompressorPanel';
 import { ReverbPanel } from './effects/ReverbPanel';
-import { StereoExpanderPanel } from './effects/StereoExpanderPanel';
 import { QRCodeModal } from './QRCodeModal';
 
 interface StemPlayerProps {
@@ -84,8 +83,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       resetCompressor,
       updateReverb,
       resetReverb,
-      updateStereoExpander,
-      resetStereoExpander,
+      // updateStereoExpander,
+      // resetStereoExpander,
       compressorGainReduction,
     } = useStemPlayer({ profileName, fileName, metadataUrl });
 
