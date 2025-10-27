@@ -1,7 +1,26 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+export const IMPULSES = {
+  'sparkling-hall': "Sparkling Hall",
+  'ambience-close-mic': "Ambience Close Mic",
+  'ambience-with-punch': "Ambience with Punch",
+  'arena-south-west': "Arena South West",
+  'big-bright-room': "Big Bright Room",
+  'gothic-church': "Gothic Church",
+  'in-the-silo-revised': "In the Silo (Revised)",
+  'masonic-lodge': "Masonic Lodge",
+  'nice-drum-room': "Nice Drum Room",
+  'onewall-on-a-room': "One Wall on a Room",
+  'ruby-room': "Ruby Room",
+  'scala-milan-opera-hall': "Scala Milan Opera Hall",
+  'small-studio': "Small Studio",
+  'stonewall-room': "Stonewall Room",
+}
+
+type ImpulseName = keyof typeof IMPULSES;
+
 export interface ReverbConfig {
-  impulse: string; // impulse response name (e.g., 'sparkling-hall')
+  impulse: ImpulseName; // impulse response name (e.g., 'sparkling-hall')
   mix: number; // 0 to 1 (wet/dry)
   enabled: boolean;
 }
@@ -49,7 +68,7 @@ export function useReverbEffect({
 
     async function loadImpulseResponse() {
       try {
-        const response = await fetch(`/${config.impulse}.wav`);
+        const response = await fetch(`/impulse/${config.impulse}.wav`);
         if (!response.ok) {
           throw new Error(`Failed to fetch impulse response: ${response.statusText}`);
         }

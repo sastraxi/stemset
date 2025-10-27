@@ -1,4 +1,5 @@
 import type { ReverbConfig } from '../../hooks/effects/useReverbEffect';
+import { IMPULSES } from '../../hooks/effects/useReverbEffect';
 
 export interface ReverbPanelProps {
   config: ReverbConfig;
@@ -33,7 +34,11 @@ export function ReverbPanel({ config, onUpdate, onReset }: ReverbPanelProps) {
             onChange={(e) => onUpdate({ impulse: e.target.value })}
             className="impulse-select"
           >
-            <option value="sparkling-hall">Sparkling Hall</option>
+            {Object.entries(IMPULSES).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="reverb-mix">
