@@ -136,6 +136,9 @@ export function MasterVolumeControl({ volume, onVolumeChange }: MasterVolumeCont
   const displayVolume = volume;
   const displayPosition = sliderPosition;
 
+  // Map visual position to 10%-90% of width to keep indicator within triangle bounds
+  const visualPosition = 0.1 + displayPosition * 0.85;
+
   return (
     <div className="master-volume-section">
       <div className="master-volume-header">
@@ -200,7 +203,7 @@ export function MasterVolumeControl({ volume, onVolumeChange }: MasterVolumeCont
               <rect
                 x="0"
                 y="0"
-                width={displayPosition * width}
+                width={visualPosition * width}
                 height={height}
               />
             </clipPath>
@@ -211,9 +214,9 @@ export function MasterVolumeControl({ volume, onVolumeChange }: MasterVolumeCont
             </linearGradient>
             <linearGradient id="volume-fill-gradient" x1="0" x2="1" y1="0" y2="0" gradientUnits="objectBoundingBox">
               <stop offset="0%" stopColor="#1e90ff" stopOpacity="0.2" />
-              <stop offset="60%" stopColor="#ff6b00" stopOpacity="0.5" />
-              <stop offset="80%" stopColor="#c01d17ff" stopOpacity="0.7" />
-              <stop offset="98%" stopColor="#973e3aff" stopOpacity="0.8" />
+              <stop offset="60%" stopColor="#17ababff" stopOpacity="0.6" />
+              <stop offset="80%" stopColor="#009714ff" stopOpacity="0.87" />
+              <stop offset="98%" stopColor="#009714ff" stopOpacity="1" />
               <stop offset="100%" stopColor="#c01d17ff" stopOpacity="0.3" />
             </linearGradient>
             <linearGradient id="volume-fill-gradient-muted" x1="0" x2="1" y1="0" y2="0" gradientUnits="objectBoundingBox">
@@ -238,9 +241,9 @@ export function MasterVolumeControl({ volume, onVolumeChange }: MasterVolumeCont
 
           {/* Volume indicator line - extends above and fades out */}
           <line
-            x1={displayPosition * width}
+            x1={visualPosition * width}
             y1={-padding}
-            x2={displayPosition * width}
+            x2={visualPosition * width}
             y2={height}
             stroke={`url(#line-gradient-${isMuted ? 'muted' : 'normal'})`}
             strokeWidth="2"
@@ -248,7 +251,7 @@ export function MasterVolumeControl({ volume, onVolumeChange }: MasterVolumeCont
 
           {/* Draggable handle */}
           <circle
-            cx={displayPosition * width}
+            cx={visualPosition * width}
             cy={height - (displayPosition * height)}
             r="6"
             fill={isMuted ? "#ff6666" : "#4a9eff"}
