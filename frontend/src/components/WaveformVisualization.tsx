@@ -81,9 +81,6 @@ export function WaveformVisualization({
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
     const container = containerRef.current;
     if (!container) return;
 
@@ -99,10 +96,13 @@ export function WaveformVisualization({
 
     canvas.width = rect.width * dpr;
     canvas.height = 108 * dpr; // Fixed height for consistent UI
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = '108px';
+    // Don't set inline styles - let CSS handle sizing to allow responsive shrinking
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Enable high-quality image smoothing for better downscaling
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     // Use preview time if dragging, otherwise use current time
     const displayTime = previewTime !== undefined ? previewTime : currentTime;

@@ -54,8 +54,7 @@ export function Ruler({
     const rect = container.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${height}px`;
+    // Don't set inline styles - let CSS handle sizing to allow responsive shrinking
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
