@@ -9,11 +9,24 @@ export interface Profile {
 
 export interface StemFile {
   name: string;
-  metadata_url: string;
+  display_name: string;
+  stems: StemResponse[];
+  created_at: string;
+}
+
+export interface StemResponse {
+  stem_type: string;
+  measured_lufs: number;
+  peak_amplitude: number;
+  stem_gain_adjustment_db: number;
+  audio_url: string;
+  waveform_url: string;
+  file_size_bytes: number;
+  duration_seconds: number;
 }
 
 export interface StemFileWithDisplayName extends StemFile {
-  displayName: string; // Computed from metadata or defaults to name
+  displayName: string; // Computed from display_name or defaults to name
 }
 
 export interface StemMetadata {

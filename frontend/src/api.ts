@@ -32,21 +32,6 @@ export async function getProfileFiles(name: string): Promise<StemFile[]> {
   return response.json();
 }
 
-export async function getFileMetadata(metadataUrl: string, bustCache = false): Promise<Record<string, any>> {
-  // Add cache-busting parameter if needed (e.g., after updates)
-  // Only bust cache for metadata.json since it can change
-  const url = bustCache ? `${metadataUrl}?t=${Date.now()}` : metadataUrl;
-
-  const response = await fetch(url, {
-    // Only disable cache when explicitly busting - otherwise let browser cache normally
-    ...(bustCache ? { cache: 'no-store' as RequestCache } : {}),
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch metadata: ${response.statusText}`);
-  }
-  return response.json();
-}
-
 export async function updateDisplayName(
   profileName: string,
   fileName: string,

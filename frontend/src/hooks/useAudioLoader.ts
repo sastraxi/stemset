@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import type { StemMetadata, StemAudioData } from '../types';
-import { getFileMetadata } from '../api';
 
 export interface StemTiming {
   name: string;
@@ -21,7 +20,7 @@ export interface LoadingMetrics {
 export interface UseAudioLoaderOptions {
   profileName: string;
   fileName: string;
-  metadataUrl: string;
+  stemsData: import('../types').StemResponse[];
   audioContext: AudioContext | null;
 }
 
@@ -49,7 +48,7 @@ export interface UseAudioLoaderResult {
 export function useAudioLoader({
   profileName,
   fileName,
-  metadataUrl,
+  stemsData,
   audioContext,
 }: UseAudioLoaderOptions): UseAudioLoaderResult {
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +70,7 @@ export function useAudioLoader({
     abortControllerRef.current = abortController;
     const { signal } = abortController;
 
-    if (!audioContext) {
+    if (!audioContext || !stemsData.length) {
       setIsLoading(false);
       return;
     }
@@ -83,37 +82,24 @@ export function useAudioLoader({
       setDuration(0);
 
       const t0 = performance.now();
-      const metaStart = performance.now();
 
       try {
-        const response = await getFileMetadata(metadataUrl);
-        if (signal.aborted) return;
-
-        console.log('[useAudioLoader] Fetched metadata:', response);
-
-        // Handle both old format (flat) and new format (nested under "stems")
-        const metadata: Record<string, StemMetadata> = response.stems || response;
-        const metaEnd = performance.now();
-
-        // Compute base URL for stems (metadata URL without the filename)
-        const baseUrl = metadataUrl.substring(0, metadataUrl.lastIndexOf('/') + 1);
+        // Set base URL for media files
+        const baseUrl = `/media/${profileName}/${fileName}/`;
         setMetadataBaseUrl(baseUrl);
 
+        console.log('[useAudioLoader] Loading stems:', stemsData);
+
         const newMap = new Map<string, StemAudioData>();
-        const stemEntries = Object.entries(metadata).map(([name, meta]) => [
-          name,
-          baseUrl + meta.stem_url,
-          meta,
-        ]);
         const timingAccumulator: StemTiming[] = [];
 
         await Promise.all(
-          stemEntries.map(async ([name, url, meta]) => {
-            if (signal.aborted || !url) return;
+          stemsData.map(async (stemResponse) => {
+            if (signal.aborted) return;
 
             const fetchStart = performance.now();
             try {
-              const resp = await fetch(url as string, {
+              const resp = await fetch(stemResponse.audio_url, {
                 signal,
                 cache: 'default', // Allow browser caching
               });
@@ -129,16 +115,26 @@ export function useAudioLoader({
               const decodeEnd = performance.now();
               if (signal.aborted) return;
 
-              newMap.set(name as string, {
+              // Convert StemResponse to StemMetadata format for compatibility
+              const metadata: StemMetadata = {
+                stem_type: stemResponse.stem_type,
+                measured_lufs: stemResponse.measured_lufs,
+                peak_amplitude: stemResponse.peak_amplitude,
+                stem_gain_adjustment_db: stemResponse.stem_gain_adjustment_db,
+                stem_url: stemResponse.audio_url,
+                waveform_url: stemResponse.waveform_url,
+              };
+
+              newMap.set(stemResponse.stem_type, {
                 buffer,
-                metadata: meta as StemMetadata,
+                metadata,
               });
 
               // Set duration from first loaded buffer
               setDuration(prev => (prev === 0 ? buffer.duration : prev));
 
               timingAccumulator.push({
-                name: name as string,
+                name: stemResponse.stem_type,
                 fetchMs: fetchEnd - fetchStart,
                 decodeMs: decodeEnd - decodeStart,
                 totalMs: decodeEnd - fetchStart,
@@ -146,7 +142,7 @@ export function useAudioLoader({
               });
             } catch (e) {
               if (!signal.aborted) {
-                console.error('[useAudioLoader] Failed to load stem', name, e);
+                console.error('[useAudioLoader] Failed to load stem', stemResponse.stem_type, e);
               }
             }
           })
@@ -163,7 +159,7 @@ export function useAudioLoader({
           finishedAt: t1,
           totalMs: t1 - t0,
           stems: timingAccumulator.sort((a, b) => a.name.localeCompare(b.name)),
-          metadataMs: metaEnd - metaStart,
+          metadataMs: 0, // No metadata fetching needed anymore
         });
       } catch (e) {
         if (!signal.aborted) {
@@ -179,7 +175,7 @@ export function useAudioLoader({
       abortController.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileName, fileName, metadataUrl]);
+  }, [profileName, fileName, stemsData]);
 
   return {
     isLoading,

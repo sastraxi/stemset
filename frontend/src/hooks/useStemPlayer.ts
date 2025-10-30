@@ -27,7 +27,7 @@ import type { StemViewModel, EffectsChainConfig } from '../types';
 export interface UseStemPlayerOptions {
   profileName: string;
   fileName: string;
-  metadataUrl: string;
+  stemsData: import('../types').StemResponse[];
   sampleRate?: number;
 }
 
@@ -82,7 +82,7 @@ export interface UseStemPlayerResult {
 export function useStemPlayer({
   profileName,
   fileName,
-  metadataUrl,
+  stemsData,
   sampleRate = 44100,
 }: UseStemPlayerOptions): UseStemPlayerResult {
   // 1. Audio context and master gain
@@ -101,7 +101,7 @@ export function useStemPlayer({
   const { isLoading, loadingMetrics, stems: loadedStems, duration, metadataBaseUrl } = useAudioLoader({
     profileName,
     fileName,
-    metadataUrl,
+    stemsData,
     audioContext,
   });
 
@@ -135,9 +135,7 @@ export function useStemPlayer({
 
         // From metadata (immutable)
         stemType: metadata?.stem_type || 'unknown',
-        waveformUrl: metadata?.waveform_url
-          ? metadataBaseUrl + metadata.waveform_url
-          : '',
+        waveformUrl: metadata?.waveform_url || '',
         initialGain: node.initialGain,
 
         // From user config (mutable)

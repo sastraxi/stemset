@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { StemMetadata } from '../types';
-import { getFileMetadata } from '../api';
 
 export interface RecordingStem {
   name: string;
@@ -13,7 +12,7 @@ export interface RecordingStem {
 export interface UseRecordingMetadataOptions {
   profileName: string;
   fileName: string;
-  metadataUrl: string;
+  stemsData: import('../types').StemResponse[];
 }
 
 export interface UseRecordingMetadataResult {
@@ -23,91 +22,67 @@ export interface UseRecordingMetadataResult {
 }
 
 /**
- * Hook to fetch static recording metadata (stem info, URLs).
+ * Hook to process recording stem metadata from the API response.
  *
  * Responsibilities:
- * - Fetch metadata.json via API
+ * - Convert stems data from API to RecordingStem format
  * - Extract stem names, URLs, initial gains
  * - Never changes after loading (static data)
  *
- * Pattern: Pure data fetcher, no audio processing.
+ * Pattern: Pure data processor, no audio processing.
  */
 export function useRecordingMetadata({
   profileName,
   fileName,
-  metadataUrl,
+  stemsData,
 }: UseRecordingMetadataOptions): UseRecordingMetadataResult {
   const [isLoading, setIsLoading] = useState(true);
   const [stems, setStems] = useState<RecordingStem[]>([]);
   const [baseUrl, setBaseUrl] = useState('');
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   useEffect(() => {
-    // Abort any previous loading operation
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    setIsLoading(true);
+    setStems([]);
 
-    // Create new abort controller for this load
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    const { signal } = abortController;
+    try {
+      // Set base URL for compatibility (though not needed with full URLs from API)
+      const computedBaseUrl = `/media/${profileName}/${fileName}/`;
+      setBaseUrl(computedBaseUrl);
 
-    async function fetchMetadata() {
-      setIsLoading(true);
-      setStems([]);
-      setBaseUrl('');
-
-      try {
-        const response = await getFileMetadata(metadataUrl);
-        if (signal.aborted) return;
-
-        // Handle both old format (flat) and new format (nested under "stems")
-        const metadata: Record<string, StemMetadata> = response.stems || response;
-
-        // Compute base URL for stems (metadata URL without the filename)
-        const computedBaseUrl = metadataUrl.substring(0, metadataUrl.lastIndexOf('/') + 1);
-        setBaseUrl(computedBaseUrl);
-
-        // Extract stem information
-        const stemArray: RecordingStem[] = Object.entries(metadata).map(([name, meta]) => {
-          // Calculate initial gain from metadata
-          let initialGain = 1;
-          if (meta && typeof meta.stem_gain_adjustment_db === 'number') {
-            initialGain = Math.pow(10, meta.stem_gain_adjustment_db / 20);
-          }
-
-          return {
-            name,
-            audioUrl: computedBaseUrl + meta.stem_url,
-            waveformUrl: computedBaseUrl + meta.waveform_url,
-            initialGain,
-            metadata: meta,
-          };
-        });
-
-        // Sort alphabetically by name
-        stemArray.sort((a, b) => a.name.localeCompare(b.name));
-
-        if (!signal.aborted) {
-          setStems(stemArray);
-          setIsLoading(false);
+      // Convert API stem responses to RecordingStem format
+      const stemArray: RecordingStem[] = stemsData.map((stemData) => {
+        // Calculate initial gain from metadata
+        let initialGain = 1;
+        if (typeof stemData.stem_gain_adjustment_db === 'number') {
+          initialGain = Math.pow(10, stemData.stem_gain_adjustment_db / 20);
         }
-      } catch (e) {
-        if (!signal.aborted) {
-          console.error('[useRecordingMetadata] Failed to load metadata', e);
-          setIsLoading(false);
-        }
-      }
+
+        return {
+          name: stemData.stem_type,
+          audioUrl: stemData.audio_url,
+          waveformUrl: stemData.waveform_url,
+          initialGain,
+          metadata: {
+            stem_type: stemData.stem_type,
+            measured_lufs: stemData.measured_lufs,
+            peak_amplitude: stemData.peak_amplitude,
+            stem_gain_adjustment_db: stemData.stem_gain_adjustment_db,
+            stem_url: stemData.audio_url,
+            waveform_url: stemData.waveform_url,
+          },
+        };
+      });
+
+      // Sort alphabetically by name
+      stemArray.sort((a, b) => a.name.localeCompare(b.name));
+
+      setStems(stemArray);
+      setIsLoading(false);
+    } catch (e) {
+      console.error('[useRecordingMetadata] Failed to process stems data', e);
+      setIsLoading(false);
     }
-
-    fetchMetadata();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [profileName, fileName, metadataUrl]);
+  }, [profileName, fileName, stemsData]);
 
   return {
     isLoading,

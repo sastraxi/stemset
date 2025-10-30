@@ -316,7 +316,7 @@ export function AuthenticatedApp({
                                 ref={stemPlayerRef}
                                 profileName={selectedProfile}
                                 fileName={selectedFile.name}
-                                metadataUrl={selectedFile.metadata_url}
+                                stemsData={selectedFile.stems}
                                 onLoadingChange={setIsLoadingStems}
                             />
                         </>

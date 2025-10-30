@@ -15,7 +15,7 @@ import { QRCodeModal } from './QRCodeModal';
 interface StemPlayerProps {
   profileName: string;
   fileName: string;
-  metadataUrl: string;
+  stemsData: import('../types').StemResponse[];
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
@@ -29,7 +29,7 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-  ({ profileName, fileName, metadataUrl, onLoadingChange }, ref) => {
+  ({ profileName, fileName, stemsData, onLoadingChange }, ref) => {
     const [previewTime, setPreviewTime] = useState<number | null>(null);
     const [showTimeRemaining, setShowTimeRemaining] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
@@ -89,7 +89,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       // updateStereoExpander,
       // resetStereoExpander,
       compressorGainReduction,
-    } = useStemPlayer({ profileName, fileName, metadataUrl });
+    } = useStemPlayer({ profileName, fileName, stemsData });
 
     // Notify parent of loading state changes
     useEffect(() => {
