@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
@@ -12,6 +14,7 @@ from litestar.static_files import create_static_files_router  # pyright: ignore[
 
 from ..auth import auth_middleware
 from ..config import get_config
+from ..db.config import get_engine
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
     get_profile,
@@ -20,6 +23,24 @@ from .profile_routes import (
     update_display_name,
 )
 from .job_routes import job_complete, job_status, upload_file
+
+
+@asynccontextmanager
+async def database_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
+    """Manage database engine lifecycle.
+
+    Initializes the database engine on startup and disposes it on shutdown.
+    """
+    # Initialize engine on startup
+    engine = get_engine()
+    print("Database engine initialized")
+
+    try:
+        yield
+    finally:
+        # Dispose engine on shutdown
+        await engine.dispose()
+        print("Database engine disposed")
 
 
 media_router = create_static_files_router(
@@ -81,4 +102,5 @@ app = Litestar(
     cors_config=cors_config,
     state=State({"config": config, "base_url": base_url}),
     request_max_body_size=1024 * 1024 * 150,  # 150MB max upload size
+    lifespan=[database_lifespan],
 )

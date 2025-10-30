@@ -19,11 +19,26 @@ class ProfileResponse(BaseModel):
     source_folder: str
 
 
-class FileWithStems(BaseModel):
-    """File with metadata URL."""
+class StemResponse(BaseModel):
+    """Individual stem information."""
 
-    name: str
-    metadata_url: str
+    stem_type: str
+    measured_lufs: float
+    peak_amplitude: float
+    stem_gain_adjustment_db: float
+    audio_url: str
+    waveform_url: str
+    file_size_bytes: int
+    duration_seconds: float
+
+
+class FileWithStems(BaseModel):
+    """File with stems information from database."""
+
+    name: str  # output_name
+    display_name: str
+    stems: list[StemResponse]
+    created_at: str
 
 
 class JobStatusResponse(BaseModel):

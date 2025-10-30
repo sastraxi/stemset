@@ -149,6 +149,144 @@ Litestar integrates natively with Pydantic for request/response serialization.
 
 We use `NotFoundException` instead of returning error response objects with status codes.
 
+## Database Architecture
+
+### PostgreSQL with SQLModel
+
+Stemset uses PostgreSQL for persistent metadata storage, replacing the previous JSON file-based approach. This provides better queryability, referential integrity, and multi-user support.
+
+**Core Principles**:
+- **Async-first**: All database operations use `asyncpg` driver with `AsyncSession`
+- **Type-safe**: SQLModel (Pydantic + SQLAlchemy) provides full type safety
+- **UUIDv4 primary keys**: Distributed scalability, no auto-increment
+- **Fail-fast**: Critical fields like `duration_seconds` are NOT NULL
+- **Denormalized**: Profile ID duplicated across tables for query performance
+
+### Database Schema
+
+```
+users                    profiles                 audio_files
+├── id (UUID, PK)       ├── id (UUID, PK)       ├── id (UUID, PK)
+├── email (unique)      ├── name (unique)       ├── profile_id (FK)
+├── name                ├── source_folder       ├── filename
+├── picture_url         ├── strategy_name       ├── file_hash (unique, SHA256)
+├── created_at          ├── created_at          ├── storage_url
+└── last_login_at       └── users (M:M)         ├── file_size_bytes
+                                                 ├── duration_seconds (NOT NULL)
+                                                 └── uploaded_at
+
+recordings               stems
+├── id (UUID, PK)       ├── id (UUID, PK)
+├── profile_id (FK)     ├── recording_id (FK)
+├── output_name         ├── audio_file_id (FK)
+├── display_name        ├── stem_type
+├── created_at          ├── measured_lufs
+├── updated_at          ├── peak_amplitude
+└── stems (1:M)         ├── stem_gain_adjustment_db
+                        ├── audio_url (relative)
+                        ├── waveform_url (relative)
+                        ├── file_size_bytes
+                        ├── duration_seconds (NOT NULL)
+                        └── created_at
+```
+
+**Key Relationships**:
+- `User ↔ Profile`: Many-to-many via `user_profiles` join table
+- `Profile → AudioFile`: One-to-many (all source files for a profile)
+- `Profile → Recording`: One-to-many (all processed outputs for a profile)
+- `Recording → Stem`: One-to-many (all stems for a recording)
+- `AudioFile → Stem`: One-to-many (tracks which source file each stem came from)
+
+### Database Operations
+
+**CLI Processing Flow**:
+1. Scanner queries `audio_files` by hash to check if already processed
+2. After successful separation, processor creates:
+   - `Profile` record (if not exists)
+   - `AudioFile` record with SHA256 hash
+   - `Recording` record with output folder name
+   - `Stem` records for each separated track
+
+**API Query Patterns**:
+```python
+# Get recordings with stems (use selectinload to avoid N+1)
+stmt = (
+    select(Recording)
+    .where(Recording.profile_id == profile.id)
+    .options(selectinload(Recording.stems))
+    .order_by(Recording.created_at.desc())
+)
+result = await session.exec(stmt)
+```
+
+**Auth Integration**:
+- OAuth login upserts `User` record and updates `last_login_at`
+- Future: User-profile access control via `user_profiles` join table
+
+### Database Configuration
+
+**Connection Management**:
+- Lazy engine initialization in `src/db/config.py`
+- Connection pooling: 10 base + 20 overflow
+- Lifespan management in Litestar app (init on startup, dispose on shutdown)
+
+**Environment Variables**:
+```bash
+DATABASE_URL=postgresql://user:pass@host:5432/stemset
+```
+
+**Migrations** (Alembic):
+```bash
+# Apply migrations
+alembic upgrade head
+
+# Create new migration after model changes
+alembic revision --autogenerate -m "Description"
+```
+
+**Local Development**:
+```bash
+# Start PostgreSQL with Docker Compose
+docker compose up -d
+
+# Run migrations
+alembic upgrade head
+
+# Migrate existing JSON files to database
+uv run stemset migrate
+```
+
+### Transition State
+
+**Current Implementation**:
+- ✅ Database writes: All processing results saved to PostgreSQL
+- ✅ Database reads: API queries database for recordings/stems
+- ✅ Hash tracking: Scanner uses database instead of `.processed_hashes.json`
+- ⚠️ JSON files: Still written for backward compatibility during transition
+
+**Rollback Plan**:
+- JSON files preserved in `media/<profile>/<output_name>/metadata.json`
+- Database and JSON coexist (dual writes)
+- Can revert to JSON-only by reverting code changes
+- No data loss during transition period
+
+### Performance Optimizations
+
+- **Indexes**: All foreign keys indexed, unique constraints on `file_hash` and `email`
+- **Connection pooling**: Reuses database connections across requests
+- **Lazy loading disabled**: Explicit `selectinload()` or `joinedload()` required
+- **Query optimization**: N+1 prevention with eager loading
+
+### Future Enhancements
+
+- Activity logging table for user actions
+- Processing job persistence (survive server restarts)
+- OAuth session persistence
+- User preferences table
+- Song entity (many recordings → one song for different takes)
+- Tags/labels for recordings
+- Playlists and sharing
+
 ## File Organization
 
 ```
@@ -159,14 +297,18 @@ src/
 ├── modern_separator.py    # Public separation interface
 ├── cli/                   # CLI module
 │   ├── __init__.py        # Main CLI entrypoint (Typer app)
-│   ├── scanner.py         # File scanning and hash tracking
-│   ├── processor.py       # Audio processing logic (local or remote)
-│   └── remote_processor.py # Remote GPU processing implementation
+│   ├── scanner.py         # File scanning via database hash queries
+│   ├── processor.py       # Audio processing with database writes
+│   ├── remote_processor.py # Remote GPU processing implementation
+│   └── db_migrate.py      # CLI command to migrate JSON → PostgreSQL
+├── db/                    # Database layer
+│   ├── config.py          # Async engine, connection pooling, session management
+│   └── models.py          # SQLModel definitions (User, Profile, Recording, Stem, etc.)
 ├── api/                   # API module
-│   ├── app.py             # Litestar app configuration
+│   ├── app.py             # Litestar app with database lifespan
 │   ├── models.py          # Pydantic response models
-│   ├── auth_routes.py     # OAuth endpoints
-│   ├── profile_routes.py  # Profile and file endpoints
+│   ├── auth_routes.py     # OAuth endpoints with User upserts
+│   ├── profile_routes.py  # Profile and file endpoints querying database
 │   └── job_routes.py      # Job callbacks and processing triggers
 ├── modal_worker/          # Modal serverless GPU worker
 │   ├── app.py             # Modal function with R2 mount and GPU processing
@@ -180,6 +322,11 @@ src/
     ├── atomic_models.py   # Concrete model implementations
     ├── strategy_executor.py     # Tree execution engine
     └── metadata.py        # Pydantic metadata models + LUFS analysis
+
+alembic/                   # Database migrations
+├── env.py                 # Async migration environment
+└── versions/              # Migration files
+    └── 001_initial_schema.py
 
 frontend/
 └── src/
@@ -195,7 +342,8 @@ scripts/
 └── check_deployment.py    # Deployment configuration checker
 
 docs/
-└── modal-deployment.md    # Modal GPU worker deployment guide
+├── modal-deployment.md    # Modal GPU worker deployment guide
+└── postgresql-migration.md # Database migration implementation summary
 ```
 
 ## What We Don't Do
@@ -220,6 +368,11 @@ docs/
 - **`typer`**: CLI framework for audio processing commands
 - **`watchdog`**: File system monitoring (for future auto-scanning)
 - **`boto3`**: S3-compatible client for Cloudflare R2 storage
+- **`sqlmodel`**: Type-safe ORM combining Pydantic and SQLAlchemy
+- **`asyncpg`**: Async PostgreSQL driver
+- **`alembic`**: Database migration tool
+- **`psycopg2-binary`**: PostgreSQL adapter (required by alembic)
+- **`greenlet`**: Coroutine support for SQLAlchemy
 
 ### TypeScript/JavaScript (Frontend)
 - **React 18**: UI framework

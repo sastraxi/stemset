@@ -2,71 +2,94 @@
 
 from __future__ import annotations
 
-import json
+import asyncio
 from pathlib import Path
 
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from ..db.config import get_engine
+from ..db.models import AudioFile, Profile
 from ..utils import compute_file_hash, derive_output_name
 
 AUDIO_EXTENSIONS = {".wav", ".wave"}
 
 
-def scan_for_new_files(source_path: Path, media_path: Path) -> list[tuple[Path, str]]:
+async def scan_for_new_files_async(
+    profile_name: str, source_path: Path, media_path: Path
+) -> list[tuple[Path, str]]:
     """Scan source folder for new audio files that haven't been processed.
+
+    Queries the database to check if files have already been processed.
 
     Args:
         profile_name: Name of the profile
         source_path: Source folder to scan
-        media_path: Media output folder
+        media_path: Media output folder (unused, kept for compatibility)
 
     Returns:
         List of tuples (file_path, output_folder_name) for unprocessed files
     """
-    hash_db_path = media_path / ".processed_hashes.json"
-
-    # Load processed hashes
-    processed_hashes = {}
-    if hash_db_path.exists():
-        with open(hash_db_path, "r") as f:
-            processed_hashes = json.load(f)
-
     if not source_path.exists():
         print(f"Warning: Source folder does not exist: {source_path}")
         return []
 
     new_files = []
+    engine = get_engine()
 
-    # Recursively find all audio files
-    for ext in AUDIO_EXTENSIONS:
-        for file_path in source_path.rglob(f"*{ext}"):
-            # Skip hidden files and system files
-            if any(part.startswith(".") for part in file_path.parts):
-                continue
+    async with AsyncSession(engine) as session:
+        # Get the profile from database
+        result = await session.exec(select(Profile).where(Profile.name == profile_name))
+        profile = result.first()
+        if not profile:
+            print(f"Warning: Profile '{profile_name}' not found in database")
+            return []
 
-            # Compute hash of file contents
-            try:
-                file_hash = compute_file_hash(file_path)
-            except Exception as e:
-                print(f"Error hashing file {file_path}: {e}")
-                continue
+        # Recursively find all audio files
+        for ext in AUDIO_EXTENSIONS:
+            for file_path in source_path.rglob(f"*{ext}"):
+                # Skip hidden files and system files
+                if any(part.startswith(".") for part in file_path.parts):
+                    continue
 
-            # Check if we've already processed this content
-            if file_hash in processed_hashes:
-                print(f"Skipping already processed file: {file_path.name} (hash: {file_hash[:8]})")
-                continue
+                # Compute hash of file contents
+                try:
+                    file_hash = compute_file_hash(file_path)
+                except Exception as e:
+                    print(f"Error hashing file {file_path}: {e}")
+                    continue
 
-            # New file - derive output name with hash suffix for uniqueness
-            base_output_name = derive_output_name(file_path)
-            output_name = f"{base_output_name}_{file_hash[:8]}"
+                # Check if we've already processed this content (query database)
+                result = await session.exec(
+                    select(AudioFile).where(AudioFile.file_hash == file_hash)
+                )
+                existing_audio_file = result.first()
 
-            new_files.append((file_path, output_name))
+                if existing_audio_file:
+                    print(
+                        f"Skipping already processed file: {file_path.name} " +
+                        f"(hash: {file_hash[:8]})"
+                    )
+                    continue
 
-            # Mark as processed immediately
-            processed_hashes[file_hash] = output_name
+                # New file - derive output name with hash suffix for uniqueness
+                base_output_name = derive_output_name(file_path)
+                output_name = f"{base_output_name}_{file_hash[:8]}"
 
-    # Save updated hash database
-    if new_files:
-        hash_db_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(hash_db_path, "w") as f:
-            json.dump(processed_hashes, f, indent=2)
+                new_files.append((file_path, output_name))
 
     return new_files
+
+
+def scan_for_new_files(source_path: Path, media_path: Path, profile_name: str) -> list[tuple[Path, str]]:
+    """Synchronous wrapper for scan_for_new_files_async.
+
+    Args:
+        source_path: Source folder to scan
+        media_path: Media output folder
+        profile_name: Name of the profile
+
+    Returns:
+        List of tuples (file_path, output_folder_name) for unprocessed files
+    """
+    return asyncio.run(scan_for_new_files_async(profile_name, source_path, media_path))

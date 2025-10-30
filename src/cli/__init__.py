@@ -10,6 +10,7 @@ import typer
 from dotenv import load_dotenv
 
 from .processor import process_profile, process_single_file
+from .db_migrate import migrate_command
 from ..config import get_config
 
 app = typer.Typer(
@@ -62,6 +63,18 @@ def process_cmd(
         exit_code = process_profile(profile_obj, should_use_gpu)
 
     raise typer.Exit(code=exit_code)
+
+
+@app.command(name="migrate")
+def migrate_cmd() -> None:
+    """Migrate existing metadata.json files to PostgreSQL database.
+
+    Scans all profiles in config.yaml, reads metadata.json files from media/ directories,
+    and populates the database with Profile, AudioFile, Recording, and Stem records.
+
+    Idempotent - safe to run multiple times. Will skip records that already exist.
+    """
+    migrate_command()
 
 
 def main() -> None:

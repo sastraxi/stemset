@@ -2,57 +2,99 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from datetime import datetime
 
 from litestar import get, patch
 from litestar.exceptions import NotFoundException
-from litestar.response import File, Redirect
 from pydantic import BaseModel
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..config import get_config
-from ..storage import get_storage
-from ..models.metadata import StemsMetadata
-from .models import FileWithStems, ProfileResponse
+from ..db.config import get_engine
+from ..db.models import Profile as DBProfile, Recording, Stem
+from .models import FileWithStems, ProfileResponse, StemResponse
 
 
 @get("/api/profiles")
 async def get_profiles() -> list[ProfileResponse]:
-    """Get all configured profiles."""
-    config = get_config()
-    return [
-        ProfileResponse(name=p.name, source_folder=p.source_folder)
-        for p in config.profiles
-    ]
+    """Get all configured profiles from database."""
+    engine = get_engine()
+
+    async with AsyncSession(engine) as session:
+        result = await session.exec(select(DBProfile))
+        profiles = result.all()
+
+        return [
+            ProfileResponse(name=p.name, source_folder=p.source_folder)
+            for p in profiles
+        ]
 
 
 @get("/api/profiles/{profile_name:str}")
 async def get_profile(profile_name: str) -> ProfileResponse:
-    """Get a specific profile by name."""
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+    """Get a specific profile by name from database."""
+    engine = get_engine()
 
-    return ProfileResponse(name=profile.name, source_folder=profile.source_folder)
+    async with AsyncSession(engine) as session:
+        result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
+        profile = result.first()
+
+        if profile is None:
+            raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+
+        return ProfileResponse(name=profile.name, source_folder=profile.source_folder)
 
 
 @get("/api/profiles/{profile_name:str}/files")
 async def get_profile_files(profile_name: str) -> list[FileWithStems]:
-    """Get all processed files for a profile."""
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+    """Get all processed files for a profile from database."""
+    engine = get_engine()
 
-    storage = get_storage(config)
-    file_names = storage.list_files(profile_name)
+    async with AsyncSession(engine) as session:
+        # Get profile
+        result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
+        profile = result.first()
+        if profile is None:
+            raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-    files = []
-    for file_name in file_names:
-        metadata_url = storage.get_metadata_url(profile_name, file_name)
-        files.append(FileWithStems(name=file_name, metadata_url=metadata_url))
+        # Query recordings with stems (use selectinload to avoid N+1)
+        stmt = (
+            select(Recording)
+            .where(Recording.profile_id == profile.id)
+            .options(selectinload(Recording.stems))
+            .order_by(Recording.created_at.desc())
+        )
+        result = await session.exec(stmt)
+        recordings = result.all()
 
-    return files
+        files = []
+        for recording in recordings:
+            stems = [
+                StemResponse(
+                    stem_type=stem.stem_type,
+                    measured_lufs=stem.measured_lufs,
+                    peak_amplitude=stem.peak_amplitude,
+                    stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
+                    audio_url=f"/media/{profile_name}/{recording.output_name}/{stem.audio_url}",
+                    waveform_url=f"/media/{profile_name}/{recording.output_name}/{stem.waveform_url}",
+                    file_size_bytes=stem.file_size_bytes,
+                    duration_seconds=stem.duration_seconds,
+                )
+                for stem in recording.stems
+            ]
+
+            files.append(
+                FileWithStems(
+                    name=recording.output_name,
+                    display_name=recording.display_name,
+                    stems=stems,
+                    created_at=recording.created_at.isoformat(),
+                )
+            )
+
+        return files
 
 
 class UpdateDisplayNameRequest(BaseModel):
@@ -60,35 +102,60 @@ class UpdateDisplayNameRequest(BaseModel):
     display_name: str
 
 
-@patch("/api/profiles/{profile_name:str}/files/{file_name:str}/display-name")
+@patch("/api/profiles/{profile_name:str}/files/{output_name:str}/display-name")
 async def update_display_name(
     profile_name: str,
-    file_name: str,
+    output_name: str,
     data: UpdateDisplayNameRequest
-) -> StemsMetadata:
-    """Update the display name for a recording."""
-    config = get_config()
-    profile = config.get_profile(profile_name)
-    if profile is None:
-        raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+) -> FileWithStems:
+    """Update the display name for a recording in database."""
+    engine = get_engine()
 
-    storage = get_storage(config)
+    async with AsyncSession(engine) as session:
+        # Get profile
+        result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
+        profile = result.first()
+        if profile is None:
+            raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-    # Fetch current metadata
-    metadata_url = storage.get_metadata_url(profile_name, file_name)
-    import httpx
-    async with httpx.AsyncClient() as client:
-        response = await client.get(metadata_url)
-        if response.status_code != 200:
-            raise NotFoundException(detail=f"Metadata not found for '{file_name}'")
+        # Get recording
+        stmt = (
+            select(Recording)
+            .where(Recording.profile_id == profile.id, Recording.output_name == output_name)
+            .options(selectinload(Recording.stems))
+        )
+        result = await session.exec(stmt)
+        recording = result.first()
 
-        metadata = StemsMetadata.model_validate_json(response.text)
+        if recording is None:
+            raise NotFoundException(detail=f"Recording '{output_name}' not found")
 
-    # Update display name
-    metadata.display_name = data.display_name
+        # Update display name and updated_at timestamp
+        recording.display_name = data.display_name
+        recording.updated_at = datetime.now(datetime.timezone.utc)
 
-    # Write back to storage
-    storage.update_metadata(profile_name, file_name, metadata.model_dump_json(indent=2))
+        await session.commit()
+        await session.refresh(recording)
 
-    return metadata
+        # Return updated recording
+        stems = [
+            StemResponse(
+                stem_type=stem.stem_type,
+                measured_lufs=stem.measured_lufs,
+                peak_amplitude=stem.peak_amplitude,
+                stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
+                audio_url=f"/media/{profile_name}/{recording.output_name}/{stem.audio_url}",
+                waveform_url=f"/media/{profile_name}/{recording.output_name}/{stem.waveform_url}",
+                file_size_bytes=stem.file_size_bytes,
+                duration_seconds=stem.duration_seconds,
+            )
+            for stem in recording.stems
+        ]
+
+        return FileWithStems(
+            name=recording.output_name,
+            display_name=recording.display_name,
+            stems=stems,
+            created_at=recording.created_at.isoformat(),
+        )
 

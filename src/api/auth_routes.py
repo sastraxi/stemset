@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 import httpx
 
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from litestar import get
@@ -15,6 +16,8 @@ from litestar.connection import Request
 from litestar.exceptions import NotAuthorizedException
 from litestar.params import Parameter
 from litestar.response import Redirect, Response
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..auth import (
     UserInfo,
@@ -25,6 +28,8 @@ from ..auth import (
     is_email_allowed,
 )
 from ..config import get_config
+from ..db.config import get_engine
+from ..db.models import User
 from .models import AuthStatusResponse, LogoutResponse
 
 _oauth_states: dict[str, str] = {}
@@ -126,6 +131,29 @@ async def auth_callback(
 
     if not is_email_allowed(userinfo.email, config):
         raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
+
+    # Upsert User record in database
+    engine = get_engine()
+    async with AsyncSession(engine) as session:
+        # Check if user exists
+        result = await session.exec(select(User).where(User.email == userinfo.email))
+        user = result.first()
+
+        if user:
+            # Update existing user
+            user.name = userinfo.name
+            user.picture_url = userinfo.picture
+            user.last_login_at = datetime.now(timezone.utc)
+        else:
+            # Create new user
+            user = User(
+                email=userinfo.email,
+                name=userinfo.name,
+                picture_url=userinfo.picture,
+            )
+            session.add(user)
+
+        await session.commit()
 
     jwt_token = create_jwt_token(
         userinfo.email, config.auth.jwt_secret, userinfo.name, userinfo.picture
