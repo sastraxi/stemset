@@ -1,22 +1,92 @@
 # Stemset Deployment Guide
 
 This guide explains how to deploy Stemset using the **hybrid architecture** with:
+- **Database**: PostgreSQL (Koyeb Managed/Neon/Supabase)
 - **Frontend**: Cloudflare Pages (free, unlimited bandwidth)
 - **Backend API**: Koyeb (free tier: 512MB RAM, 100GB bandwidth/month)
 - **Audio Storage**: Cloudflare R2 (free for first 10GB, zero egress fees)
 
 ## Benefits of This Architecture
 
-- **Cost**: $0/month for small deployments
+- **Cost**: $0/month for small deployments (Neon free tier includes PostgreSQL)
 - **Performance**: Global CDN for frontend, zero-latency audio serving from R2
 - **Scalability**: No bandwidth charges as you grow (R2 has zero egress fees)
 - **Separation of concerns**: Static frontend can be cached aggressively, API scales independently
+- **Database**: Structured queries, user management, job persistence
 
 ---
 
-## Part 1: Setup Cloudflare R2 (Audio Storage)
+## Part 1: Setup PostgreSQL Database
 
-### 1.1 Create R2 Bucket
+### Option A: Koyeb Managed PostgreSQL (Recommended)
+
+1. Log in to [Koyeb Dashboard](https://app.koyeb.com/)
+2. Navigate to **Databases**
+3. Click **Create database**
+4. Configure:
+   - **Database name**: `stemset`
+   - **Plan**: **Micro** (free tier: 1GB storage, 100 connections)
+   - **Region**: Choose closest to your API deployment
+5. Click **Create database**
+6. **Save the connection details**:
+   - Host, Port, Database name, Username, Password
+   - Connection string format: `postgresql://username:password@host:port/database`
+
+### Option B: Neon (Alternative Free Option)
+
+1. Sign up at [Neon](https://neon.tech/)
+2. Create a new project
+3. Database will be created automatically
+4. Go to **Dashboard** → **Connection Details**
+5. Copy the **Pooled connection string** (recommended for serverless)
+6. Format: `postgresql://username:password@host/database?sslmode=require`
+
+### Option C: Supabase (Alternative)
+
+1. Sign up at [Supabase](https://supabase.com/)
+2. Create a new project
+3. Go to **Settings** → **Database**
+4. Copy the **Connection string** (URI format)
+5. Use the **Connection pooling** string for better performance
+
+### 1.1 Test Database Connection
+
+Create a `.env.production` file locally to test:
+
+```bash
+DATABASE_URL=postgresql://username:password@host:port/database
+```
+
+Test the connection:
+
+```bash
+# Install psql if needed (macOS)
+brew install postgresql
+
+# Test connection
+psql "$DATABASE_URL" -c "SELECT version();"
+```
+
+### 1.2 Run Database Migration
+
+```bash
+# Set the database URL
+export DATABASE_URL="postgresql://username:password@host:port/database"
+
+# Run migrations to create tables
+alembic upgrade head
+
+# Verify tables were created
+psql "$DATABASE_URL" -c "\dt"
+```
+
+You should see tables: `users`, `profiles`, `user_profiles`, `audio_files`, `recordings`, `stems`
+
+---
+
+## Part 2: Setup Cloudflare R2 (Audio Storage)
+
+### 2.1 Create R2 Bucket
 
 1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. Navigate to **R2 Object Storage**
@@ -25,7 +95,7 @@ This guide explains how to deploy Stemset using the **hybrid architecture** with
 5. Location: **Automatic** (or choose closest to your users)
 6. Click **Create bucket**
 
-### 1.2 Create R2 API Token
+### 2.2 Create R2 API Token
 
 1. In R2 dashboard, find **Manage R2 API Tokens** in the right sidebar
 2. Click **Create API Token**
@@ -40,7 +110,7 @@ This guide explains how to deploy Stemset using the **hybrid architecture** with
    - **Access Key ID**
    - **Secret Access Key**
 
-### 1.3 (Optional) Configure Public Access
+### 2.3 (Optional) Configure Public Access
 
 If you want direct public access to audio files (faster, but less secure):
 
@@ -53,9 +123,9 @@ If you want direct public access to audio files (faster, but less secure):
 
 ---
 
-## Part 2: Deploy Backend to Koyeb
+## Part 3: Deploy Backend to Koyeb
 
-### 2.1 Prepare Your Repository
+### 3.1 Prepare Your Repository
 
 1. Ensure your code is pushed to GitHub
 2. The repository includes a multi-stage `Dockerfile`:
@@ -63,7 +133,7 @@ If you want direct public access to audio files (faster, but less secure):
    - `processing` target: Full ML/audio processing stack (~2GB+)
    - Koyeb will use the `api` target for fast, lightweight deployment
 
-### 2.2 Create Koyeb App
+### 3.2 Create Koyeb App
 
 1. Sign up at [Koyeb](https://www.koyeb.com/)
 2. Click **Create App**
@@ -77,11 +147,14 @@ If you want direct public access to audio files (faster, but less secure):
    - **Instance type**: Free (512MB RAM, 0.1 vCPU)
    - **Region**: Choose closest to your users
 
-### 2.3 Configure Environment Variables
+### 3.3 Configure Environment Variables
 
 Add these environment variables in Koyeb dashboard:
 
 ```bash
+# Database
+DATABASE_URL=<from-part-1-database-connection-string>
+
 # Authentication
 STEMSET_BYPASS_AUTH=false
 GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
@@ -91,25 +164,39 @@ OAUTH_REDIRECT_URI=https://stemset-api.koyeb.app/auth/callback
 FRONTEND_URL=https://stemset.pages.dev  # Update after deploying frontend
 
 # Cloudflare R2
-R2_ACCOUNT_ID=<from-step-1.2>
-R2_ACCESS_KEY_ID=<from-step-1.2>
-R2_SECRET_ACCESS_KEY=<from-step-1.2>
+R2_ACCOUNT_ID=<from-step-2.2>
+R2_ACCESS_KEY_ID=<from-step-2.2>
+R2_SECRET_ACCESS_KEY=<from-step-2.2>
 R2_BUCKET_NAME=stemset-media
-R2_PUBLIC_URL=<from-step-1.3-if-configured>  # Optional
+R2_PUBLIC_URL=<from-step-2.3-if-configured>  # Optional
 ```
 
-### 2.4 Deploy
+### 3.4 Deploy and Migrate Database
 
 1. Click **Deploy**
 2. Wait for build to complete (~3-5 minutes)
 3. Your API will be available at: `https://stemset-api.koyeb.app`
+
+**Run database migrations on production:**
+
+```bash
+# Set production database URL
+export DATABASE_URL="<your-production-database-url>"
+
+# Run migrations
+alembic upgrade head
+
+# If you have existing metadata.json files, migrate them:
+uv run stemset migrate
+```
+
 4. Test: Visit `https://stemset-api.koyeb.app/api/profiles`
 
 ---
 
-## Part 3: Deploy Frontend to Cloudflare Pages
+## Part 4: Deploy Frontend to Cloudflare Pages
 
-### 3.1 Create Cloudflare Pages Project
+### 4.1 Create Cloudflare Pages Project
 
 1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. Navigate to **Pages**
@@ -121,7 +208,7 @@ R2_PUBLIC_URL=<from-step-1.3-if-configured>  # Optional
    - **Build command**: `cd frontend && bun install && bun run build`
    - **Build output directory**: `frontend/dist`
 
-### 3.2 Configure Environment Variables
+### 4.2 Configure Environment Variables
 
 Add this environment variable in Cloudflare Pages settings:
 
@@ -129,13 +216,13 @@ Add this environment variable in Cloudflare Pages settings:
 VITE_API_URL=https://stemset-api.koyeb.app/api
 ```
 
-### 3.3 Deploy
+### 4.3 Deploy
 
 1. Click **Save and Deploy**
 2. Wait for build (~2-3 minutes)
 3. Your frontend will be available at: `https://stemset.pages.dev` (or custom domain)
 
-### 3.4 Update Backend CORS
+### 4.4 Update Backend CORS
 
 Go back to Koyeb and update the `FRONTEND_URL` environment variable to match your Cloudflare Pages URL:
 
@@ -147,9 +234,9 @@ Redeploy the Koyeb app for the change to take effect.
 
 ---
 
-## Part 4: Configure Google OAuth
+## Part 5: Configure Google OAuth
 
-### 4.1 Update OAuth Credentials
+### 5.1 Update OAuth Credentials
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Edit your OAuth 2.0 Client ID
@@ -162,9 +249,9 @@ Redeploy the Koyeb app for the change to take effect.
 
 ---
 
-## Part 5: Upload Audio Files to R2
+## Part 6: Upload Audio Files to R2
 
-### 5.1 Process Audio Locally
+### 6.1 Process Audio Locally
 
 Run the stemset CLI locally to process your audio files:
 
@@ -174,7 +261,7 @@ uv run stemset process <profile-name>
 
 This will create files in `media/<profile-name>/`.
 
-### 5.2 Install AWS CLI (for R2 uploads)
+### 6.2 Install AWS CLI (for R2 uploads)
 
 ```bash
 # macOS
@@ -184,7 +271,7 @@ brew install awscli
 pip install awscli
 ```
 
-### 5.3 Configure AWS CLI for R2
+### 6.3 Configure AWS CLI for R2
 
 Create a profile for R2:
 
@@ -198,7 +285,7 @@ Enter your R2 credentials:
 - Default region name: `auto`
 - Default output format: `json`
 
-### 5.4 Upload Files to R2
+### 6.4 Upload Files to R2
 
 ```bash
 # Sync your local media folder to R2
@@ -207,9 +294,9 @@ aws s3 sync media/ s3://stemset-media/ \
   --profile r2
 ```
 
-**Note**: Replace `<R2_ACCOUNT_ID>` with your Cloudflare account ID from step 1.2.
+**Note**: Replace `<R2_ACCOUNT_ID>` with your Cloudflare account ID from step 2.2.
 
-### 5.5 Verify Upload
+### 6.5 Verify Upload
 
 Check that files are in R2:
 
@@ -222,9 +309,9 @@ aws s3 ls s3://stemset-media/ \
 
 ---
 
-## Part 6: Enable R2 in Backend
+## Part 7: Enable R2 in Backend
 
-### 6.1 Update config.yaml
+### 7.1 Update config.yaml
 
 In your `config.yaml`, uncomment the R2 section:
 
@@ -238,7 +325,7 @@ r2:
   public_url: ${R2_PUBLIC_URL}  # Optional
 ```
 
-### 6.2 Commit and Deploy
+### 7.2 Commit and Deploy
 
 ```bash
 git add config.yaml

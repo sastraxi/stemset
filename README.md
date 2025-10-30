@@ -87,6 +87,7 @@ For local development, `.env` should have:
 ```bash
 STEMSET_BYPASS_AUTH=true  # Skip authentication locally
 STEMSET_MODEL_CACHE_DIR=~/.stemset/models
+DATABASE_URL=postgresql://stemset:stemset@localhost:5432/stemset  # Local PostgreSQL
 ```
 
 **2. Set up Google OAuth (for production):**
@@ -182,7 +183,20 @@ This separates stems, generates waveforms, and computes LUFS metadata. Output go
 
 ### 2. Run Locally for Development
 
-We run the servers separately to allow for hot reload of both backend and frontend code.
+First, set up the database:
+
+```bash
+# Start PostgreSQL (using Docker Compose)
+docker compose up -d
+
+# Run database migrations
+alembic upgrade head
+
+# Import existing metadata.json files (if you have any)
+uv run stemset migrate
+```
+
+Then run the servers separately for hot reload:
 
 ```bash
 # Terminal 1: Run backend (with auth bypass)
@@ -200,7 +214,7 @@ Visit http://localhost:5173 (frontend proxies API requests to port 8000).
 
 ### 3. Deploy to Production
 
-**Recommended: Cloudflare + Koyeb + R2 (FREE)**
+**Recommended: Cloudflare + Koyeb + PostgreSQL (FREE)**
 
 The recommended deployment uses a hybrid cloud architecture for zero-cost hosting:
 
@@ -209,9 +223,10 @@ The recommended deployment uses a hybrid cloud architecture for zero-cost hostin
 python scripts/check_deployment.py
 
 # Follow deployment guide
-# See DEPLOYMENT.md for complete step-by-step instructions
+# See docs/deployment.md for complete step-by-step instructions
 ```
 
+- **Database**: PostgreSQL (Koyeb/Neon/Supabase free tier)
 - **Frontend**: Cloudflare Pages (unlimited bandwidth, global CDN)
 - **Backend API**: Koyeb (free tier, no spin-down)
 - **Audio Storage**: Cloudflare R2 (10GB free, zero egress fees!)
@@ -221,6 +236,7 @@ python scripts/check_deployment.py
 - ✅ Zero egress fees for audio streaming
 - ✅ Global CDN for faster loading
 - ✅ No cold starts
+- ✅ PostgreSQL database with structured queries and user management
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guide.
 See [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md) for migration from Render.
