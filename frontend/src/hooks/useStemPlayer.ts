@@ -29,7 +29,7 @@ export interface UseStemPlayerOptions {
   fileName: string;
   stemsData: import('../types').StemResponse[];
   sampleRate?: number;
-  recordingId?: string;  // Optional recording UUID for API-based config
+  recordingId: string;
 }
 
 export interface UseStemPlayerResult {
