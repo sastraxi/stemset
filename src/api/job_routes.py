@@ -12,6 +12,8 @@ from litestar.datastructures import State, UploadFile
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.enums import RequestEncodingType
 
+from src.api.app import frontend_url
+
 from .models import JobStatusResponse
 from ..config import Config
 from ..storage import get_storage
@@ -242,7 +244,7 @@ async def upload_file(
             input_key=f"inputs/{profile_name}/{data.filename}",
             output_name=output_name,
             output_config=profile.output,
-            callback_url=f"{state.base_url}/api/jobs/{job_id}/complete",
+            callback_url=f"{frontend_url}/api/jobs/{job_id}/complete",
         )
 
         # Trigger GPU worker (fire-and-forget)
