@@ -124,6 +124,8 @@ export function AuthenticatedApp({
             setSelectedProfile(profileName)
         }
 
+        console.log("Navigating to recording:", profileName, fileName);
+
         // Navigate to the recording URL
         navigate({
             to: '/p/$profileName/$recordingName',
@@ -140,6 +142,7 @@ export function AuthenticatedApp({
     const handleFileSelect = (file: StemFileWithDisplayName) => {
         setSelectedFile(file)
         if (selectedProfile) {
+            console.log("handleFileSelect:", file);
             navigate({
                 to: '/p/$profileName/$recordingName',
                 params: {

@@ -326,6 +326,7 @@ export function AuthenticatedApp({
                     onClick={() => {
                       setSelectedFile(file);
                       if (selectedProfile) {
+                        console.log("setSelectedFile:", file);
                         navigate({
                           to: '/p/$profileName/$recordingName',
                           params: {
@@ -357,7 +358,7 @@ export function AuthenticatedApp({
                 ref={stemPlayerRef}
                 profileName={selectedProfile}
                 fileName={selectedFile.name}
-                metadataUrl={selectedFile.metadata_url}
+                stemsData={selectedFile.stems}
               />
             </>
           ) : (

@@ -36,6 +36,7 @@ export function HomePage() {
 
             if (lastRecording && lastProfileFiles.some(f => f.name === lastRecording)) {
                 // Valid recording exists, redirect to it
+                console.log("Redirecting to last recording:", lastProfile, lastRecording);
                 navigate({
                     to: '/p/$profileName/$recordingName',
                     params: { profileName: lastProfile, recordingName: lastRecording }
