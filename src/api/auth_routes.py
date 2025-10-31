@@ -30,7 +30,7 @@ from ..auth import (
 from ..config import get_config
 from ..db.config import get_engine
 from ..db.models import User
-from .models import AuthStatusResponse, LogoutResponse
+from .models import AuthStatusResponse, LoginCallbackResponse, LogoutResponse
 
 _oauth_states: dict[str, str] = {}
 
@@ -99,7 +99,11 @@ async def auth_login() -> Redirect:
 async def auth_callback(
     code: str, callback_state: Annotated[str, Parameter(query="state")]
 ) -> Redirect:
-    """Handle Google OAuth callback."""
+    """Handle Google OAuth callback.
+
+    This endpoint redirects to the frontend with the token in the URL fragment.
+    The frontend will extract the token and store it in localStorage.
+    """
     config = get_config()
     if config.auth is None:
         raise NotAuthorizedException(detail="Authentication not configured")
@@ -159,87 +163,19 @@ async def auth_callback(
         userinfo.email, config.auth.jwt_secret, userinfo.name, userinfo.picture
     )
 
+    # Redirect to frontend with token in URL fragment (not query string for security)
+    # Fragment is not sent to server, only accessible to JavaScript
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    is_dev = frontend_url.startswith("http://localhost")
+    redirect_url = f"{frontend_url}#token={jwt_token}"
 
-    # For production cross-site cookies, we need:
-    # 1. secure=True (HTTPS only)
-    # 2. samesite="none" (allow cross-origin)
-    # 3. httponly=True (security)
-    # 4. Partitioned attribute (Chrome requirement for CHIPS)
-
-    # Build cookie value manually to include Partitioned attribute
-    # Litestar's Cookie class doesn't support Partitioned, so we set it via raw header
-    max_age = 30 * 24 * 60 * 60  # 30 days
-
-    if is_dev:
-        # Development: standard cookie with domain=localhost
-        cookie_parts = [
-            f"stemset_token={jwt_token}",
-            "Path=/",
-            f"Max-Age={max_age}",
-            "Domain=localhost",
-            "HttpOnly",
-            "SameSite=Lax",
-        ]
-    else:
-        # Production: cross-site cookie
-        # Note: Not using Partitioned because the cookie is set when user is on the backend domain,
-        # which partitions it under the wrong key. For Partitioned to work, the cookie must be
-        # set while the user is on the frontend domain (e.g., via iframe/popup).
-        cookie_parts = [
-            f"stemset_token={jwt_token}",
-            "Path=/",
-            f"Max-Age={max_age}",
-            "Secure",
-            "HttpOnly",
-            "SameSite=None",
-        ]
-
-    cookie_header = "; ".join(cookie_parts)
-
-    response = Redirect(path=frontend_url)
-    # Set cookie via raw header instead of set_cookie() to support Partitioned
-    response.headers["set-cookie"] = cookie_header
-
-    return response
+    return Redirect(path=redirect_url)
 
 
 @get("/auth/logout")
-async def auth_logout() -> Response[LogoutResponse]:
-    """Logout user by clearing token cookie.
+async def auth_logout() -> LogoutResponse:
+    """Logout user.
 
-    Returns a JSON response instead of redirecting to avoid CORS issues
-    with redirect chains when credentials are included.
+    With localStorage-based JWT, logout is handled client-side by removing
+    the token from localStorage. This endpoint exists for API consistency.
     """
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    is_dev = frontend_url.startswith("http://localhost")
-
-    # To delete a cookie, we need to set it with Max-Age=0 and the same attributes
-    # that were used when setting it (especially Path, Domain, Secure, SameSite, Partitioned)
-    if is_dev:
-        cookie_parts = [
-            "stemset_token=",
-            "Path=/",
-            "Max-Age=0",
-            "Domain=localhost",
-            "HttpOnly",
-            "SameSite=Lax",
-        ]
-    else:
-        cookie_parts = [
-            "stemset_token=",
-            "Path=/",
-            "Max-Age=0",
-            "Secure",
-            "HttpOnly",
-            "SameSite=None",
-        ]
-
-    cookie_header = "; ".join(cookie_parts)
-
-    # Create response with cookie deletion
-    response = Response(content=LogoutResponse(success=True))
-    response.headers["set-cookie"] = cookie_header
-
-    return response
+    return LogoutResponse(success=True)

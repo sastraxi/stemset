@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 // Use environment variable for API URL in production, fallback to root for local dev
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+const TOKEN_KEY = 'stemset_token';
+
 interface User {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ interface AuthContextValue {
   login: () => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -29,16 +32,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const getToken = () => {
+    return localStorage.getItem(TOKEN_KEY);
+  };
+
+  const setToken = (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token);
+  };
+
+  const clearToken = () => {
+    localStorage.removeItem(TOKEN_KEY);
+  };
+
   const checkAuth = async () => {
+    const token = getToken();
+    if (!token) {
+      setAuthStatus({ authenticated: false });
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE}/auth/status`, {
-        credentials: 'include', // Include cookies
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       const status: AuthStatus = await response.json();
       setAuthStatus(status);
+
+      // If token is invalid, clear it
+      if (!status.authenticated) {
+        clearToken();
+      }
     } catch (error) {
       console.error('Failed to check auth status:', error);
       setAuthStatus({ authenticated: false });
+      clearToken();
     } finally {
       setLoading(false);
     }
@@ -51,23 +81,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        credentials: 'include',
-      });
+      const token = getToken();
+      if (token) {
+        await fetch(`${API_BASE}/auth/logout`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+      clearToken();
       setAuthStatus({ authenticated: false });
       // Navigate to home page after logout
       window.location.href = '/';
     } catch (error) {
       console.error('Failed to logout:', error);
+      clearToken();
+      setAuthStatus({ authenticated: false });
     }
   };
 
+  // Handle OAuth callback with token in URL fragment
   useEffect(() => {
-    checkAuth();
+    const hash = window.location.hash;
+    if (hash.startsWith('#token=')) {
+      const token = hash.substring(7); // Remove '#token='
+      setToken(token);
+      // Clean up URL
+      window.history.replaceState(null, '', window.location.pathname);
+      // Check auth with new token
+      checkAuth();
+    } else {
+      checkAuth();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <AuthContext.Provider value={{ authStatus, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ authStatus, loading, login, logout, checkAuth, getToken }}>
       {children}
     </AuthContext.Provider>
   );

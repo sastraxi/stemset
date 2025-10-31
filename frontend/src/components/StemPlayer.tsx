@@ -17,6 +17,7 @@ interface StemPlayerProps {
   fileName: string;
   stemsData: import('../types').StemResponse[];
   onLoadingChange?: (isLoading: boolean) => void;
+  recordingId?: string;  // Optional recording UUID for API-based config
 }
 
 export interface StemPlayerHandle {
@@ -29,7 +30,7 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-  ({ profileName, fileName, stemsData, onLoadingChange }, ref) => {
+  ({ profileName, fileName, stemsData, onLoadingChange, recordingId }, ref) => {
     const [previewTime, setPreviewTime] = useState<number | null>(null);
     const [showTimeRemaining, setShowTimeRemaining] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
@@ -89,7 +90,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       // updateStereoExpander,
       // resetStereoExpander,
       compressorGainReduction,
-    } = useStemPlayer({ profileName, fileName, stemsData });
+    } = useStemPlayer({ profileName, fileName, stemsData, recordingId });
 
     // Notify parent of loading state changes
     useEffect(() => {

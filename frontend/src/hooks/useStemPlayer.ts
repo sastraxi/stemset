@@ -29,6 +29,7 @@ export interface UseStemPlayerOptions {
   fileName: string;
   stemsData: import('../types').StemResponse[];
   sampleRate?: number;
+  recordingId?: string;  // Optional recording UUID for API-based config
 }
 
 export interface UseStemPlayerResult {
@@ -84,6 +85,7 @@ export function useStemPlayer({
   fileName,
   stemsData,
   sampleRate = 44100,
+  recordingId,
 }: UseStemPlayerOptions): UseStemPlayerResult {
   // 1. Audio context and master gain
   const { getContext, getMasterInput, getMasterOutput, masterVolume, setMasterVolume } = useAudioContext({ sampleRate });
@@ -91,10 +93,11 @@ export function useStemPlayer({
   const masterInput = getMasterInput();
   const masterOutput = getMasterOutput();
 
-  // 2. Recording config (localStorage persistence)
+  // 2. Recording config (localStorage persistence, or API if recordingId provided)
   const { getConfig, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
     profileName,
     fileName,
+    recordingId,
   });
 
   // 3. Load audio buffers

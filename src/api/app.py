@@ -23,6 +23,7 @@ from .profile_routes import (
     update_display_name,
 )
 from .job_routes import job_complete, job_status, upload_file
+from .config_routes import get_recording_config, update_recording_config
 
 
 @asynccontextmanager
@@ -93,6 +94,8 @@ app = Litestar(
         get_profile,
         get_profile_files,
         update_display_name,
+        get_recording_config,
+        update_recording_config,
         job_complete,
         job_status,
         upload_file,

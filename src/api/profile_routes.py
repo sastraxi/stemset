@@ -93,6 +93,7 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
 
             files.append(
                 FileWithStems(
+                    id=str(recording.id),
                     name=recording.output_name,
                     display_name=recording.display_name,
                     stems=stems,

@@ -359,6 +359,7 @@ export function AuthenticatedApp({
                 profileName={selectedProfile}
                 fileName={selectedFile.name}
                 stemsData={selectedFile.stems}
+                recordingId={selectedFile.id}
               />
             </>
           ) : (

@@ -3,13 +3,30 @@ import type { Profile, StemFile } from './types';
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-// Default fetch options to include credentials (cookies)
-const defaultOptions: RequestInit = {
-  credentials: 'include',
-};
+const TOKEN_KEY = 'stemset_token';
+
+// Helper to get auth headers with JWT token
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
+    return {
+      'Authorization': `Bearer ${token}`,
+    };
+  }
+  return {};
+}
+
+// Helper for authenticated fetch
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const headers = {
+    ...getAuthHeaders(),
+    ...options.headers,
+  };
+  return fetch(url, { ...options, headers });
+}
 
 export async function getProfiles(): Promise<Profile[]> {
-  const response = await fetch(`${API_BASE}/api/profiles`, defaultOptions);
+  const response = await authFetch(`${API_BASE}/api/profiles`);
   if (!response.ok) {
     throw new Error(`Failed to fetch profiles: ${response.statusText}`);
   }
@@ -17,7 +34,7 @@ export async function getProfiles(): Promise<Profile[]> {
 }
 
 export async function getProfile(name: string): Promise<Profile> {
-  const response = await fetch(`${API_BASE}/api/profiles/${name}`, defaultOptions);
+  const response = await authFetch(`${API_BASE}/api/profiles/${name}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch profile: ${response.statusText}`);
   }
@@ -25,7 +42,7 @@ export async function getProfile(name: string): Promise<Profile> {
 }
 
 export async function getProfileFiles(name: string): Promise<StemFile[]> {
-  const response = await fetch(`${API_BASE}/api/profiles/${name}/files`, defaultOptions);
+  const response = await authFetch(`${API_BASE}/api/profiles/${name}/files`);
   if (!response.ok) {
     throw new Error(`Failed to fetch files: ${response.statusText}`);
   }
@@ -37,10 +54,9 @@ export async function updateDisplayName(
   fileName: string,
   displayName: string
 ): Promise<Record<string, any>> {
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE}/api/profiles/${profileName}/files/${fileName}/display-name`,
     {
-      ...defaultOptions,
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

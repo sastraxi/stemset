@@ -12,6 +12,13 @@ class AuthStatusResponse(BaseModel):
     user: dict[str, str | None] | None = None
 
 
+class LoginCallbackResponse(BaseModel):
+    """OAuth callback response with JWT token."""
+
+    token: str
+    user: dict[str, str | None]
+
+
 class ProfileResponse(BaseModel):
     """Profile information response."""
 
@@ -35,6 +42,7 @@ class StemResponse(BaseModel):
 class FileWithStems(BaseModel):
     """File with stems information from database."""
 
+    id: str  # recording UUID
     name: str  # output_name
     display_name: str
     stems: list[StemResponse]

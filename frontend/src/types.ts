@@ -8,6 +8,7 @@ export interface Profile {
 }
 
 export interface StemFile {
+  id: string;  // recording UUID
   name: string;
   display_name: string;
   stems: StemResponse[];

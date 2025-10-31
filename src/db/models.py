@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Column, Field, Relationship, SQLModel
 
 
@@ -144,3 +145,37 @@ class Stem(SQLModel, table=True):
     # Relationships
     recording: "Recording" = Relationship(back_populates="stems", sa_relationship_kwargs={"lazy": "noload"})
     audio_file: "AudioFile" = Relationship(back_populates="stems", sa_relationship_kwargs={"lazy": "noload"})
+
+
+class RecordingUserConfig(SQLModel, table=True):
+    """User-specific recording configuration (effects, playback position, stem settings)."""
+
+    __tablename__ = "recording_user_configs"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.id", index=True)
+    recording_id: UUID = Field(foreign_key="recordings.id", index=True)
+    config_key: str = Field(max_length=50)  # 'playbackPosition', 'stems', 'effects'
+    config_value: dict = Field(sa_column=Column(JSONB, nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(
+            sa.DateTime(timezone=True),
+            nullable=False,
+            onupdate=utc_now
+        )
+    )
+
+    # Relationships
+    user: "User" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    recording: "Recording" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+
+    # Composite unique constraint (user_id, recording_id, config_key)
+    __table_args__ = (
+        sa.UniqueConstraint('user_id', 'recording_id', 'config_key', name='uq_user_recording_config_key'),
+        sa.Index('idx_user_recording_configs', 'user_id', 'recording_id'),
+    )

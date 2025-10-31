@@ -321,6 +321,7 @@ export function AuthenticatedApp({
                                 fileName={selectedFile.name}
                                 stemsData={selectedFile.stems}
                                 onLoadingChange={setIsLoadingStems}
+                                recordingId={selectedFile.id}
                             />
                         </>
                     ) : (
