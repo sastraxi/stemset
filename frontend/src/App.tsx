@@ -12,7 +12,7 @@ import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
 import { Toaster, toast } from 'sonner';
-import { getSessionProfile, setSessionProfile, pruneStaleRecordings } from './lib/storage';
+import { getSessionProfile, setSessionProfile } from './lib/storage';
 import './styles/layout.css';
 import './styles/sidebar.css';
 import './styles/splash.css';
@@ -158,10 +158,6 @@ export function AuthenticatedApp({
       setFiles(data);
       // Update count for this profile
       setFileCountByProfile(prev => ({ ...prev, [profileName]: data.length }));
-
-      // Clean up stale recording states (recordings that no longer exist)
-      const validFileNames = data.map(f => f.name);
-      pruneStaleRecordings(profileName, validFileNames);
 
       // Select initial recording if provided
       if (initialRecording && profileName === initialProfile) {

@@ -5,7 +5,8 @@ from pathlib import Path
 
 from .config import Profile, get_config
 from .models.strategy_executor import StrategyExecutor
-from .models.metadata import StemMetadata, get_metadata_analyzer, StemsMetadata
+from .models.metadata import StemMetadata, StemsMetadata
+from .processor.audio_metadata_analyzer import get_metadata_analyzer
 
 
 class StemSeparator:

@@ -14,8 +14,7 @@ import type { StemFileWithDisplayName } from '../types'
 import { toast } from 'sonner'
 import {
     setSessionProfile,
-    setSessionRecording,
-    pruneStaleRecordings
+    setSessionRecording
 } from '../lib/storage'
 import '../styles/layout.css'
 import '../styles/sidebar.css'
@@ -62,10 +61,13 @@ export function AuthenticatedApp({
     // Set selected profile based on initial or first available
     useEffect(() => {
         if (profiles && !selectedProfile) {
-            if (initialProfile && profiles.some(p => p.name === initialProfile)) {
+            // Validate initialProfile exists
+            const validInitialProfile = initialProfile && profiles.some(p => p.name === initialProfile)
+            if (validInitialProfile) {
                 setSelectedProfile(initialProfile)
             } else if (profiles.length > 0) {
                 setSelectedProfile(profiles[0].name)
+                console.log('[AuthenticatedApp] Using fallback profile:', profiles[0].name)
             }
         }
     }, [profiles, selectedProfile, initialProfile])
@@ -77,6 +79,10 @@ export function AuthenticatedApp({
             if (targetFile && selectedFile?.name !== targetFile.name) {
                 setSelectedFile(targetFile)
                 setTimeout(() => stemPlayerRef.current?.focus(), 100)
+            } else if (!targetFile && initialRecording) {
+                // Initial recording doesn't exist - clear selection
+                console.log('[AuthenticatedApp] Initial recording not found:', initialRecording)
+                setSelectedFile(null)
             }
         }
     }, [files, initialRecording, selectedProfile, initialProfile, selectedFile])
@@ -91,22 +97,9 @@ export function AuthenticatedApp({
     // Persist selected recording to localStorage
     useEffect(() => {
         if (selectedFile && selectedProfile) {
-            setSessionRecording(selectedFile.name, selectedProfile)
+            setSessionRecording(selectedProfile, selectedFile.name)
         }
     }, [selectedFile, selectedProfile])
-
-    // Clean up stale data on mount
-    useEffect(() => {
-        // Placeholder for future pending jobs logic
-    }, [])
-
-    // Clean up stale recordings when files change
-    useEffect(() => {
-        if (files && selectedProfile) {
-            const validFileNames = files.map(f => f.name)
-            pruneStaleRecordings(selectedProfile, validFileNames)
-        }
-    }, [files, selectedProfile])
 
     const handleNavigateToRecording = async (profileName: string, fileName: string) => {
         // Switch to the profile if needed

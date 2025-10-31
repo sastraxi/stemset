@@ -21,8 +21,8 @@ def get_audio_duration(file_path: Path) -> float:
         return float(info.duration)
     except Exception as e:
         raise ValueError(
-            f"Failed to determine duration for {file_path}: {e}. " +
-            "Duration is required - cannot proceed."
+            f"Failed to determine duration for {file_path}: {e}. "
+            + "Duration is required - cannot proceed."
         ) from e
 
 
@@ -40,8 +40,95 @@ def compute_file_hash(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
+def build_input_file_hash_lookup() -> dict[str, tuple[str, Path | None]]:
+    """
+    Build a lookup table of file hash -> (storage_url, local_path).
+
+    This hashes all local input files and then queries R2 for files with SHA256 metadata.
+    Returns a dict where keys are SHA256 hashes and values are (storage_url, local_path).
+    local_path is None for files only found in R2.
+    """
+    hash_lookup = {}
+
+    print("🔍 Building hash lookup for input files...")
+
+    # First, hash all local input files
+    input_dir = Path("input")
+    if input_dir.exists():
+        print("  📁 Scanning local input/ directory...")
+        for profile_dir in input_dir.iterdir():
+            if not profile_dir.is_dir():
+                continue
+
+            print(f"    📂 Scanning {profile_dir.name}/")
+            for audio_file in profile_dir.iterdir():
+                if audio_file.is_file() and audio_file.suffix.lower() in [
+                    ".wav",
+                    ".mp3",
+                    ".m4a",
+                    ".flac",
+                    ".aif",
+                    ".aiff",
+                ]:
+                    try:
+                        file_hash = compute_file_hash(audio_file)
+                        storage_url = f"inputs/{profile_dir.name}/{audio_file.name}"
+                        hash_lookup[file_hash] = (storage_url, audio_file)
+                        print(f"      ✅ {audio_file.name}: {file_hash[:8]}...")
+                    except Exception as e:
+                        print(f"      ⚠️  Error hashing {audio_file}: {e}")
+                        continue
+
+    # Then, query R2 storage for files with SHA256 metadata
+    config = load_config()
+    if config.r2 is not None:
+        from ..storage import R2Storage
+
+        r2_storage = R2Storage(config.r2)
+
+        print("  ☁️  Scanning R2 inputs/ bucket...")
+        try:
+            # List all objects under inputs/ prefix
+            response = r2_storage.s3_client.list_objects_v2(
+                Bucket=config.r2.bucket_name, Prefix="inputs/"
+            )
+
+            for obj in response.get("Contents", []):
+                key = obj["Key"]
+
+                # Get object metadata to check SHA256
+                try:
+                    head_response = r2_storage.s3_client.head_object(
+                        Bucket=config.r2.bucket_name, Key=key
+                    )
+
+                    metadata = head_response.get("Metadata", {})
+                    stored_hash = metadata.get("sha256")
+
+                    if stored_hash:
+                        # Only add if we don't already have this hash from local files
+                        if stored_hash not in hash_lookup:
+                            hash_lookup[stored_hash] = (key, None)
+                            filename = key.split("/")[-1]
+                            print(f"      ✅ {filename}: {stored_hash[:8]}...")
+
+                except Exception as e:
+                    print(f"      ⚠️  Error checking R2 object {key}: {e}")
+                    continue
+
+        except Exception as e:
+            print(f"    ⚠️  Error scanning R2 storage: {e}")
+
+    print(f"  📊 Found {len(hash_lookup)} unique input files")
+    return hash_lookup
+
+
 def migrate_profile(
-    session: Session, profile_name: str, profile_source: str, strategy_name: str
+    session: Session,
+    profile_name: str,
+    profile_source: str,
+    strategy_name: str,
+    hash_lookup: dict[str, tuple[str, Path | None]],
 ) -> None:
     """Migrate one profile's data from filesystem to database."""
     media_dir = Path("media") / profile_name
@@ -96,55 +183,89 @@ def migrate_profile(
             print(f"    ⚠️  Skipping {output_name} - no stems in metadata")
             continue
 
-        # Try to find source audio file
-        # Pattern: Look for common audio file extensions in the recording directory
-        # or in the profile's source folder
+        # Try to find source audio file using hash lookup
         source_audio_path = None
-        audio_extensions = [".wav", ".mp3", ".m4a", ".flac", ".aif", ".aiff"]
+        file_hash = None
+        storage_url = None
+        source_filename = None
 
-        # First check if there's a source file in the recording directory
+        # First check if there's a source file in the recording directory (legacy approach)
+        audio_extensions = [".wav", ".mp3", ".m4a", ".flac", ".aif", ".aiff"]
         for ext in audio_extensions:
             potential_source = recording_dir / f"source{ext}"
             if potential_source.exists():
                 source_audio_path = potential_source
+                file_hash = compute_file_hash(source_audio_path)
+                source_filename = source_audio_path.name
+                storage_url = f"inputs/{profile_name}/{source_filename}"
                 break
 
-        # If not found, we'll need to create a dummy AudioFile entry
-        # In a real scenario, you might want to skip this or handle it differently
+        # If not found locally, try to find by matching partial hash from folder name
         if not source_audio_path:
-            # For migration purposes, we'll infer from the first stem file
+            # Extract partial hash from output_name (folder name)
+            # Format: "2025-09-22_-_We_re_not_right_f4e5a89b" -> "f4e5a89b"
+            parts = output_name.split("_")
+            if len(parts) >= 2:
+                partial_hash = parts[-1]  # Get the last part after the final underscore
+
+                # Search for a full hash that starts with this partial hash
+                matching_hash = None
+                for full_hash in hash_lookup:
+                    if full_hash.startswith(partial_hash):
+                        matching_hash = full_hash
+                        break
+
+                if matching_hash:
+                    # Found the source file by partial hash match!
+                    storage_url, source_audio_path = hash_lookup[matching_hash]
+                    file_hash = matching_hash
+                    source_filename = storage_url.split("/")[-1]
+                    print(
+                        f"    ✅ Found source file by partial hash {partial_hash}: {source_filename}"
+                    )
+                else:
+                    print(f"    ⚠️  No input file found matching partial hash: {partial_hash}")
+
+            if not file_hash:
+                # Last resort: create placeholder AudioFile entry
+                first_stem_name = next(iter(metadata.stems.keys()))
+                first_stem_metadata = metadata.stems[first_stem_name]
+                sample_stem_path = recording_dir / first_stem_metadata.stem_url
+
+                if not sample_stem_path.exists():
+                    print(f"    ⚠️  Skipping {output_name} - cannot find stem files")
+                    continue
+
+                # Use output_name as fallback hash for placeholder
+                file_hash = hashlib.sha256(output_name.encode()).hexdigest()
+                source_filename = f"{output_name}.wav"  # Inferred
+                storage_url = f"inputs/{profile_name}/{source_filename}"
+
+                print(
+                    f"    ℹ️  No source file found for '{output_name}', "
+                    + "creating placeholder AudioFile"
+                )
+
+        # Determine audio file properties
+        if source_audio_path:
+            # We have the actual file - get real properties
+            duration_seconds = get_audio_duration(source_audio_path)
+            file_size_bytes = get_file_size(source_audio_path)
+        else:
+            # Use stem file to infer duration, unknown file size
             first_stem_name = next(iter(metadata.stems.keys()))
             first_stem_metadata = metadata.stems[first_stem_name]
             sample_stem_path = recording_dir / first_stem_metadata.stem_url
-
-            if not sample_stem_path.exists():
-                print(f"    ⚠️  Skipping {output_name} - cannot find stem files")
-                continue
-
-            # Use stem to infer audio file properties
-            # For hash, we'll use output_name as a fallback
-            file_hash = hashlib.sha256(output_name.encode()).hexdigest()
             duration_seconds = get_audio_duration(sample_stem_path)
-            file_size_bytes = 0  # Unknown for source
-            source_filename = f"{output_name}.wav"  # Inferred
-            storage_url = f"inputs/{profile_name}/{source_filename}"
+            file_size_bytes = 0  # Unknown for placeholder
 
-            print(
-                f"    ℹ️  No source file found for '{output_name}', " +
-                "creating placeholder AudioFile"
-            )
-        else:
-            # We have an actual source file
-            file_hash = compute_file_hash(source_audio_path)
-            duration_seconds = get_audio_duration(source_audio_path)
-            file_size_bytes = get_file_size(source_audio_path)
-            source_filename = source_audio_path.name
-            storage_url = f"inputs/{profile_name}/{source_filename}"
+        # Ensure we have all required values before creating AudioFile
+        if not file_hash or not source_filename or not storage_url:
+            print(f"    ⚠️  Skipping {output_name} - missing required file information")
+            continue
 
         # Check if AudioFile already exists by hash
-        result = session.exec(
-            select(AudioFile).where(AudioFile.file_hash == file_hash)
-        )
+        result = session.exec(select(AudioFile).where(AudioFile.file_hash == file_hash))
         audio_file = result.first()
         if not audio_file:
             audio_file = AudioFile(
@@ -197,14 +318,16 @@ def migrate_profile(
             stem_count += 1
 
         session.commit()
-        print(
-            f"    ✅ Migrated recording '{output_name}' with {stem_count} stem(s)"
-        )
+        print(f"    ✅ Migrated recording '{output_name}' with {stem_count} stem(s)")
 
 
 def run_migration() -> None:
     """Main migration function."""
     print("🚀 Starting database migration from metadata.json files...\n")
+
+    # Build hash lookup for all input files
+    hash_lookup = build_input_file_hash_lookup()
+    print()
 
     # Load config to get profiles
     config = load_config()
@@ -218,6 +341,7 @@ def run_migration() -> None:
                 profile_config.name,
                 profile_config.source_folder,
                 profile_config.strategy,
+                hash_lookup,
             )
             print()
 

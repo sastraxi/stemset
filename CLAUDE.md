@@ -310,8 +310,8 @@ src/
 │   ├── auth_routes.py     # OAuth endpoints with User upserts
 │   ├── profile_routes.py  # Profile and file endpoints querying database
 │   └── job_routes.py      # Job callbacks and processing triggers
-├── modal_worker/          # Modal serverless GPU worker
-│   ├── app.py             # Modal function with R2 mount and GPU processing
+├── processor/          # Modal serverless GPU worker
+│   ├── worker.py             # Modal function with R2 mount and GPU processing
 │   └── __init__.py
 ├── gpu_worker/            # Shared models (used by CLI, API, and Modal worker)
 │   ├── models.py          # Job payload and result models (ProcessingJob, ProcessingResult)
@@ -541,7 +541,7 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 **Build** (automated via git push):
 - **Cloudflare Pages**: `cd frontend && bun install && bun run build` → serves `dist/`
 - **Koyeb API**: Buildpack auto-detects Python, runs `uv sync`, starts uvicorn (target: `api`)
-- **Modal GPU Worker**: `modal deploy src/modal_worker/app.py` → creates HTTPS endpoint
+- **Modal GPU Worker**: `modal deploy src/processor/worker.py` → creates HTTPS endpoint
 
 **Storage Abstraction** (`storage.py`):
 - Protocol-based interface supports both local filesystem and R2
@@ -596,7 +596,7 @@ Visit `http://localhost:8000` - Backend serves both API and static frontend.
 - Sync happens automatically before/after CLI processing
 
 **Modal Worker Deployment**:
-- Deploy with: `modal deploy src/modal_worker/app.py`
+- Deploy with: `modal deploy src/processor/worker.py`
 - Creates serverless HTTPS endpoint automatically
 - Mounts R2 bucket via CloudBucketMount (no egress fees)
 - Pay-per-second billing with no idle charges

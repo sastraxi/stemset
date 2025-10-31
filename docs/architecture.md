@@ -91,19 +91,13 @@ Below the stem controls the player provides a master processing "island":
 - Low Shelf 80Hz, Low Mid 250Hz, Mid 1kHz, High Mid 3.5kHz, High Shelf 10kHz
 - Implemented via `BiquadFilterNode`s in series
 - Adjustable gain per band (-12dB to +12dB)
-- Persisted in `localStorage` under key `stemset.master.eq.v1`
-
-**Simple Limiter:**
-- Ceiling control 50–100%, enable toggle
-- Currently a soft ceiling using a final `GainNode` (placeholder for true dynamics processing)
-- Persisted in `localStorage` under key `stemset.master.limiter.v1`
 
 **Routing:**
 ```
-Each Stem → Gain Node → Master Input Gain → EQ Filters → Limiter Gain → destination
+Each Stem → Gain Node → Master Input Gain → Effects → destination
 ```
 
-**Persistence:** Settings are loaded on hook initialization. Updates trigger writes to `localStorage` immediately (no debounce needed due to small payload).
+**Persistence:** Settings are loaded on hook initialization.
 
 ### Why Not Single Source Pause?
 
@@ -145,13 +139,11 @@ uv run stemset deploy               # Wraps: wrangler pages deploy media/
 - Waveform/spectrogram display synchronized with playback time
 - A/B loop region (define start/end loop points)
 - Crossfade on seek to avoid abrupt transitions
-- Mute/solo controls per stem
 - Peak/RMS metering using `AnalyserNode`
 - Offline rendering for exporting custom mixes
 - Optional latency compensation if adding live input monitoring
 
 ### Effects
-- True peak limiter/compressor (ScriptProcessor or AudioWorklet with lookahead)
 - Adjustable frequencies & Q for bands (turning graphic EQ into parametric EQ)
 - Preset management (save/load multiple EQ/limiter profiles)
 - Spectrum analyzer visualized with `AnalyserNode` beneath controls

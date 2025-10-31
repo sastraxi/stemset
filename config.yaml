@@ -36,40 +36,40 @@ strategies:
 #################################
 
   # Faster, lower-quality (squishier sounding)
-  htdemucs_ft:
-    _: "htdemucs_ft"
-    vocals: vocals
-    bass: bass
-    drums: drums
-    other: other
+  # htdemucs_ft:
+  #   _: "htdemucs_ft"
+  #   vocals: vocals
+  #   bass: bass
+  #   drums: drums
+  #   other: other
 
-  # Pretty decent separation.
-  hdemucs_mmi:
-    _: "hdemucs_mmi"
-    vocals: vocals
-    bass: bass
-    drums: drums
-    other: other
+  # # Pretty decent separation.
+  # hdemucs_mmi:
+  #   _: "hdemucs_mmi"
+  #   vocals: vocals
+  #   bass: bass
+  #   drums: drums
+  #   other: other
 
-  successive:
-    _: "vocals_mel_band_roformer.ckpt"
-    vocals: vocals
-    other: 
-      _: "kuielab_b_drums.onnx"
-      drums: drums
-      no drums:
-        _: "kuielab_a_bass.onnx"
-        bass: bass
-        no bass: other
+  # successive:
+  #   _: "vocals_mel_band_roformer.ckpt"
+  #   vocals: vocals
+  #   other: 
+  #     _: "kuielab_b_drums.onnx"
+  #     drums: drums
+  #     no drums:
+  #       _: "kuielab_a_bass.onnx"
+  #       bass: bass
+  #       no bass: other
   
-  bobw:
-    _: "vocals_mel_band_roformer.ckpt"
-    vocals: vocals
-    other:
-      _: "hdemucs_mmi"
-      bass: bass
-      drums: drums
-      other: other
+  # bobw:
+  #   _: "vocals_mel_band_roformer.ckpt"
+  #   vocals: vocals
+  #   other:
+  #     _: "hdemucs_mmi"
+  #     bass: bass
+  #     drums: drums
+  #     other: other
 
   vocal_then_ft:
     _: "vocals_mel_band_roformer.ckpt"
@@ -83,39 +83,8 @@ strategies:
 
 profiles:
 #################################
-  - name: "h4n"
-    source_folder: "/Volumes/H4N_SD/STEREO"
-    strategy: "hdemucs_mmi"
-    output:
-      format: "opus"
-      bitrate: 192
-
-  - name: "one"
-    source_folder: "./input/one"
-    strategy: "htdemucs_ft"
-    remote: true
-    output:
-      format: "opus"
-      bitrate: 192
-
-  - name: "experimental"
-    source_folder: "./input/experimental"
-    strategy: "successive"
-    remote: true
-    output:
-      format: "opus"
-      bitrate: 192
-
-  - name: "bobw"
-    source_folder: "./input/bobw"
-    strategy: "bobw"
-    remote: true
-    output:
-      format: "opus"
-      bitrate: 192
-
-  - name: "vocal_then_ft"
-    source_folder: "./input/vocal_then_ft"
+  - name: "Parallel Creak"
+    source_folder: "/"
     strategy: "vocal_then_ft"
     remote: true
     output:

@@ -1,9 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { getToken as getStoredToken, setToken as setStoredToken, clearToken as clearStoredToken } from '../lib/storage';
 
 // Use environment variable for API URL in production, fallback to root for local dev
 const API_BASE = import.meta.env.VITE_API_URL || '';
-
-const TOKEN_KEY = 'stemset_token';
 
 interface User {
   id: string;
@@ -33,15 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const getToken = () => {
-    return localStorage.getItem(TOKEN_KEY);
+    return getStoredToken();
   };
 
   const setToken = (token: string) => {
-    localStorage.setItem(TOKEN_KEY, token);
+    setStoredToken(token);
   };
 
   const clearToken = () => {
-    localStorage.removeItem(TOKEN_KEY);
+    clearStoredToken();
   };
 
   const checkAuth = async () => {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { LoginPage } from '../components/LoginPage'
-import { getSessionProfile, getSessionRecording } from '../lib/storage'
+import { getSessionProfile, getSessionRecording, setSessionProfile, clearSessionRecording } from '../lib/storage'
 import { useProfiles, useProfileFiles } from '../hooks/queries'
 import { Spinner } from '../components/Spinner'
 
@@ -24,17 +24,35 @@ export function HomePage() {
     useEffect(() => {
         if (!authStatus?.authenticated || profilesLoading || !profiles) return
 
-        const profileToUse = lastProfile && profiles.some(p => p.name === lastProfile)
+        // Validate lastProfile still exists, clear if not
+        const validLastProfile = lastProfile && profiles.some(p => p.name === lastProfile)
+        if (lastProfile && !validLastProfile) {
+            console.log('[HomePage] Clearing invalid lastProfile from localStorage:', lastProfile)
+            setSessionProfile('')
+            setLastProfile(null)
+        }
+
+        const profileToUse = validLastProfile
             ? lastProfile
             : profiles.length > 0 ? profiles[0].name : null
 
-        if (!profileToUse) return
+        if (!profileToUse) {
+            // No profiles exist - show empty state
+            return
+        }
 
         // If we're checking the last profile, wait for files to load to validate recording
         if (lastProfile === profileToUse && lastProfileFiles !== undefined) {
             const lastRecording = getSessionRecording(lastProfile)
 
-            if (lastRecording && lastProfileFiles.some(f => f.name === lastRecording)) {
+            // Validate lastRecording still exists
+            const validRecording = lastRecording && lastProfileFiles.some(f => f.name === lastRecording)
+            if (lastRecording && !validRecording) {
+                console.log('[HomePage] Clearing invalid lastRecording from localStorage:', lastRecording)
+                clearSessionRecording(lastProfile)
+            }
+
+            if (validRecording) {
                 // Valid recording exists, redirect to it
                 console.log("Redirecting to last recording:", lastProfile, lastRecording);
                 navigate({
@@ -74,6 +92,27 @@ export function HomePage() {
                     <h1>Stemset</h1>
                     <p className="splash-subtitle">Loading profiles...</p>
                     <Spinner size="md" />
+                </div>
+            </div>
+        )
+    }
+
+    // Show empty state if no profiles exist
+    if (profiles.length === 0) {
+        return (
+            <div className="splash-screen">
+                <div className="splash-content">
+                    <h1>Stemset</h1>
+                    <p className="splash-subtitle">No profiles configured</p>
+                    <div className="splash-instructions">
+                        <p>To get started, configure a profile in your backend <code>config.yaml</code>:</p>
+                        <pre><code>profiles:
+  - name: "my-recordings"
+    source_folder: "/path/to/audio/files"
+    strategy: "hdemucs_mmi"</code></pre>
+                        <p className="splash-hint">Then process some audio files using the CLI:</p>
+                        <pre><code>uv run stemset process my-recordings</code></pre>
+                    </div>
                 </div>
             </div>
         )

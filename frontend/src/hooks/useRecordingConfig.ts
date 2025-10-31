@@ -1,8 +1,4 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
-import {
-  getRecordingState,
-  updateRecordingState,
-} from '../lib/storage';
 import type { RecordingUserConfig, StemUserConfig, EffectsChainConfig } from '../types';
 import {
   DEFAULT_EQ_CONFIG,
@@ -27,9 +23,7 @@ const DEFAULT_RECORDING_CONFIG: RecordingUserConfig = {
 };
 
 export interface UseRecordingConfigOptions {
-  profileName: string;
-  fileName: string;
-  recordingId?: string;  // Optional recording UUID for API-based config
+  recordingId: string;  // Recording UUID for API-based config
 }
 
 export interface UseRecordingConfigResult {
@@ -42,28 +36,20 @@ export interface UseRecordingConfigResult {
 /**
  * Hook to manage per-recording mutable configuration.
  *
- * - If recordingId is provided: Uses API with database storage + localStorage backup
- * - If recordingId is not provided: Uses localStorage only (backward compatibility)
+ * Stores all state in PostgreSQL database via API.
+ * No localStorage persistence - database is single source of truth.
  *
  * Responsibilities:
- * - Load saved config from API or localStorage
+ * - Load saved config from API on mount
  * - Debounced saves to prevent excessive writes
- * - Dual-write to localStorage as backup
  * - Show toast notifications for load/save events
  * - Provide stable callbacks for saving different config sections
- *
- * Pattern: Getter function is stable (always reads fresh from source).
- * Save functions are debounced and stable callbacks.
  */
 export function useRecordingConfig({
-  profileName,
-  fileName,
   recordingId,
 }: UseRecordingConfigOptions): UseRecordingConfigResult {
   const { getToken } = useAuth();
   const [apiConfig, setApiConfig] = useState<RecordingUserConfig | null>(null);
-
-  // Use ref instead of state to avoid recreating callbacks
   const apiSaveDisabledRef = useRef(false);
 
   // Debounce timers
@@ -71,10 +57,8 @@ export function useRecordingConfig({
   const stemConfigsDebounceRef = useRef<number | null>(null);
   const effectsConfigDebounceRef = useRef<number | null>(null);
 
-  // Fetch config from API on mount if recordingId is provided
+  // Fetch config from API on mount
   useEffect(() => {
-    if (!recordingId) return;
-
     const fetchConfig = async () => {
       try {
         const token = getToken();
@@ -125,11 +109,9 @@ export function useRecordingConfig({
     fetchConfig();
   }, [recordingId, getToken]);
 
-  // Save to API with dual-write to localStorage
+  // Save to API
   const saveToApi = useCallback(async (key: string, value: any) => {
-    if (!recordingId) return;
     if (apiSaveDisabledRef.current) {
-      // Don't retry after first error
       console.warn(`API saves disabled due to previous error, skipping save for ${key}`);
       return;
     }
@@ -148,17 +130,6 @@ export function useRecordingConfig({
       });
 
       if (response.ok) {
-        // Also save to localStorage as backup
-        const localStorageUpdate: Partial<RecordingUserConfig> = {};
-        if (key === 'playbackPosition') {
-          localStorageUpdate.playbackPosition = value.position;
-        } else if (key === 'stems') {
-          localStorageUpdate.stems = value;
-        } else if (key === 'effects') {
-          localStorageUpdate.effects = value;
-        }
-        updateRecordingState(profileName, fileName, localStorageUpdate);
-
         // Show success toast (but not for playback position - too noisy)
         if (key !== 'playbackPosition') {
           toast.success(`${key === 'stems' ? 'Volume' : 'Effects'} settings saved`);
@@ -168,98 +139,59 @@ export function useRecordingConfig({
       }
     } catch (error) {
       console.error(`Failed to save ${key}:`, error);
-
-      // Disable further API saves to prevent spam (use ref to avoid recreating callback)
       apiSaveDisabledRef.current = true;
 
-      // Show error toast
       const settingName = key === 'playbackPosition' ? 'playback position' :
                          key === 'stems' ? 'volume' : 'effects';
       toast.error(`Failed to save ${settingName} settings. Further saves disabled.`);
     }
-  }, [recordingId, getToken, profileName, fileName]);
+  }, [recordingId, getToken]);
 
   const getConfig = useCallback((): RecordingUserConfig => {
-    if (recordingId) {
-      // Always use API config if recordingId provided
-      if (apiConfig) {
-        // Config loaded from database
-        return {
-          playbackPosition: apiConfig.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
-          stems: apiConfig.stems ?? DEFAULT_RECORDING_CONFIG.stems,
-          effects: {
-            eq: { ...DEFAULT_EQ_CONFIG, ...(apiConfig.effects?.eq || {}) },
-            compressor: { ...DEFAULT_COMPRESSOR_CONFIG, ...(apiConfig.effects?.compressor || {}) },
-            reverb: { ...DEFAULT_REVERB_CONFIG, ...(apiConfig.effects?.reverb || {}) },
-            stereoExpander: { ...DEFAULT_STEREO_EXPANDER_CONFIG, ...(apiConfig.effects?.stereoExpander || {}) },
-          },
-        };
-      } else {
-        // Still loading from database, return defaults
-        return DEFAULT_RECORDING_CONFIG;
-      }
+    if (apiConfig) {
+      // Config loaded from database
+      return {
+        playbackPosition: apiConfig.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
+        stems: apiConfig.stems ?? DEFAULT_RECORDING_CONFIG.stems,
+        effects: {
+          eq: { ...DEFAULT_EQ_CONFIG, ...(apiConfig.effects?.eq || {}) },
+          compressor: { ...DEFAULT_COMPRESSOR_CONFIG, ...(apiConfig.effects?.compressor || {}) },
+          reverb: { ...DEFAULT_REVERB_CONFIG, ...(apiConfig.effects?.reverb || {}) },
+          stereoExpander: { ...DEFAULT_STEREO_EXPANDER_CONFIG, ...(apiConfig.effects?.stereoExpander || {}) },
+        },
+      };
+    } else {
+      // Still loading from database, return defaults
+      return DEFAULT_RECORDING_CONFIG;
     }
-
-    // No recordingId - fallback to localStorage (backward compatibility)
-    const saved = getRecordingState(profileName, fileName);
-    if (!saved) return DEFAULT_RECORDING_CONFIG;
-
-    return {
-      playbackPosition: saved.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
-      stems: saved.stems ?? DEFAULT_RECORDING_CONFIG.stems,
-      effects: {
-        eq: { ...DEFAULT_EQ_CONFIG, ...(saved.effects?.eq || {}) },
-        compressor: { ...DEFAULT_COMPRESSOR_CONFIG, ...(saved.effects?.compressor || {}) },
-        reverb: { ...DEFAULT_REVERB_CONFIG, ...(saved.effects?.reverb || {}) },
-        stereoExpander: { ...DEFAULT_STEREO_EXPANDER_CONFIG, ...(saved.effects?.stereoExpander || {}) },
-      },
-    };
-  }, [profileName, fileName, recordingId, apiConfig]);
+  }, [apiConfig]);
 
   const savePlaybackPosition = useCallback((position: number) => {
     if (playbackPositionDebounceRef.current) {
       clearTimeout(playbackPositionDebounceRef.current);
     }
     playbackPositionDebounceRef.current = window.setTimeout(() => {
-      if (recordingId) {
-        // Save to API (also saves to localStorage as backup)
-        saveToApi('playbackPosition', { position });
-      } else {
-        // Save to localStorage only
-        updateRecordingState(profileName, fileName, { playbackPosition: position });
-      }
+      saveToApi('playbackPosition', { position });
     }, 1000);
-  }, [profileName, fileName, recordingId, saveToApi]);
+  }, [saveToApi]);
 
   const saveStemConfigs = useCallback((stems: Record<string, StemUserConfig>) => {
     if (stemConfigsDebounceRef.current) {
       clearTimeout(stemConfigsDebounceRef.current);
     }
     stemConfigsDebounceRef.current = window.setTimeout(() => {
-      if (recordingId) {
-        // Save to API (also saves to localStorage as backup)
-        saveToApi('stems', stems);
-      } else {
-        // Save to localStorage only
-        updateRecordingState(profileName, fileName, { stems });
-      }
+      saveToApi('stems', stems);
     }, 500);
-  }, [profileName, fileName, recordingId, saveToApi]);
+  }, [saveToApi]);
 
   const saveEffectsConfig = useCallback((effects: EffectsChainConfig) => {
     if (effectsConfigDebounceRef.current) {
       clearTimeout(effectsConfigDebounceRef.current);
     }
     effectsConfigDebounceRef.current = window.setTimeout(() => {
-      if (recordingId) {
-        // Save to API (also saves to localStorage as backup)
-        saveToApi('effects', effects);
-      } else {
-        // Save to localStorage only
-        updateRecordingState(profileName, fileName, { effects });
-      }
+      saveToApi('effects', effects);
     }, 500);
-  }, [profileName, fileName, recordingId, saveToApi]);
+  }, [saveToApi]);
 
   return {
     getConfig,

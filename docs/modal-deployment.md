@@ -83,7 +83,7 @@ Modal needs access to your R2 bucket. Create a secret with your R2 credentials:
 
 ```bash
 # Deploy the worker function
-uv run modal deploy src/modal_worker/app.py
+uv run modal deploy src/processor/worker.py
 ```
 
 This will output the webhook URL for your function, something like:
@@ -162,7 +162,7 @@ pollStatus();
 
 ## GPU Options and Pricing
 
-Modal offers several GPU options. You can change the GPU in `src/modal_worker/app.py`:
+Modal offers several GPU options. You can change the GPU in `src/processor/worker.py`:
 
 ```python
 @app.function(
@@ -253,7 +253,7 @@ When you make changes to the worker code:
 
 ```bash
 # Redeploy
-modal deploy src/modal_worker/app.py
+modal deploy src/processor/worker.py
 
 # The URL stays the same, so no need to update GPU_WORKER_URL
 ```
@@ -281,8 +281,8 @@ This uses your local machine's GPU (if available) or CPU for processing.
 1. ✅ Install Modal SDK: `uv sync`
 2. ✅ Authenticate: `modal token new`
 3. ✅ Create R2 secret: `modal secret create r2-secret ...`
-4. ✅ Update account ID in `src/modal_worker/app.py`
-5. ✅ Deploy worker: `modal deploy src/modal_worker/app.py`
+4. ✅ Update account ID in `src/processor/worker.py`
+5. ✅ Deploy worker: `modal deploy src/processor/worker.py`
 6. ✅ Set `GPU_WORKER_URL` in `.env`
 7. ✅ Test: `uv run stemset process h4n some-file.wav`
 8. 🎵 Process audio with serverless GPUs!

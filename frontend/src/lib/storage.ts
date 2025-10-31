@@ -1,21 +1,19 @@
 /**
  * Type-safe localStorage wrapper for Stemset.
  *
- * All keys use the `stemset.*` prefix with version suffixes for safe migration.
+ * Minimal session state only:
+ * - stemset.token: JWT authentication token
+ * - stemset.masterVolume: Global master volume
+ * - stemset.profile: Current profile name
+ * - stemset.profile.<profileName>.recording: Current recording per profile
  */
 
-import type { RecordingUserConfig } from '../types';
-
-export type RecordingsMap = Record<string, RecordingUserConfig>; // key: `${profile}::${fileName}`
-
-// Storage keys with versioning
+// Storage keys
 const KEYS = {
-  // Session state
-  SESSION_PROFILE: 'stemset.session.profile.v1',
-  SESSION_RECORDING: 'stemset.session.recording.v1',
-
-  // Per-recording state (v2 includes effects config)
-  RECORDINGS: 'stemset.recordings.v2',
+  TOKEN: 'stemset.token',
+  MASTER_VOLUME: 'stemset.masterVolume',
+  PROFILE: 'stemset.profile',
+  PROFILE_RECORDING_PREFIX: 'stemset.profile.',
 } as const;
 
 /**
@@ -43,156 +41,65 @@ function setItem<T>(key: string, value: T): void {
   }
 }
 
-/**
- * Remove a key from localStorage.
- */
-// Unused but kept for future use
-// function removeItem(key: string): void {
-//   try {
-//     localStorage.removeItem(key);
-//   } catch (error) {
-//     console.error(`[storage] Failed to remove ${key}:`, error);
-//   }
-// }
+// ============================================================================
+// Authentication
+// ============================================================================
+
+export function getToken(): string | null {
+  return getItem<string | null>(KEYS.TOKEN, null);
+}
+
+export function setToken(token: string): void {
+  setItem(KEYS.TOKEN, token);
+}
+
+export function clearToken(): void {
+  try {
+    localStorage.removeItem(KEYS.TOKEN);
+  } catch (error) {
+    console.error('[storage] Failed to remove token:', error);
+  }
+}
 
 // ============================================================================
-// Session State
+// Master Volume
+// ============================================================================
+
+export function getMasterVolume(): number {
+  return getItem<number>(KEYS.MASTER_VOLUME, 1.0);
+}
+
+export function setMasterVolume(volume: number): void {
+  setItem(KEYS.MASTER_VOLUME, volume);
+}
+
+// ============================================================================
+// Session State (Profile & Recording)
 // ============================================================================
 
 export function getSessionProfile(): string | null {
-  return getItem<string | null>(KEYS.SESSION_PROFILE, null);
+  return getItem<string | null>(KEYS.PROFILE, null);
 }
 
 export function setSessionProfile(profileName: string): void {
-  setItem(KEYS.SESSION_PROFILE, profileName);
+  setItem(KEYS.PROFILE, profileName);
 }
 
-export function getSessionRecording(profileName?: string): string | null {
-  if (profileName) {
-    // Get profile-specific recording
-    const key = `${KEYS.SESSION_RECORDING}.${profileName}`;
-    return getItem<string | null>(key, null);
-  }
-  // Fallback to global recording for backward compatibility
-  return getItem<string | null>(KEYS.SESSION_RECORDING, null);
+export function getSessionRecording(profileName: string): string | null {
+  const key = `${KEYS.PROFILE_RECORDING_PREFIX}${profileName}.recording`;
+  return getItem<string | null>(key, null);
 }
 
-export function setSessionRecording(recordingName: string, profileName?: string): void {
-  if (profileName) {
-    // Store profile-specific recording
-    const key = `${KEYS.SESSION_RECORDING}.${profileName}`;
-    setItem(key, recordingName);
-  }
-  // Also store as global for backward compatibility
-  setItem(KEYS.SESSION_RECORDING, recordingName);
+export function setSessionRecording(profileName: string, recordingName: string): void {
+  const key = `${KEYS.PROFILE_RECORDING_PREFIX}${profileName}.recording`;
+  setItem(key, recordingName);
 }
 
-// ============================================================================
-// Per-Recording State
-// ============================================================================
-
-/**
- * Generate a unique key for a recording.
- */
-export function getRecordingKey(profileName: string, fileName: string): string {
-  return `${profileName}::${fileName}`;
-}
-
-/**
- * Get all recording states.
- */
-export function getAllRecordings(): RecordingsMap {
-  return getItem<RecordingsMap>(KEYS.RECORDINGS, {});
-}
-
-/**
- * Get state for a specific recording.
- */
-export function getRecordingState(profileName: string, fileName: string): RecordingUserConfig | null {
-  const all = getAllRecordings();
-  const key = getRecordingKey(profileName, fileName);
-  return all[key] || null;
-}
-
-/**
- * Save state for a specific recording.
- */
-export function setRecordingState(profileName: string, fileName: string, state: RecordingUserConfig): void {
-  const all = getAllRecordings();
-  const key = getRecordingKey(profileName, fileName);
-  all[key] = state;
-  setItem(KEYS.RECORDINGS, all);
-}
-
-/**
- * Update a subset of recording state (partial update).
- */
-export function updateRecordingState(
-  profileName: string,
-  fileName: string,
-  updates: Partial<RecordingUserConfig>
-): void {
-  const existing = getRecordingState(profileName, fileName);
-  if (!existing) {
-    // Create minimal default config to merge with updates
-    const defaultConfig: RecordingUserConfig = {
-      playbackPosition: 0,
-      stems: {},
-      effects: updates.effects || {
-        eq: { bands: [], enabled: true },
-        compressor: { threshold: -6, attack: 0.005, hold: 0.02, release: 0.1, enabled: true },
-        reverb: { mix: 0.3, impulse: 'big-bright-room', enabled: false },
-        stereoExpander: { lowMidCrossover: 300, midHighCrossover: 3000, expLow: 1, compLow: 0.2, expMid: 1.2, compMid: 0.3, expHigh: 1.6, compHigh: 0.1, enabled: false },
-      },
-    };
-    setRecordingState(profileName, fileName, { ...defaultConfig, ...updates });
-  } else {
-    setRecordingState(profileName, fileName, { ...existing, ...updates });
-  }
-}
-
-/**
- * Remove state for a specific recording.
- */
-export function removeRecordingState(profileName: string, fileName: string): void {
-  const all = getAllRecordings();
-  const key = getRecordingKey(profileName, fileName);
-  delete all[key];
-  setItem(KEYS.RECORDINGS, all);
-}
-
-/**
- * Remove all recording states for a profile (useful when profile is deleted).
- */
-export function removeProfileRecordings(profileName: string): void {
-  const all = getAllRecordings();
-  const filtered = Object.fromEntries(
-    Object.entries(all).filter(([key]) => !key.startsWith(`${profileName}::`))
-  );
-  setItem(KEYS.RECORDINGS, filtered);
-}
-
-/**
- * Clean up recording states that don't match the current file list.
- */
-export function pruneStaleRecordings(profileName: string, validFileNames: string[]): void {
-  const all = getAllRecordings();
-  const validKeys = new Set(validFileNames.map(name => getRecordingKey(profileName, name)));
-  const profilePrefix = `${profileName}::`;
-
-  let pruned = 0;
-  const filtered = Object.fromEntries(
-    Object.entries(all).filter(([key]) => {
-      // Keep all non-profile entries + valid profile entries
-      if (!key.startsWith(profilePrefix)) return true;
-      const keep = validKeys.has(key);
-      if (!keep) pruned++;
-      return keep;
-    })
-  );
-
-  if (pruned > 0) {
-    setItem(KEYS.RECORDINGS, filtered);
-    console.log(`[storage] Pruned ${pruned} stale recordings for profile ${profileName}`);
+export function clearSessionRecording(profileName: string): void {
+  const key = `${KEYS.PROFILE_RECORDING_PREFIX}${profileName}.recording`;
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.error(`[storage] Failed to remove recording for ${profileName}:`, error);
   }
 }
