@@ -102,7 +102,8 @@ export function useStemPlayer({
 
   // 2. Recording config (database persistence via API)
   // config is undefined (loading), null (no config), or RecordingUserConfig (loaded)
-  const { config, isLoading: isConfigLoading, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
+  // Note: We only READ config here. Individual components are responsible for saving.
+  const { config, isLoading: isConfigLoading } = useRecordingConfig({
     recordingId,
   });
 
@@ -148,15 +149,6 @@ export function useStemPlayer({
   // 5. Stem view models (merge metadata + user config)
   const [stems, setStems] = useState<Record<string, StemViewModel>>({});
   const [stemOrder, setStemOrder] = useState<string[]>([]);
-
-  // Track if config has been loaded at least once to prevent saving defaults
-  const [configHasLoaded, setConfigHasLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!isConfigLoading && !configHasLoaded) {
-      setConfigHasLoaded(true);
-    }
-  }, [isConfigLoading, configHasLoaded]);
 
   // Initialize stem view models when audio nodes are created AND config is loaded
   useEffect(() => {
@@ -253,50 +245,6 @@ export function useStemPlayer({
       stop()
     }
   }, [duration, currentTime, seek]);
-
-  // 9. Persist playback position (only after config has loaded at least once)
-  useEffect(() => {
-    if (!isLoading && configHasLoaded) {
-      savePlaybackPosition(currentTime);
-    }
-  }, [currentTime, isLoading, configHasLoaded, savePlaybackPosition]);
-
-  // 10. Persist stem configs (only after config has loaded at least once)
-  useEffect(() => {
-    if (!isLoading && configHasLoaded && Object.keys(stems).length > 0) {
-      const stemConfigs: Record<string, import('../types').StemUserConfig> = {};
-
-      Object.entries(stems).forEach(([name, viewModel]) => {
-        stemConfigs[name] = {
-          gain: viewModel.gain,
-          muted: viewModel.muted,
-          soloed: viewModel.soloed,
-        };
-      });
-
-      saveStemConfigs(stemConfigs);
-    }
-  }, [stems, isLoading, configHasLoaded, saveStemConfigs]);
-
-  // 11. Persist effects config (only after config has loaded at least once)
-  useEffect(() => {
-    if (!isLoading && configHasLoaded) {
-      saveEffectsConfig({
-        eq: eq.config,
-        compressor: compressor.config,
-        reverb: reverb.config,
-        stereoExpander: stereoExpander.config,
-      });
-    }
-  }, [
-    eq.config,
-    compressor.config,
-    reverb.config,
-    stereoExpander.config,
-    isLoading,
-    configHasLoaded,
-    saveEffectsConfig,
-  ]);
 
   // Stem control actions
   const setStemGain = useCallback((stemName: string, gain: number) => {

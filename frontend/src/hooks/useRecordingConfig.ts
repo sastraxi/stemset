@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { RecordingUserConfig, StemUserConfig, EffectsChainConfig } from '../types';
 import {
@@ -92,23 +92,38 @@ export function useRecordingConfig({
     retry: 2,
   });
 
+  // Track if initial load has completed using a ref (doesn't cause re-renders)
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      console.log('[useRecordingConfig] Initial config load complete, saves now enabled');
+    }
+  }, [isLoading]);
+
   // Save to API (only after initial load to prevent race condition)
   const saveToApi = useCallback(async (key: string, value: any) => {
     // CRITICAL: Don't save until initial config is loaded
     // This prevents race condition where defaults overwrite actual saved values
-    if (isLoading) {
-      console.debug(`Config still loading, skipping save for ${key}`);
+    if (!hasLoadedRef.current) {
+      console.debug(`[useRecordingConfig] Config still loading, skipping save for ${key}`);
       return;
     }
 
     if (apiSaveDisabledRef.current) {
-      console.warn(`API saves disabled due to previous error, skipping save for ${key}`);
+      console.warn(`[useRecordingConfig] API saves disabled due to previous error, skipping save for ${key}`);
       return;
     }
 
+    console.log(`[useRecordingConfig] Saving ${key}:`, value);
+
     try {
       const token = getToken();
-      if (!token) return;
+      if (!token) {
+        console.warn('[useRecordingConfig] No token available, skipping save');
+        return;
+      }
 
       const response = await fetch(`${API_BASE}/api/recordings/${recordingId}/config`, {
         method: 'PATCH',
@@ -120,19 +135,19 @@ export function useRecordingConfig({
       });
 
       if (response.ok) {
-        // Show success toast (but not for playback position - too noisy)
+        console.log(`[useRecordingConfig] Successfully saved ${key}`);
       } else {
         throw new Error(`Server returned ${response.status}`);
       }
     } catch (error) {
-      console.error(`Failed to save ${key}:`, error);
+      console.error(`[useRecordingConfig] Failed to save ${key}:`, error);
       apiSaveDisabledRef.current = true;
 
       const settingName = key === 'playbackPosition' ? 'playback position' :
         key === 'stems' ? 'volume' : 'effects';
       toast.error(`Failed to save ${settingName} settings. Further saves disabled.`);
     }
-  }, [recordingId, getToken, isLoading]);
+  }, [recordingId, getToken]);
 
   const savePlaybackPosition = useCallback((position: number) => {
     if (playbackPositionDebounceRef.current) {
