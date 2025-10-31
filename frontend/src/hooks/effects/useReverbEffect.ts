@@ -28,6 +28,7 @@ export interface ReverbConfig {
 export interface UseReverbEffectOptions {
   audioContext: AudioContext | null;
   initialConfig?: ReverbConfig;
+  onConfigChange?: (config: ReverbConfig) => void;
 }
 
 export interface UseReverbEffectResult {
@@ -49,6 +50,7 @@ export const DEFAULT_REVERB_CONFIG: ReverbConfig = {
 export function useReverbEffect({
   audioContext,
   initialConfig,
+  onConfigChange,
 }: UseReverbEffectOptions): UseReverbEffectResult {
   const [config, setConfig] = useState<ReverbConfig>(() => {
     return initialConfig || DEFAULT_REVERB_CONFIG;
@@ -58,6 +60,45 @@ export function useReverbEffect({
   const inputNodeRef = useRef<GainNode | null>(null);
   const outputNodeRef = useRef<GainNode | null>(null);
   const convolverRef = useRef<ConvolverNode | null>(null);
+
+  // Track if this is the first render (don't save on initial load)
+  const isFirstRender = useRef(true);
+  const lastInitialConfigRef = useRef(initialConfig);
+
+  // Update config when initialConfig changes (e.g., loaded from server)
+  useEffect(() => {
+    if (initialConfig && initialConfig !== lastInitialConfigRef.current) {
+      console.log('[useReverbEffect] Initial config changed, updating state:', initialConfig);
+      isFirstRender.current = true;
+      setConfig(initialConfig);
+      lastInitialConfigRef.current = initialConfig;
+    }
+  }, [initialConfig]);
+
+  // Debounced save when config changes (skip first render and external updates)
+  const saveTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      console.log('[useReverbEffect] First render, skipping save');
+      return;
+    }
+
+    if (onConfigChange) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = window.setTimeout(() => {
+        console.log('[useReverbEffect] Saving config after user change:', config);
+        onConfigChange(config);
+      }, 500);
+    }
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [config, onConfigChange]);
   const wetGainRef = useRef<GainNode | null>(null);
   const dryGainRef = useRef<GainNode | null>(null);
   const impulseBufferRef = useRef<AudioBuffer | null>(null);

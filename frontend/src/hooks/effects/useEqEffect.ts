@@ -16,6 +16,7 @@ export interface EqConfig {
 export interface UseEqEffectOptions {
   audioContext: AudioContext | null;
   initialConfig?: EqConfig;
+  onConfigChange?: (config: EqConfig) => void; // Callback to save config changes
 }
 
 export interface UseEqEffectResult {
@@ -45,6 +46,7 @@ export const DEFAULT_EQ_CONFIG: EqConfig = {
 export function useEqEffect({
   audioContext,
   initialConfig,
+  onConfigChange,
 }: UseEqEffectOptions): UseEqEffectResult {
   const [config, setConfig] = useState<EqConfig>(() => {
     return initialConfig || DEFAULT_EQ_CONFIG;
@@ -52,6 +54,47 @@ export function useEqEffect({
 
   const [isReady, setIsReady] = useState(false);
   const nodesRef = useRef<BiquadFilterNode[]>([]);
+
+  // Track if this is the first render (don't save on initial load)
+  const isFirstRender = useRef(true);
+  const lastInitialConfigRef = useRef(initialConfig);
+
+  // Update config when initialConfig changes (e.g., loaded from server)
+  useEffect(() => {
+    if (initialConfig && initialConfig !== lastInitialConfigRef.current) {
+      console.log('[useEqEffect] Initial config changed, updating state:', initialConfig);
+      // Mark as first render again to skip the save that will be triggered by setConfig
+      isFirstRender.current = true;
+      setConfig(initialConfig);
+      lastInitialConfigRef.current = initialConfig;
+    }
+  }, [initialConfig]);
+
+  // Debounced save when config changes (skip first render and external updates)
+  const saveTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    // Skip saving on very first render
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      console.log('[useEqEffect] First render, skipping save');
+      return;
+    }
+
+    if (onConfigChange) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = window.setTimeout(() => {
+        console.log('[useEqEffect] Saving config after user change:', config);
+        onConfigChange(config);
+      }, 500);
+    }
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [config, onConfigChange]);
 
   // Create filter nodes once when audioContext is available
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAudioContext } from './useAudioContext';
 import { useRecordingConfig } from './useRecordingConfig';
 import { useAudioLoader } from './useAudioLoader';
@@ -102,8 +102,7 @@ export function useStemPlayer({
 
   // 2. Recording config (database persistence via API)
   // config is undefined (loading), null (no config), or RecordingUserConfig (loaded)
-  // Note: We only READ config here. Individual components are responsible for saving.
-  const { config, isLoading: isConfigLoading } = useRecordingConfig({
+  const { config, isLoading: isConfigLoading, saveEffectsConfig } = useRecordingConfig({
     recordingId,
   });
 
@@ -212,6 +211,53 @@ export function useStemPlayer({
     });
   }, [stems, stemNodes]);
 
+  // Store latest effectiveConfig in a ref to avoid recreating callbacks
+  const effectiveConfigRef = useRef(effectiveConfig);
+  useEffect(() => {
+    effectiveConfigRef.current = effectiveConfig;
+  }, [effectiveConfig]);
+
+  // Create save callbacks for effects (stable reference, uses ref for latest config)
+  const saveEqConfig = useCallback((eqConfig: typeof DEFAULT_EQ_CONFIG) => {
+    const currentConfig = effectiveConfigRef.current;
+    saveEffectsConfig({
+      eq: eqConfig,
+      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
+      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
+      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
+    });
+  }, [saveEffectsConfig]);
+
+  const saveCompressorConfig = useCallback((compressorConfig: typeof DEFAULT_COMPRESSOR_CONFIG) => {
+    const currentConfig = effectiveConfigRef.current;
+    saveEffectsConfig({
+      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
+      compressor: compressorConfig,
+      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
+      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
+    });
+  }, [saveEffectsConfig]);
+
+  const saveReverbConfig = useCallback((reverbConfig: typeof DEFAULT_REVERB_CONFIG) => {
+    const currentConfig = effectiveConfigRef.current;
+    saveEffectsConfig({
+      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
+      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
+      reverb: reverbConfig,
+      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
+    });
+  }, [saveEffectsConfig]);
+
+  const saveStereoExpanderConfig = useCallback((stereoExpanderConfig: typeof DEFAULT_STEREO_EXPANDER_CONFIG) => {
+    const currentConfig = effectiveConfigRef.current;
+    saveEffectsConfig({
+      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
+      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
+      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
+      stereoExpander: stereoExpanderConfig,
+    });
+  }, [saveEffectsConfig]);
+
   // 7. Audio effects (use defaults while loading, then switch to saved config)
   const { eq, compressor, reverb, stereoExpander} = useAudioEffects({
     audioContext,
@@ -228,6 +274,10 @@ export function useStemPlayer({
       reverbConfig: DEFAULT_REVERB_CONFIG,
       stereoExpanderConfig: DEFAULT_STEREO_EXPANDER_CONFIG,
     },
+    onEqChange: saveEqConfig,
+    onCompressorChange: saveCompressorConfig,
+    onReverbChange: saveReverbConfig,
+    onStereoExpanderChange: saveStereoExpanderConfig,
   });
 
   // 8. Playback control (use 0 position while config loads)

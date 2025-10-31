@@ -20,6 +20,10 @@ export interface UseAudioEffectsOptions {
   masterInput: GainNode | null;
   masterOutput: GainNode | null;
   initialConfig: AudioEffectsConfig;
+  onEqChange?: (config: EqConfig) => void;
+  onCompressorChange?: (config: CompressorConfig) => void;
+  onReverbChange?: (config: ReverbConfig) => void;
+  onStereoExpanderChange?: (config: StereoExpanderConfig) => void;
 }
 
 export interface UseAudioEffectsResult {
@@ -40,26 +44,34 @@ export function useAudioEffects({
   masterInput,
   masterOutput,
   initialConfig,
+  onEqChange,
+  onCompressorChange,
+  onReverbChange,
+  onStereoExpanderChange,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
 
   const eq = useEqEffect({
     audioContext,
     initialConfig: initialConfig.eqConfig,
+    onConfigChange: onEqChange,
   });
 
   const stereoExpander = useStereoExpanderEffect({
     audioContext,
     initialConfig: initialConfig.stereoExpanderConfig,
+    onConfigChange: onStereoExpanderChange,
   });
 
   const reverb = useReverbEffect({
     audioContext,
     initialConfig: initialConfig.reverbConfig,
+    onConfigChange: onReverbChange,
   });
 
   const compressor = useCompressorEffect({
     audioContext,
     initialConfig: initialConfig.compressorConfig,
+    onConfigChange: onCompressorChange,
   });
 
   const allEffects = [eq, stereoExpander, reverb, compressor];

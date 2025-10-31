@@ -11,6 +11,7 @@ export interface CompressorConfig {
 export interface UseCompressorEffectOptions {
   audioContext: AudioContext | null;
   initialConfig?: CompressorConfig;
+  onConfigChange?: (config: CompressorConfig) => void;
 }
 
 export interface UseCompressorEffectResult {
@@ -35,6 +36,7 @@ export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
 export function useCompressorEffect({
   audioContext,
   initialConfig,
+  onConfigChange,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
   const [config, setConfig] = useState<CompressorConfig>(() => {
     return initialConfig || DEFAULT_COMPRESSOR_CONFIG;
@@ -44,6 +46,45 @@ export function useCompressorEffect({
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const workletLoadedRef = useRef(false);
   const [gainReduction, setGainReduction] = useState(0);
+
+  // Track if this is the first render (don't save on initial load)
+  const isFirstRender = useRef(true);
+  const lastInitialConfigRef = useRef(initialConfig);
+
+  // Update config when initialConfig changes (e.g., loaded from server)
+  useEffect(() => {
+    if (initialConfig && initialConfig !== lastInitialConfigRef.current) {
+      console.log('[useCompressorEffect] Initial config changed, updating state:', initialConfig);
+      isFirstRender.current = true;
+      setConfig(initialConfig);
+      lastInitialConfigRef.current = initialConfig;
+    }
+  }, [initialConfig]);
+
+  // Debounced save when config changes (skip first render and external updates)
+  const saveTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      console.log('[useCompressorEffect] First render, skipping save');
+      return;
+    }
+
+    if (onConfigChange) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = window.setTimeout(() => {
+        console.log('[useCompressorEffect] Saving config after user change:', config);
+        onConfigChange(config);
+      }, 500);
+    }
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [config, onConfigChange]);
 
   useEffect(() => {
     if (!audioContext || workletLoadedRef.current) return;
