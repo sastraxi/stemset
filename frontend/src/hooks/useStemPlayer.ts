@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAudioContext } from './useAudioContext';
 import { useRecordingConfig } from './useRecordingConfig';
 import { useAudioLoader } from './useAudioLoader';
@@ -6,7 +6,13 @@ import type { LoadingMetrics } from './useAudioLoader';
 import { useStemAudioNodes } from './useStemAudioNodes';
 import { usePlaybackController } from './usePlaybackController';
 import { useAudioEffects } from './useAudioEffects';
-import type { StemViewModel, EffectsChainConfig } from '../types';
+import type { StemViewModel, EffectsChainConfig, RecordingUserConfig } from '../types';
+import {
+  DEFAULT_EQ_CONFIG,
+  DEFAULT_COMPRESSOR_CONFIG,
+  DEFAULT_REVERB_CONFIG,
+  DEFAULT_STEREO_EXPANDER_CONFIG,
+} from './effects';
 
 /**
  * Orchestrator hook for multi-stem audio player.
@@ -35,6 +41,7 @@ export interface UseStemPlayerOptions {
 export interface UseStemPlayerResult {
   // Loading state
   isLoading: boolean;
+  isConfigLoading: boolean; // Config loading state (for disabling controls)
   loadingMetrics: LoadingMetrics | null;
 
   // Playback state
@@ -93,12 +100,35 @@ export function useStemPlayer({
   const masterInput = getMasterInput();
   const masterOutput = getMasterOutput();
 
-  // 2. Recording config (localStorage persistence, or API if recordingId provided)
-  const { getConfig, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
-    profileName,
-    fileName,
+  // 2. Recording config (database persistence via API)
+  // config is undefined (loading), null (no config), or RecordingUserConfig (loaded)
+  const { config, isLoading: isConfigLoading, savePlaybackPosition, saveStemConfigs, saveEffectsConfig } = useRecordingConfig({
     recordingId,
   });
+
+  // Default config to use when config is null (no saved config exists)
+  const DEFAULT_CONFIG: RecordingUserConfig = useMemo(() => ({
+    playbackPosition: 0,
+    stems: {},
+    effects: {
+      eq: DEFAULT_EQ_CONFIG,
+      compressor: DEFAULT_COMPRESSOR_CONFIG,
+      reverb: DEFAULT_REVERB_CONFIG,
+      stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
+    },
+  }), []);
+
+  // Effective config for components:
+  // - undefined = still loading, components should disable controls
+  // - null or RecordingUserConfig = loaded, use actual config or defaults
+  const effectiveConfig = useMemo(() => {
+    if (config === undefined) {
+      // Still loading - return undefined to signal components to disable
+      return undefined;
+    }
+    // Config loaded: use it if it exists, otherwise use defaults
+    return config ?? DEFAULT_CONFIG;
+  }, [config, DEFAULT_CONFIG]);
 
   // 3. Load audio buffers
   const { isLoading, loadingMetrics, stems: loadedStems, duration, metadataBaseUrl } = useAudioLoader({
@@ -119,16 +149,27 @@ export function useStemPlayer({
   const [stems, setStems] = useState<Record<string, StemViewModel>>({});
   const [stemOrder, setStemOrder] = useState<string[]>([]);
 
-  // Initialize stem view models when audio nodes are created
+  // Track if config has been loaded at least once to prevent saving defaults
+  const [configHasLoaded, setConfigHasLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!isConfigLoading && !configHasLoaded) {
+      setConfigHasLoaded(true);
+    }
+  }, [isConfigLoading, configHasLoaded]);
+
+  // Initialize stem view models when audio nodes are created AND config is loaded
   useEffect(() => {
     if (stemNodes.size === 0) return;
+    // CRITICAL: Wait for config to load before initializing stems
+    // This prevents defaults from being used before saved config arrives
+    if (effectiveConfig === undefined) return;
 
-    const config = getConfig();
     const newStems: Record<string, StemViewModel> = {};
     const order: string[] = [];
 
     stemNodes.forEach((node, name) => {
-      const savedStem = config.stems[name];
+      const savedStem = effectiveConfig.stems[name];
       const loadedStem = loadedStems.get(name);
       const metadata = loadedStem?.metadata;
 
@@ -153,7 +194,7 @@ export function useStemPlayer({
 
     setStems(newStems);
     setStemOrder(order);
-  }, [stemNodes, metadataBaseUrl, loadedStems, getConfig]);
+  }, [stemNodes, metadataBaseUrl, loadedStems, effectiveConfig]);
 
   // 6. Apply stem state to audio nodes (reactive!)
   useEffect(() => {
@@ -179,26 +220,30 @@ export function useStemPlayer({
     });
   }, [stems, stemNodes]);
 
-  // 7. Audio effects
-  const config = getConfig();
-  const { eq, compressor, reverb, stereoExpander } = useAudioEffects({
+  // 7. Audio effects (use defaults while loading, then switch to saved config)
+  const { eq, compressor, reverb, stereoExpander} = useAudioEffects({
     audioContext,
     masterInput,
     masterOutput,
-    initialConfig: {
-      eqConfig: config.effects.eq,
-      compressorConfig: config.effects.compressor,
-      reverbConfig: config.effects.reverb,
-      stereoExpanderConfig: config.effects.stereoExpander,
+    initialConfig: effectiveConfig ? {
+      eqConfig: effectiveConfig.effects.eq,
+      compressorConfig: effectiveConfig.effects.compressor,
+      reverbConfig: effectiveConfig.effects.reverb,
+      stereoExpanderConfig: effectiveConfig.effects.stereoExpander,
+    } : {
+      eqConfig: DEFAULT_EQ_CONFIG,
+      compressorConfig: DEFAULT_COMPRESSOR_CONFIG,
+      reverbConfig: DEFAULT_REVERB_CONFIG,
+      stereoExpanderConfig: DEFAULT_STEREO_EXPANDER_CONFIG,
     },
   });
 
-  // 8. Playback control
+  // 8. Playback control (use 0 position while config loads)
   const { isPlaying, currentTime, play, pause, stop, seek, formatTime } = usePlaybackController({
     audioContext,
     duration,
     stemNodes,
-    initialPosition: config.playbackPosition,
+    initialPosition: effectiveConfig?.playbackPosition ?? 0,
   });
 
   // Validate and correct playback position once duration is loaded
@@ -209,16 +254,16 @@ export function useStemPlayer({
     }
   }, [duration, currentTime, seek]);
 
-  // 9. Persist playback position
+  // 9. Persist playback position (only after config has loaded at least once)
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && configHasLoaded) {
       savePlaybackPosition(currentTime);
     }
-  }, [currentTime, isLoading, savePlaybackPosition]);
+  }, [currentTime, isLoading, configHasLoaded, savePlaybackPosition]);
 
-  // 10. Persist stem configs
+  // 10. Persist stem configs (only after config has loaded at least once)
   useEffect(() => {
-    if (!isLoading && Object.keys(stems).length > 0) {
+    if (!isLoading && configHasLoaded && Object.keys(stems).length > 0) {
       const stemConfigs: Record<string, import('../types').StemUserConfig> = {};
 
       Object.entries(stems).forEach(([name, viewModel]) => {
@@ -231,11 +276,11 @@ export function useStemPlayer({
 
       saveStemConfigs(stemConfigs);
     }
-  }, [stems, isLoading, saveStemConfigs]);
+  }, [stems, isLoading, configHasLoaded, saveStemConfigs]);
 
-  // 11. Persist effects config
+  // 11. Persist effects config (only after config has loaded at least once)
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && configHasLoaded) {
       saveEffectsConfig({
         eq: eq.config,
         compressor: compressor.config,
@@ -249,6 +294,7 @@ export function useStemPlayer({
     reverb.config,
     stereoExpander.config,
     isLoading,
+    configHasLoaded,
     saveEffectsConfig,
   ]);
 
@@ -284,6 +330,7 @@ export function useStemPlayer({
   return {
     // Loading
     isLoading,
+    isConfigLoading, // Expose config loading state for disabling controls
     loadingMetrics,
 
     // Playback

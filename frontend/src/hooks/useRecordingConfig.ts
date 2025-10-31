@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { RecordingUserConfig, StemUserConfig, EffectsChainConfig } from '../types';
 import {
   DEFAULT_EQ_CONFIG,
@@ -11,23 +12,13 @@ import { toast } from 'sonner';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-const DEFAULT_RECORDING_CONFIG: RecordingUserConfig = {
-  playbackPosition: 0,
-  stems: {},
-  effects: {
-    eq: DEFAULT_EQ_CONFIG,
-    compressor: DEFAULT_COMPRESSOR_CONFIG,
-    reverb: DEFAULT_REVERB_CONFIG,
-    stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
-  },
-};
-
 export interface UseRecordingConfigOptions {
   recordingId: string;  // Recording UUID for API-based config
 }
 
 export interface UseRecordingConfigResult {
-  getConfig: () => RecordingUserConfig;
+  config: RecordingUserConfig | null | undefined; // undefined = loading, null = no config exists, object = loaded
+  isLoading: boolean;
   savePlaybackPosition: (position: number) => void;
   saveStemConfigs: (stems: Record<string, StemUserConfig>) => void;
   saveEffectsConfig: (config: EffectsChainConfig) => void;
@@ -40,16 +31,16 @@ export interface UseRecordingConfigResult {
  * No localStorage persistence - database is single source of truth.
  *
  * Responsibilities:
- * - Load saved config from API on mount
+ * - Load saved config from API on mount (via React Query)
  * - Debounced saves to prevent excessive writes
  * - Show toast notifications for load/save events
  * - Provide stable callbacks for saving different config sections
+ * - Prevent saves until initial config is loaded (fixes race condition)
  */
 export function useRecordingConfig({
   recordingId,
 }: UseRecordingConfigOptions): UseRecordingConfigResult {
   const { getToken } = useAuth();
-  const [apiConfig, setApiConfig] = useState<RecordingUserConfig | null>(null);
   const apiSaveDisabledRef = useRef(false);
 
   // Debounce timers
@@ -57,60 +48,59 @@ export function useRecordingConfig({
   const stemConfigsDebounceRef = useRef<number | null>(null);
   const effectsConfigDebounceRef = useRef<number | null>(null);
 
-  // Fetch config from API on mount
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const token = getToken();
-        if (!token) return;
-
-        const response = await fetch(`${API_BASE}/api/recordings/${recordingId}/config`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-
-          // Convert API response to RecordingUserConfig format
-          const config: RecordingUserConfig = {
-            playbackPosition: data.playbackPosition?.position ?? 0,
-            stems: data.stems ?? {},
-            effects: data.effects ?? {
-              eq: DEFAULT_EQ_CONFIG,
-              compressor: DEFAULT_COMPRESSOR_CONFIG,
-              reverb: DEFAULT_REVERB_CONFIG,
-              stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
-            },
-          };
-
-          setApiConfig(config);
-
-          // Check if we loaded any non-default settings
-          const hasSettings =
-            config.playbackPosition > 0 ||
-            Object.keys(config.stems).length > 0 ||
-            (config.effects.eq.bands.some(b => b.gain !== 0)) ||
-            config.effects.compressor.enabled ||
-            config.effects.reverb.enabled ||
-            config.effects.stereoExpander.enabled;
-
-          if (hasSettings) {
-            // toast.success('Settings loaded from database');
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch recording config:', error);
-        toast.error('Failed to load settings from database');
+  // Fetch config from API using React Query
+  const { data: apiConfig, isLoading } = useQuery({
+    queryKey: ['recordingConfig', recordingId],
+    queryFn: async (): Promise<RecordingUserConfig | null> => {
+      const token = getToken();
+      if (!token) {
+        throw new Error('No auth token available');
       }
-    };
 
-    fetchConfig();
-  }, [recordingId, getToken]);
+      const response = await fetch(`${API_BASE}/api/recordings/${recordingId}/config`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-  // Save to API
+      if (!response.ok) {
+        // 404 means no config exists yet - return null
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Convert API response to RecordingUserConfig format
+      const config: RecordingUserConfig = {
+        playbackPosition: data.playbackPosition?.position ?? 0,
+        stems: data.stems ?? {},
+        effects: data.effects ?? {
+          eq: DEFAULT_EQ_CONFIG,
+          compressor: DEFAULT_COMPRESSOR_CONFIG,
+          reverb: DEFAULT_REVERB_CONFIG,
+          stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
+        },
+      };
+
+      return config;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - relatively high as requested
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: 2,
+  });
+
+  // Save to API (only after initial load to prevent race condition)
   const saveToApi = useCallback(async (key: string, value: any) => {
+    // CRITICAL: Don't save until initial config is loaded
+    // This prevents race condition where defaults overwrite actual saved values
+    if (isLoading) {
+      console.debug(`Config still loading, skipping save for ${key}`);
+      return;
+    }
+
     if (apiSaveDisabledRef.current) {
       console.warn(`API saves disabled due to previous error, skipping save for ${key}`);
       return;
@@ -142,26 +132,7 @@ export function useRecordingConfig({
         key === 'stems' ? 'volume' : 'effects';
       toast.error(`Failed to save ${settingName} settings. Further saves disabled.`);
     }
-  }, [recordingId, getToken]);
-
-  const getConfig = useCallback((): RecordingUserConfig => {
-    if (apiConfig) {
-      // Config loaded from database
-      return {
-        playbackPosition: apiConfig.playbackPosition ?? DEFAULT_RECORDING_CONFIG.playbackPosition,
-        stems: apiConfig.stems ?? DEFAULT_RECORDING_CONFIG.stems,
-        effects: {
-          eq: { ...DEFAULT_EQ_CONFIG, ...(apiConfig.effects?.eq || {}) },
-          compressor: { ...DEFAULT_COMPRESSOR_CONFIG, ...(apiConfig.effects?.compressor || {}) },
-          reverb: { ...DEFAULT_REVERB_CONFIG, ...(apiConfig.effects?.reverb || {}) },
-          stereoExpander: { ...DEFAULT_STEREO_EXPANDER_CONFIG, ...(apiConfig.effects?.stereoExpander || {}) },
-        },
-      };
-    } else {
-      // Still loading from database, return defaults
-      return DEFAULT_RECORDING_CONFIG;
-    }
-  }, [apiConfig]);
+  }, [recordingId, getToken, isLoading]);
 
   const savePlaybackPosition = useCallback((position: number) => {
     if (playbackPositionDebounceRef.current) {
@@ -190,8 +161,13 @@ export function useRecordingConfig({
     }, 500);
   }, [saveToApi]);
 
+  // Return config directly from React Query
+  // - undefined = still loading
+  // - null = loaded, but no config exists
+  // - RecordingUserConfig = loaded with data
   return {
-    getConfig,
+    config: apiConfig,
+    isLoading,
     savePlaybackPosition,
     saveStemConfigs,
     saveEffectsConfig,
