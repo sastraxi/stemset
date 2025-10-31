@@ -76,7 +76,7 @@ r2_mount = modal.CloudBucketMount(
 @app.function(  # pyright: ignore[reportUnknownMemberType]
     image=image,
     gpu="A100-40GB",
-    timeout=180,
+    timeout=240,
     volumes={"/r2": r2_mount},
 )
 @modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]

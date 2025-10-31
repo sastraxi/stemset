@@ -147,6 +147,43 @@ class Stem(SQLModel, table=True):
     audio_file: "AudioFile" = Relationship(back_populates="stems", sa_relationship_kwargs={"lazy": "noload"})
 
 
+class Job(SQLModel, table=True):
+    """Processing job for tracking async GPU worker tasks."""
+
+    __tablename__ = "jobs"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    job_id: str = Field(unique=True, index=True)  # UUID string for external reference
+    verification_token: str = Field(index=True)  # Random secret for callback authentication
+    profile_id: UUID = Field(foreign_key="profiles.id", index=True)
+    recording_id: UUID = Field(foreign_key="recordings.id", index=True)
+    audio_file_id: UUID = Field(foreign_key="audio_files.id", index=True)
+
+    # Job details
+    filename: str
+    file_hash: str
+    output_name: str
+
+    # Status tracking
+    status: str  # "processing", "complete", "error"
+    error_message: str | None = None
+
+    # Timestamps
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(sa.DateTime(timezone=True), nullable=True)
+    )
+
+    # Relationships
+    profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    recording: "Recording" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    audio_file: "AudioFile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+
+
 class RecordingUserConfig(SQLModel, table=True):
     """User-specific recording configuration (effects, playback position, stem settings)."""
 

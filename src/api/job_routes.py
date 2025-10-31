@@ -2,121 +2,187 @@
 
 from __future__ import annotations
 
+import asyncio
+import secrets
+import soundfile as sf
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Annotated
+
 from litestar import post, get
 from litestar.params import Body
 from litestar.datastructures import State, UploadFile
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.enums import RequestEncodingType
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.api.app import frontend_url
-
-from .models import JobStatusResponse
 from ..config import Config
+from ..db.config import get_engine
+from ..db.models import AudioFile, Job, Profile as DBProfile, Recording, Stem
+from ..models.metadata import StemsMetadata
 from ..storage import get_storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
 from ..utils import compute_file_hash, derive_output_name
 
 
-# Simple in-memory job storage
-# In production, this should be a database or Redis
-_jobs: dict[str, ProcessingResult] = {}
-_job_metadata: dict[str, dict[str, str]] = {}  # job_id -> {profile_name, output_name, filename}
-
-
-@post("/api/jobs/{job_id:str}/complete")
-async def job_complete(job_id: str, result: ProcessingResult) -> dict[str, str]:
+@post("/api/jobs/{job_id:str}/complete/{verification_token:str}")
+async def job_complete(
+    job_id: str, verification_token: str, result: ProcessingResult, state: State
+) -> dict[str, str]:
     """Callback endpoint for GPU worker to report completion.
 
     Args:
         job_id: Job identifier
+        verification_token: Secret token for authentication
         result: Processing result from GPU worker
+        state: Litestar application state
 
     Returns:
         Success message
+
+    Raises:
+        NotFoundException: If job not found
+        ValidationException: If verification token invalid
     """
-    # Store job result
-    _jobs[job_id] = result
+    config: Config = state.config
+    engine = get_engine()
 
-    print(f"Job {job_id} completed: {result.status}")
-    if result.status == "error":
-        print(f"  Error: {result.error}")
-    else:
-        print(f"  Stems: {result.stems}")
+    async with AsyncSession(engine) as session:
+        # 1. Fetch job and validate token
+        stmt = select(Job).where(Job.job_id == job_id)
+        db_result = await session.exec(stmt)
+        job = db_result.first()
 
-    return {"status": "ok"}
+        if job is None:
+            raise NotFoundException(f"Job {job_id} not found")
+
+        if job.verification_token != verification_token:
+            raise ValidationException("Invalid verification token")
+
+        # 2. Handle errors
+        if result.status == "error":
+            job.status = "error"
+            job.error_message = result.error
+            job.completed_at = None  # Don't set completed_at for errors
+            await session.commit()
+            print(f"Job {job_id} failed: {result.error}")
+            return {"status": "ok"}
+
+        # 3. Download and parse metadata.json from R2
+        storage = get_storage(config)
+
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as temp_file:
+            temp_path = Path(temp_file.name)
+
+        try:
+            # Get profile name from job
+            stmt = select(DBProfile).where(DBProfile.id == job.profile_id)
+            profile_result = await session.exec(stmt)
+            profile = profile_result.first()
+            if profile is None:
+                raise ValueError(f"Profile not found for job {job_id}")
+
+            # Download metadata.json
+            storage.download_metadata(profile.name, job.output_name, temp_path)
+            stems_metadata = StemsMetadata.from_file(temp_path)
+
+            # 4. Create Stem records for each stem
+            # Get audio file duration (all stems have same duration as source)
+            stmt = select(AudioFile).where(AudioFile.id == job.audio_file_id)
+            audio_result = await session.exec(stmt)
+            audio_file = audio_result.first()
+            if audio_file is None:
+                raise ValueError(f"AudioFile not found for job {job_id}")
+
+            duration_seconds = audio_file.duration_seconds
+
+            # For file size, we need to query R2 for each stem
+            from ..storage import R2Storage
+
+            for stem_name, stem_meta in stems_metadata.stems.items():
+                # Query R2 for file size
+                stem_file_path = Path(stem_meta.stem_url)
+                r2_key = f"{profile.name}/{job.output_name}/{stem_file_path.name}"
+
+                file_size_bytes = 0
+                if isinstance(storage, R2Storage):
+                    try:
+                        head_response = storage.s3_client.head_object(  # pyright: ignore[reportUnknownMemberType]
+                            Bucket=storage.config.bucket_name, Key=r2_key
+                        )
+                        file_size_bytes = int(head_response.get("ContentLength", 0))  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                    except Exception as e:
+                        print(f"Warning: Could not get file size for {r2_key}: {e}")
+                        file_size_bytes = 0
+
+                stem = Stem(
+                    recording_id=job.recording_id,
+                    audio_file_id=job.audio_file_id,
+                    stem_type=stem_name,
+                    measured_lufs=stem_meta.measured_lufs,
+                    peak_amplitude=stem_meta.peak_amplitude,
+                    stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
+                    audio_url=stem_meta.stem_url,
+                    waveform_url=stem_meta.waveform_url,
+                    file_size_bytes=file_size_bytes,
+                    duration_seconds=duration_seconds,
+                )
+                session.add(stem)
+
+            # 5. Update job status
+            job.status = "complete"
+            from datetime import datetime, timezone
+
+            job.completed_at = datetime.now(timezone.utc)
+            await session.commit()
+
+            print(f"Job {job_id} completed: {len(stems_metadata.stems)} stems created")
+            return {"status": "ok"}
+
+        finally:
+            # Cleanup temp file
+            temp_path.unlink(missing_ok=True)
 
 
-@get("/api/jobs/{job_id:str}/status")
-async def job_status(job_id: str, state: State) -> JobStatusResponse:
+@get("/api/jobs/{job_id:str}")
+async def job_status(job_id: str, state: State) -> dict[str, str | None]:
     """Get status of a processing job with long-polling support.
 
-    Production (with callbacks):
-    - Long-polls up to 60s waiting for job completion callback
-    - Returns immediately if job completes
-
-    Local dev (no callbacks):
-    - Syncs from R2 to local media
-    - Checks if output folder exists in file list
-    - Returns immediately with status based on file presence
+    Long-polls up to 60s waiting for job completion.
+    Returns immediately if job completes or on timeout.
 
     Args:
         job_id: Job identifier
         state: Litestar application state
 
     Returns:
-        Job status
+        Job status dict
 
     Raises:
         NotFoundException: If job not found
     """
-    import asyncio
-    from ..cli.sync import sync_profile_from_r2, should_sync
+    engine = get_engine()
 
-    config: Config = state.config
+    async with AsyncSession(engine) as session:
+        # Fetch job
+        stmt = select(Job).where(Job.job_id == job_id)
+        result = await session.exec(stmt)
+        job = result.first()
 
-    # Get job metadata from storage
-    if job_id not in _jobs:
-        # Job hasn't completed via callback yet
-        # Try to find it by syncing and checking files (local dev)
-
-        # We need to know which profile this job is for
-        # Store job metadata when created
-        job_metadata = _job_metadata.get(job_id)
-        if job_metadata is None:
+        if job is None:
             raise NotFoundException(f"Job {job_id} not found")
 
-        profile_name = job_metadata["profile_name"]
-        output_name = job_metadata["output_name"]
-        filename = job_metadata["filename"]
+        # If already complete or error, return immediately
+        if job.status in ("complete", "error"):
+            return {
+                "job_id": job.job_id,
+                "status": job.status,
+                "error": job.error_message,
+            }
 
-        # In local dev, sync from R2 and check for file presence
-        if should_sync() and config.r2 is not None:
-            profile = config.get_profile(profile_name)
-            if profile:
-                # Sync from R2 (downloads any new files)
-                sync_profile_from_r2(config, profile)
-
-                # Check if output folder exists now
-                storage = get_storage(config)
-                files = storage.list_files(profile_name)
-
-                if output_name in files:
-                    # File appeared! Mark as complete
-                    return JobStatusResponse(
-                        job_id=job_id,
-                        profile_name=profile_name,
-                        output_name=output_name,
-                        filename=filename,
-                        status="complete",
-                        stems=None,  # We don't know stem names from file presence
-                        error=None,
-                    )
-
-        # Production: Long-poll for callback (up to 60s)
+        # Long-poll for completion (up to 60s)
         max_wait_seconds = 60
         poll_interval = 1.0
         waited = 0.0
@@ -125,35 +191,22 @@ async def job_status(job_id: str, state: State) -> JobStatusResponse:
             await asyncio.sleep(poll_interval)
             waited += poll_interval
 
-            if job_id in _jobs:
-                # Job completed!
-                break
+            # Re-query job status
+            await session.refresh(job)
 
-        if job_id not in _jobs:
-            # Still processing after 60s
-            return JobStatusResponse(
-                job_id=job_id,
-                profile_name=profile_name,
-                output_name=output_name,
-                filename=filename,
-                status="processing",
-                stems=None,
-                error=None,
-            )
+            if job.status in ("complete", "error"):
+                return {
+                    "job_id": job.job_id,
+                    "status": job.status,
+                    "error": job.error_message,
+                }
 
-    # Job completed via callback
-    result = _jobs[job_id]
-    job_metadata = _job_metadata[job_id]
-
-    return JobStatusResponse(
-        job_id=job_id,
-        profile_name=job_metadata["profile_name"],
-        output_name=job_metadata["output_name"],
-        filename=job_metadata["filename"],
-        status=result.status,
-        stems=result.stems,
-        error=result.error,
-    )
+        # Timeout - still processing
+        return {
+            "job_id": job.job_id,
+            "status": "processing",
+            "error": None,
+        }
 
 
 @post("/api/upload/{profile_name:str}")
@@ -161,16 +214,16 @@ async def upload_file(
     profile_name: str,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
     state: State,
-) -> JobStatusResponse:
+) -> dict[str, str]:
     """Upload an audio file and trigger GPU processing.
 
     Args:
-        data: Uploaded file
         profile_name: Profile to use for processing
+        data: Uploaded file
         state: Litestar application state
 
     Returns:
-        Job status with job_id for polling
+        Job ID for status polling
 
     Raises:
         ValidationException: If file is invalid (wrong type, too large)
@@ -184,15 +237,15 @@ async def upload_file(
             "File upload requires GPU worker. Set GPU_WORKER_URL environment variable."
         )
 
-    # Get profile
-    profile = config.get_profile(profile_name)
-    if profile is None:
+    # Get profile from config
+    profile_config = config.get_profile(profile_name)
+    if profile_config is None:
         raise ValueError(f"Profile '{profile_name}' not found")
 
     # Validate file size (150MB max)
     MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB in bytes
     file_size = len(await data.read())
-    await data.seek(0)  # Reset for re-reading
+    _ = await data.seek(0)  # Reset for re-reading
 
     if file_size > MAX_FILE_SIZE:
         raise ValidationException(
@@ -207,15 +260,19 @@ async def upload_file(
             f"Unsupported file type: {file_ext}. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
-    # Save to temp file to compute hash
+    # Save to temp file for hash computation and metadata extraction
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
         temp_path = Path(temp_file.name)
         content = await data.read()
-        temp_file.write(content)
+        _ = temp_file.write(content)
 
     try:
         # Compute hash for deduplication
         file_hash = compute_file_hash(temp_path)
+
+        # Extract audio metadata
+        info = sf.info(str(temp_path))
+        duration_seconds = float(info.duration)
 
         # Derive output name
         base_output_name = derive_output_name(Path(data.filename))
@@ -224,57 +281,107 @@ async def upload_file(
         # Upload to R2
         storage = get_storage(config)
         print(f"Uploading {data.filename} to R2 (inputs/{profile_name}/)")
-        storage.upload_input_file(temp_path, profile_name, data.filename)
+        _ = storage.upload_input_file(temp_path, profile_name, data.filename)
 
-        # Generate job ID
-        job_id = str(uuid.uuid4())
+        # Create database records
+        engine = get_engine()
+        async with AsyncSession(engine) as session:
+            # 1. Get or create Profile record
+            stmt = select(DBProfile).where(DBProfile.name == profile_name)
+            result = await session.exec(stmt)
+            db_profile = result.first()
+            if not db_profile:
+                db_profile = DBProfile(
+                    name=profile_name,
+                    source_folder=profile_config.source_folder,
+                    strategy_name=profile_config.strategy,
+                )
+                session.add(db_profile)
+                await session.commit()
+                await session.refresh(db_profile)
 
-        # Store job metadata for status polling
-        _job_metadata[job_id] = {
-            "profile_name": profile_name,
-            "output_name": output_name,
-            "filename": data.filename,
-        }
+            # 2. Create AudioFile record
+            audio_file = AudioFile(
+                profile_id=db_profile.id,
+                filename=data.filename,
+                file_hash=file_hash,
+                storage_url=f"inputs/{profile_name}/{data.filename}",
+                file_size_bytes=file_size,
+                duration_seconds=duration_seconds,
+            )
+            session.add(audio_file)
+            await session.commit()
+            await session.refresh(audio_file)
 
-        # Create job payload
-        job = ProcessingJob(
+            # 3. Create Recording record (initially empty, stems added on completion)
+            display_name = output_name  # Use output folder name as default
+            recording = Recording(
+                profile_id=db_profile.id,
+                output_name=output_name,
+                display_name=display_name,
+            )
+            session.add(recording)
+            await session.commit()
+            await session.refresh(recording)
+
+            # 4. Create Job record with verification token
+            job_id = str(uuid.uuid4())
+            verification_token = secrets.token_urlsafe(32)
+
+            job = Job(
+                job_id=job_id,
+                verification_token=verification_token,
+                profile_id=db_profile.id,
+                recording_id=recording.id,
+                audio_file_id=audio_file.id,
+                filename=data.filename,
+                file_hash=file_hash,
+                output_name=output_name,
+                status="processing",
+            )
+            session.add(job)
+            await session.commit()
+
+        # 5. Create job payload with verification token in callback URL
+        backend_url: str = state.backend_url  # pyright: ignore[reportAttributeAccessIssue]
+        callback_url = f"{backend_url}/api/jobs/{job_id}/complete/{verification_token}"
+
+        job_payload = ProcessingJob(
             job_id=job_id,
+            verification_token=verification_token,
             profile_name=profile_name,
-            strategy_name=profile.strategy,
+            strategy_name=profile_config.strategy,
             input_key=f"inputs/{profile_name}/{data.filename}",
             output_name=output_name,
-            output_config=profile.output,
-            callback_url=f"{frontend_url}/api/jobs/{job_id}/complete",
+            output_config=profile_config.output,
+            callback_url=callback_url,
         )
 
-        # Trigger GPU worker (fire-and-forget)
+        # 6. Trigger GPU worker (fire-and-forget)
         import httpx
 
         gpu_worker_url = config.gpu_worker_url.rstrip("/")
 
         try:
-            async with httpx.AsyncClient(timeout=1.0) as client:
-                # Fire and forget - just confirm job was accepted
-                _ = await client.post(
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
                     gpu_worker_url,
-                    json=job.model_dump(),
+                    json=job_payload.model_dump(),
                 )
+                _ = response.raise_for_status()
         except httpx.TimeoutException:
-            # Timeout is fine - worker may take longer to respond but job is queued
+            # Timeout is acceptable - worker may take longer but job is queued
             pass
+        except httpx.HTTPError as e:
+            print(f"Warning: Failed to trigger GPU worker: {e}")
+            # Don't fail the upload - job is in database and can be retried
 
         print(f"Job {job_id} created for {output_name}")
 
-        # Return immediately for polling
-        return JobStatusResponse(
-            job_id=job_id,
-            profile_name=profile_name,
-            output_name=output_name,
-            filename=data.filename,
-            status="processing",
-            stems=None,
-            error=None,
-        )
+        return {
+            "job_id": job_id,
+            "status": "processing",
+        }
 
     finally:
         # Cleanup temp file

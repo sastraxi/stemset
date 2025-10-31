@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
@@ -13,8 +14,9 @@ from litestar.datastructures import State
 from litestar.static_files import create_static_files_router  # pyright: ignore[reportUnknownVariableType]
 
 from ..auth import auth_middleware
-from ..config import get_config
+from ..config import Config, get_config
 from ..db.config import get_engine
+
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
     get_profile,
@@ -26,8 +28,17 @@ from .job_routes import job_complete, job_status, upload_file
 from .config_routes import get_recording_config, update_recording_config
 
 
+@dataclass
+class AppState:
+    """Type-safe application state."""
+
+    config: Config
+    backend_url: str
+    frontend_url: str | None
+
+
 @asynccontextmanager
-async def database_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
+async def database_lifespan(_app: Litestar) -> AsyncGenerator[None, None]:
     """Manage database engine lifecycle.
 
     Initializes the database engine on startup and disposes it on shutdown.
@@ -81,8 +92,15 @@ cors_config = CORSConfig(
 # Load configuration and set up state
 config = get_config()
 
-# Get base URL for callbacks (defaults to localhost:8000 if not set)
-base_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Get backend URL for callbacks (defaults to localhost:8000 if not set)
+backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+# Create type-safe state
+app_state = AppState(
+    config=config,
+    backend_url=backend_url,
+    frontend_url=frontend_url,
+)
 
 app = Litestar(
     route_handlers=[
@@ -103,7 +121,7 @@ app = Litestar(
     ],
     middleware=[auth_middleware],
     cors_config=cors_config,
-    state=State({"config": config, "base_url": base_url}),
+    state=State(asdict(app_state)),
     request_max_body_size=1024 * 1024 * 150,  # 150MB max upload size
     lifespan=[database_lifespan],
 )

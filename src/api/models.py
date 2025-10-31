@@ -47,18 +47,7 @@ class FileWithStems(BaseModel):
     display_name: str
     stems: list[StemResponse]
     created_at: str
-
-
-class JobStatusResponse(BaseModel):
-    """Job status response."""
-
-    job_id: str
-    profile_name: str
-    output_name: str
-    filename: str
-    status: str  # "processing", "complete", or "error"
-    stems: list[str] | None = None
-    error: str | None = None
+    status: str | None = None  # "processing" if job exists and incomplete, None if complete
 
 
 class LogoutResponse(BaseModel):

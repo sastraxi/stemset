@@ -11,12 +11,13 @@ class ProcessingJob(BaseModel):
     """Job payload for audio processing."""
 
     job_id: str = Field(..., description="Unique job identifier")
+    verification_token: str = Field(..., description="Secret token for callback authentication")
     profile_name: str = Field(..., description="Profile name for output organization")
     strategy_name: str = Field(..., description="Strategy to use for separation")
     input_key: str = Field(..., description="R2 key for input file (e.g., inputs/h4n/file.wav)")
     output_name: str = Field(..., description="Output folder name (e.g., song_abc12345)")
     output_config: OutputConfig = Field(..., description="Output format configuration")
-    callback_url: str | None = Field(default=None, description="URL to call when complete")
+    callback_url: str | None = Field(default=None, description="URL to call when complete (must include verification_token)")
 
 
 class ProcessingResult(BaseModel):

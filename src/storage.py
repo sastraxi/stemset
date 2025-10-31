@@ -46,6 +46,10 @@ class StorageBackend(Protocol):
         """Update metadata.json file."""
         ...
 
+    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
+        """Download metadata.json for a recording."""
+        ...
+
 
 class LocalStorage:
     """Local filesystem storage backend."""
@@ -99,6 +103,11 @@ class LocalStorage:
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         with open(metadata_path, "w") as f:
             f.write(metadata_content)
+
+    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
+        """Download metadata.json for a recording (copy from local)."""
+        source_path = Path("media") / profile_name / output_name / "metadata.json"
+        shutil.copy2(source_path, dest_path)
 
 
 class R2Storage:
@@ -259,6 +268,15 @@ class R2Storage:
             Key=key,
             Body=metadata_content.encode("utf-8"),
             ContentType="application/json",
+        )
+
+    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
+        """Download metadata.json for a recording from R2."""
+        key = f"{profile_name}/{output_name}/metadata.json"
+        self.s3_client.download_file(
+            self.config.bucket_name,
+            key,
+            str(dest_path),
         )
 
 
