@@ -58,7 +58,7 @@ async def get_recording_config(
         raise NotFoundException(detail="User not authenticated")
 
     engine = get_engine()
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         user_id = await get_user_id_from_email(session, user_email)
 
         # Fetch all config records for this user + recording
@@ -100,7 +100,7 @@ async def update_recording_config(
         raise NotFoundException(detail=f"Invalid config key: {data.key}")
 
     engine = get_engine()
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         user_id = await get_user_id_from_email(session, user_email)
 
         # Check if config record exists

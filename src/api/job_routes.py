@@ -49,7 +49,7 @@ async def job_complete(
     config: Config = state.config
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         # 1. Fetch job and validate token
         stmt = select(Job).where(Job.job_id == job_id)
         db_result = await session.exec(stmt)
@@ -165,7 +165,7 @@ async def job_status(job_id: str, state: State) -> dict[str, str | None]:
     """
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         # Fetch job
         stmt = select(Job).where(Job.job_id == job_id)
         result = await session.exec(stmt)
@@ -285,7 +285,7 @@ async def upload_file(
 
         # Create database records
         engine = get_engine()
-        async with AsyncSession(engine) as session:
+        async with AsyncSession(engine, expire_on_commit=False) as session:
             # 1. Get or create Profile record
             stmt = select(DBProfile).where(DBProfile.name == profile_name)
             result = await session.exec(stmt)

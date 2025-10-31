@@ -21,7 +21,7 @@ async def get_profiles() -> list[ProfileResponse]:
     """Get all configured profiles from database."""
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         result = await session.exec(select(DBProfile))
         profiles = result.all()
 
@@ -33,7 +33,7 @@ async def get_profile(profile_name: str) -> ProfileResponse:
     """Get a specific profile by name from database."""
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
         profile = result.first()
 
@@ -48,7 +48,7 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
     """Get all processed files for a profile from database."""
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         # Get profile
         result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
         profile = result.first()
@@ -117,7 +117,7 @@ async def update_display_name(
     """Update the display name for a recording in database."""
     engine = get_engine()
 
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         # Get profile
         result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
         profile = result.first()

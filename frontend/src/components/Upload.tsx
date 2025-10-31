@@ -37,7 +37,7 @@ async function pollJobStatus(
 
     try {
       // Long-poll backend (60s timeout in production, immediate in local dev)
-      const response = await fetch(`${API_BASE}/api/jobs/${jobId}/status`, {
+      const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
         credentials: 'include',
       });
 

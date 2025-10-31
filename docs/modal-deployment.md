@@ -145,7 +145,7 @@ const { job_id } = await uploadResponse.json();
 
 // 2. Poll for completion
 const pollStatus = async () => {
-  const statusResponse = await fetch(`/api/jobs/${job_id}/status`);
+  const statusResponse = await fetch(`/api/jobs/${job_id}`);
   const { status, stems } = await statusResponse.json();
 
   if (status === 'complete') {

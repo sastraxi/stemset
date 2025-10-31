@@ -138,7 +138,7 @@ async def auth_callback(
 
     # Upsert User record in database
     engine = get_engine()
-    async with AsyncSession(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         # Check if user exists
         result = await session.exec(select(User).where(User.email == userinfo.email))
         user = result.first()
