@@ -22,14 +22,6 @@ function linearToLog(linear: number, max: number): number {
   return Math.log10(normalized * 9 + 1);
 }
 
-// Convert logarithmic to linear volume
-function logToLinear(log: number, max: number): number {
-  if (log <= 0) return 0;
-  // Inverse of linearToLog
-  const normalized = (Math.pow(10, log) - 1) / 9;
-  return normalized * max;
-}
-
 // Get gradient color based on volume level (log scale)
 function getVolumeColor(volume: number, max: number): string {
   const logVolume = linearToLog(volume, max);

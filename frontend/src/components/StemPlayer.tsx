@@ -18,7 +18,7 @@ interface StemPlayerProps {
   fileName: string;
   stemsData: import('../types').StemResponse[];
   onLoadingChange?: (isLoading: boolean) => void;
-  recordingId?: string;  // Optional recording UUID for API-based config
+  recordingId: string;
 }
 
 export interface StemPlayerHandle {
