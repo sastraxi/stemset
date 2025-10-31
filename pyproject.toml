@@ -16,6 +16,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "psycopg2-binary>=2.9.11",
     "greenlet>=3.2.4",
+    "soundfile>=0.12.1",
 ]
 
 [project.scripts]
@@ -47,7 +48,6 @@ processing = [
     # Heavy ML/audio processing dependencies (local/gpu-worker)
     "audio-separator>=0.39.1",
     "pyloudnorm>=0.1.1",
-    "soundfile>=0.12.1",
     "watchdog>=3.0.0",
     "opuslib>=3.0.1",
     "onnxruntime>=1.23.1",

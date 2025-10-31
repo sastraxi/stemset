@@ -2005,6 +2005,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
+    { name = "soundfile" },
     { name = "sqlmodel" },
     { name = "uvicorn" },
 ]
@@ -2033,7 +2034,6 @@ processing = [
     { name = "opuslib" },
     { name = "pillow" },
     { name = "pyloudnorm" },
-    { name = "soundfile" },
     { name = "watchdog" },
 ]
 shared = [
@@ -2058,6 +2058,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "soundfile", specifier = ">=0.12.1" },
     { name = "sqlmodel", specifier = ">=0.0.27" },
     { name = "uvicorn", specifier = ">=0.24.0" },
 ]
@@ -2074,7 +2075,6 @@ processing = [
     { name = "opuslib", specifier = ">=3.0.1" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyloudnorm", specifier = ">=0.1.1" },
-    { name = "soundfile", specifier = ">=0.12.1" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
 shared = [
