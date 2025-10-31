@@ -4,15 +4,6 @@
  * All keys use the `stemset.*` prefix with version suffixes for safe migration.
  */
 
-// Session state (UI state that persists across page reloads)
-export interface PendingJob {
-  job_id: string;
-  profile_name: string;
-  output_name: string;
-  filename: string;
-  timestamp: number;
-}
-
 import type { RecordingUserConfig } from '../types';
 
 export type RecordingsMap = Record<string, RecordingUserConfig>; // key: `${profile}::${fileName}`
@@ -22,7 +13,6 @@ const KEYS = {
   // Session state
   SESSION_PROFILE: 'stemset.session.profile.v1',
   SESSION_RECORDING: 'stemset.session.recording.v1',
-  SESSION_PENDING_JOBS: 'stemset.session.pendingJobs.v1',
 
   // Per-recording state (v2 includes effects config)
   RECORDINGS: 'stemset.recordings.v2',
@@ -95,30 +85,6 @@ export function setSessionRecording(recordingName: string, profileName?: string)
   }
   // Also store as global for backward compatibility
   setItem(KEYS.SESSION_RECORDING, recordingName);
-}
-
-export function getPendingJobs(): PendingJob[] {
-  return getItem<PendingJob[]>(KEYS.SESSION_PENDING_JOBS, []);
-}
-
-export function setPendingJobs(jobs: PendingJob[]): void {
-  setItem(KEYS.SESSION_PENDING_JOBS, jobs);
-}
-
-export function removePendingJob(jobId: string): void {
-  const jobs = getPendingJobs();
-  const filtered = jobs.filter(job => job.job_id !== jobId);
-  setPendingJobs(filtered);
-}
-
-export function pruneStalePendingJobs(maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): void {
-  const jobs = getPendingJobs();
-  const now = Date.now();
-  const fresh = jobs.filter(job => now - job.timestamp < maxAgeMs);
-  if (fresh.length !== jobs.length) {
-    setPendingJobs(fresh);
-    console.log(`[storage] Pruned ${jobs.length - fresh.length} stale pending jobs`);
-  }
 }
 
 // ============================================================================

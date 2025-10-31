@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Upload as UploadIcon } from 'lucide-react';
-import { getPendingJobs, setPendingJobs, removePendingJob } from '../lib/storage';
 import './Upload.css';
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
@@ -49,7 +48,6 @@ async function pollJobStatus(
       const status = await response.json();
 
       if (status.status === 'complete') {
-        removePendingJob(jobId);
         onComplete();
 
         // Auto-navigate if nothing is currently playing
@@ -71,30 +69,14 @@ async function pollJobStatus(
         break;
       } else if (status.status === 'error') {
         toast.error(status.error || 'Processing failed', { id: toastId });
-        removePendingJob(jobId);
         break;
       }
       // else: status === "processing", continue polling
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to check status', { id: toastId });
-      removePendingJob(jobId);
       break;
     }
   }
-}
-
-// Export function to resume pending jobs (called from App.tsx on mount)
-export function resumePendingJobs(
-  onJobComplete: () => void,
-  onNavigate?: (profileName: string, fileName: string) => void,
-  shouldAutoNavigate?: () => boolean
-) {
-  const pendingJobs = getPendingJobs();
-
-  pendingJobs.forEach(job => {
-    const toastId = toast.loading(`Processing ${job.filename}...`, { duration: Infinity });
-    pollJobStatus(job.job_id, toastId, job.profile_name, job.output_name, job.filename, onJobComplete, onNavigate, shouldAutoNavigate);
-  });
 }
 
 export function Upload({ profileName, onUploadComplete, onNavigateToRecording, shouldAutoNavigate }: UploadProps) {
@@ -191,17 +173,6 @@ export function Upload({ profileName, onUploadComplete, onNavigateToRecording, s
 
       const result = await response.json();
       const { job_id, profile_name, output_name, filename } = result;
-
-      // Store in localStorage for persistence across profile switches
-      const pendingJobs = getPendingJobs();
-      pendingJobs.push({
-        job_id,
-        profile_name,
-        output_name,
-        filename,
-        timestamp: Date.now(),
-      });
-      setPendingJobs(pendingJobs);
 
       // Update toast to show processing (persistent)
       toast.loading(`Processing ${filename}...`, { id: toastId, duration: Infinity });

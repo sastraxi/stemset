@@ -5,7 +5,7 @@ import { StemPlayer, type StemPlayerHandle } from './StemPlayer'
 import { InlineEdit } from './InlineEdit'
 import { UserNav } from './UserNav'
 import { ProfileSelector } from './ProfileSelector'
-import { Upload, resumePendingJobs } from './Upload'
+import { Upload } from './Upload'
 import { QRUploadOverlay } from './QRUploadOverlay'
 import { Spinner } from './Spinner'
 import { Button } from './ui/button'
@@ -15,7 +15,6 @@ import { toast } from 'sonner'
 import {
     setSessionProfile,
     setSessionRecording,
-    pruneStalePendingJobs,
     pruneStaleRecordings
 } from '../lib/storage'
 import '../styles/layout.css'
@@ -98,17 +97,8 @@ export function AuthenticatedApp({
 
     // Clean up stale data on mount
     useEffect(() => {
-        pruneStalePendingJobs()
-
-        // Resume pending jobs if we have profiles
-        if (profiles) {
-            resumePendingJobs(
-                () => refetchFiles(),
-                handleNavigateToRecording,
-                () => !selectedFile
-            )
-        }
-    }, [profiles]) // eslint-disable-line react-hooks/exhaustive-deps
+        // Placeholder for future pending jobs logic
+    }, [])
 
     // Clean up stale recordings when files change
     useEffect(() => {

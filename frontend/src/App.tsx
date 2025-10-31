@@ -5,14 +5,14 @@ import { StemPlayer, type StemPlayerHandle } from './components/StemPlayer';
 import { LoginPage } from './components/LoginPage';
 import { UserNav } from './components/UserNav';
 import { ProfileSelector } from './components/ProfileSelector';
-import { Upload, resumePendingJobs } from './components/Upload';
+import { Upload } from './components/Upload';
 import { Spinner } from './components/Spinner';
 import { Button } from './components/ui/button';
 import { useAuth } from './contexts/AuthContext';
 import { getProfiles, getProfileFiles } from './api';
 import type { Profile, StemFile } from './types';
 import { Toaster, toast } from 'sonner';
-import { getSessionProfile, setSessionProfile, pruneStalePendingJobs, pruneStaleRecordings } from './lib/storage';
+import { getSessionProfile, setSessionProfile, pruneStaleRecordings } from './lib/storage';
 import './styles/layout.css';
 import './styles/sidebar.css';
 import './styles/splash.css';
@@ -62,25 +62,10 @@ export function AuthenticatedApp({
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Clean up stale pending jobs (>7 days old)
-    pruneStalePendingJobs();
-
     // Initial connection check and load profiles
     checkBackendConnection().then((connected) => {
       if (connected) {
         loadProfiles();
-
-        // Resume any pending upload jobs from previous session
-        resumePendingJobs(
-          () => {
-            // Refresh the current profile when a job completes
-            if (selectedProfile) {
-              loadProfileFiles(selectedProfile);
-            }
-          },
-          handleNavigateToRecording,
-          () => !selectedFile // Auto-navigate only if no file is currently selected
-        );
       }
     });
 
