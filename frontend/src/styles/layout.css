@@ -14,6 +14,13 @@
   image-rendering: optimizeQuality;
 }
 
+/* Hide stemset text on mobile */
+@media (max-width: 767px) {
+  .app>header h1 {
+    display: none !important;
+  }
+}
+
 .main-content {
   display: flex;
   flex: 1;
@@ -24,9 +31,14 @@
   min-width: 320px;
   background: transparent;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  flex-direction: column;
   overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    min-width: 100%;
+    border-right: none;
+  }
 }
 
 .player-area {
@@ -35,12 +47,34 @@
   z-index: 2;
 }
 
+@media (max-width: 768px) {
+  .player-area {
+    padding: 1rem;
+    padding-bottom: 5rem;
+    /* Add space for fixed playback controls */
+  }
+
+  /* Move toasts above playback controls on mobile */
+  :where([data-sonner-toaster]) {
+    bottom: 5rem !important;
+  }
+}
+
 .recording-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 2rem;
   gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .recording-header {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 0;
+  }
 }
 
 .recording-name {
@@ -58,6 +92,23 @@
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .playback-controls-header {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #000;
+    padding: 0.75rem 1rem;
+    margin: 0;
+    z-index: 1000;
+    box-shadow: 0 -4px 12px rgba(139, 92, 246, 0.15);
+    justify-content: space-between;
+    gap: 1rem;
+  }
 }
 
 .playback-controls-header .time-display {
@@ -79,6 +130,19 @@
   color: #4a9eff;
 }
 
+@media (max-width: 768px) {
+  .playback-controls-header .time-display {
+    font-size: 0.9rem;
+    min-width: auto;
+    text-align: center;
+    flex: 1;
+  }
+
+  .playback-controls-header .time-display.clickable {
+    font-size: 0.9rem;
+  }
+}
+
 .playback-controls-header .playback-button {
   width: 3rem;
   height: 3rem;
@@ -93,6 +157,35 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .playback-controls-header .playback-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+  }
+
+  /* Reorder: share buttons first (left), master volume, time center, play/stop last (right) */
+  .playback-controls-header {
+    display: flex;
+  }
+
+  .playback-controls-header .share-button {
+    order: 1;
+  }
+
+  .playback-controls-header .mobile-volume-button {
+    order: 2;
+  }
+
+  .playback-controls-header .time-display {
+    order: 3;
+  }
+
+  .playback-controls-header .playback-button {
+    order: 4;
+  }
 }
 
 .playback-controls-header .playback-button:hover:not(:disabled) {

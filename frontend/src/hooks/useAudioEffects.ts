@@ -66,63 +66,61 @@ export function useAudioEffects({
 
   // The Grand Central Wiring Effect
   useEffect(() => {
-    console.log('[useAudioEffects] Wiring effect chain...');
-    console.log('[useAudioEffects] AudioContext:', audioContext);
-    console.log('[useAudioEffects] Master input:', masterInput);
-    console.log('[useAudioEffects] Master output:', masterOutput);
+    // console.log('[useAudioEffects] Wiring effect chain...');
+    // console.log('[useAudioEffects] AudioContext:', audioContext);
+    // console.log('[useAudioEffects] Master input:', masterInput);
+    // console.log('[useAudioEffects] Master output:', masterOutput);
 
     const allReady = allEffects.every(e => e.isReady);
-    console.log('[useAudioEffects] All effects ready:', allReady);
-    console.log('[useAudioEffects] Effect ready states:', {
-      eq: eq.isReady,
-      stereoExpander: stereoExpander.isReady,
-      reverb: reverb.isReady,
-      compressor: compressor.isReady
-    });
+    // console.log('[useAudioEffects] All effects ready:', allReady);
+    // console.log('[useAudioEffects] Effect ready states:', {
+    //   eq: eq.isReady,
+    //   stereoExpander: stereoExpander.isReady,
+    //   reverb: reverb.isReady,
+    //   compressor: compressor.isReady
+    // });
 
     if (!audioContext || !masterInput || !masterOutput || !allReady) {
-      console.log('[useAudioEffects] Skipping wiring - missing dependencies');
+      // console.log('[useAudioEffects] Skipping wiring - missing dependencies');
       return;
     }
 
     // 1. Disconnect EVERYTHING. This is the brute-force, but reliable, way to start fresh.
     try {
       masterInput.disconnect();
-      console.log('[useAudioEffects] Disconnected master input');
+      // console.log('[useAudioEffects] Disconnected master input');
     } catch (e) {
-      console.log('[useAudioEffects] Master input already disconnected');
+      console.debug('[useAudioEffects] Master input already disconnected');
     }
 
     allEffects.forEach((effect, index) => {
       try {
         effect.outputNode?.disconnect();
-        console.log(`[useAudioEffects] Disconnected effect ${index} output`);
+        // console.log(`[useAudioEffects] Disconnected effect ${index} output`);
       } catch (e) {
-        console.log(`[useAudioEffects] Effect ${index} output already disconnected`);
+        console.debug(`[useAudioEffects] Effect ${index} output already disconnected`);
       }
     });
 
     // 2. Build the new chain, connecting nodes in series.
     let currentNode: AudioNode = masterInput;
-    console.log('[useAudioEffects] Starting chain with master input');
+    // console.log('[useAudioEffects] Starting chain with master input');
 
     allEffects.forEach((effect, index) => {
-      console.log(`[useAudioEffects] Processing effect ${index}:`, {
-        enabled: effect.config.enabled,
-        hasInput: !!effect.inputNode,
-        hasOutput: !!effect.outputNode,
-        inputNode: effect.inputNode,
-        outputNode: effect.outputNode
-      });
+      // console.log(`[useAudioEffects] Processing effect ${index}:`, {
+      //   enabled: effect.config.enabled,
+      //   hasInput: !!effect.inputNode,
+      //   hasOutput: !!effect.outputNode,
+      //   inputNode: effect.inputNode,
+      //   outputNode: effect.outputNode
+      // });
 
       if (effect.config.enabled && effect.inputNode && effect.outputNode) {
         try {
           // Connect the previous node to this effect's input
-          console.log(`[useAudioEffects] Connecting to effect ${index} input`);
           currentNode.connect(effect.inputNode);
           // The new current node is this effect's output
           currentNode = effect.outputNode;
-          console.log(`[useAudioEffects] Effect ${index} connected successfully`);
         } catch (e) {
           console.error(`[useAudioEffects] Failed to connect effect ${index}:`, e);
           console.error(`[useAudioEffects] Effect ${index} details:`, {
@@ -140,9 +138,7 @@ export function useAudioEffects({
 
     // 3. Connect the final node in the chain to the master output.
     try {
-      console.log('[useAudioEffects] Connecting final node to master output:', currentNode.constructor.name);
       currentNode.connect(masterOutput);
-      console.log('[useAudioEffects] Audio chain wired successfully');
     } catch (e) {
       console.error('[useAudioEffects] Failed to connect to master output:', e);
       console.error('[useAudioEffects] Final node details:', {

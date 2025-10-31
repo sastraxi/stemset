@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { RefreshCw, Music } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { StemPlayer, type StemPlayerHandle } from './StemPlayer'
 import { InlineEdit } from './InlineEdit'
 import { UserNav } from './UserNav'
@@ -43,6 +43,16 @@ export function AuthenticatedApp({
     const [isLoadingStems, setIsLoadingStems] = useState(false)
     const stemPlayerRef = useRef<StemPlayerHandle>(null)
     const navigate = useNavigate()
+
+    // Check if we're on the recording route
+    const isOnRecordingRoute = !!initialRecording
+
+    console.log('[AuthenticatedApp] Route state:', {
+        initialProfile,
+        initialRecording,
+        isOnRecordingRoute,
+        selectedFile: selectedFile?.name
+    })
 
     const {
         data: profiles,
@@ -198,8 +208,18 @@ export function AuthenticatedApp({
         <div className="app">
             <header className="px-6 py-4 flex justify-between items-center">
                 <div className="flex-1 flex items-center gap-4">
-                    <img src="/logo.png" alt="Stemset" className="h-10 w-auto" />
-                    <h1 className="lowercase text-4xl font-bold tracking-tight m-0" style={{ color: '#e8e8e8' }}>
+                    {selectedProfile ? (
+                        <Link
+                            to="/p/$profileName"
+                            params={{ profileName: selectedProfile }}
+                            onClick={() => setSelectedFile(null)}
+                        >
+                            <img src="/logo.png" alt="Stemset" className="h-10 w-auto cursor-pointer" />
+                        </Link>
+                    ) : (
+                        <img src="/logo.png" alt="Stemset" className="h-10 w-auto" />
+                    )}
+                    <h1 className="lowercase text-4xl font-bold tracking-tight m-0 hidden md:block" style={{ color: '#e8e8e8' }}>
                         Stemset
                     </h1>
                 </div>
@@ -217,7 +237,7 @@ export function AuthenticatedApp({
             </header>
 
             <div className="main-content">
-                <aside className="sidebar">
+                <aside className={`sidebar flex flex-col gap-6 ${isOnRecordingRoute ? 'hidden md:flex' : 'flex'}`}>
                     {selectedProfile && (
                         <Upload
                             profileName={selectedProfile}
@@ -279,7 +299,7 @@ export function AuthenticatedApp({
                     </div>
                 </aside>
 
-                <main className="player-area">
+                <main className={`player-area ${isOnRecordingRoute ? 'block' : 'md:block hidden'}`}>
                     {selectedFile && selectedProfile ? (
                         <>
                             {!isLoadingStems && (

@@ -50,7 +50,6 @@ export function WaveformVisualization({
 
   // Load waveform image
   useEffect(() => {
-    console.log(`[WaveformVisualization:${stemName}] waveformUrl:`, waveformUrl);
     if (!waveformUrl) {
       imageRef.current = null;
       return;
@@ -59,7 +58,6 @@ export function WaveformVisualization({
     const img = new Image();
     img.crossOrigin = 'anonymous'; // For CORS if needed
     img.onload = () => {
-      console.log(`[WaveformVisualization:${stemName}] Image loaded successfully`);
       imageRef.current = img;
       // Defer rendering to next frame to ensure container is properly sized
       requestAnimationFrame(() => renderWaveform());
@@ -68,7 +66,6 @@ export function WaveformVisualization({
       console.error(`[WaveformVisualization:${stemName}] Failed to load waveform image`, waveformUrl, e);
       imageRef.current = null;
     };
-    console.log(`[WaveformVisualization:${stemName}] Starting image load:`, waveformUrl);
     img.src = waveformUrl;
   }, [waveformUrl]);
 
@@ -90,7 +87,6 @@ export function WaveformVisualization({
 
     // Skip rendering if container has no dimensions yet
     if (rect.width === 0 || rect.height === 0) {
-      console.log(`[WaveformVisualization:${stemName}] Container not ready, skipping render`);
       return;
     }
 
@@ -231,20 +227,24 @@ export function WaveformVisualization({
     return progress * duration;
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!onSeek || !onPreview) return;
 
+    e.preventDefault();
     setIsDragging(true);
-    const seekTime = getSeekTime(e.clientX);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const seekTime = getSeekTime(clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Start preview mode
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !onPreview) return;
 
-    const seekTime = getSeekTime(e.clientX);
+    e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const seekTime = getSeekTime(clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Update preview
     }
@@ -291,12 +291,36 @@ export function WaveformVisualization({
         }
       };
 
+      const handleGlobalTouchMove = (e: TouchEvent) => {
+        if (onPreview) {
+          e.preventDefault();
+          const seekTime = getSeekTime(e.touches[0].clientX);
+          if (seekTime !== null) {
+            onPreview(seekTime); // Update preview
+          }
+        }
+      };
+
+      const handleGlobalTouchEnd = () => {
+        if (onSeek && onPreview && previewTime !== undefined) {
+          onSeek(previewTime);
+        }
+        if (onPreview) {
+          onPreview(null);
+        }
+        setIsDragging(false);
+      };
+
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
 
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp);
         document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('touchend', handleGlobalTouchEnd);
+        document.removeEventListener('touchmove', handleGlobalTouchMove);
       };
     }
   }, [isDragging, onSeek, onPreview, previewTime, duration]);
@@ -311,6 +335,7 @@ export function WaveformVisualization({
 
   return (
     <div ref={containerRef} className={`waveform-container ${waveformClasses || ''}`}>
+      <div className="waveform-stem-label-floating">{stemName}</div>
       <canvas
         ref={canvasRef}
         className="waveform-canvas"
@@ -318,6 +343,9 @@ export function WaveformVisualization({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onTouchStart={handleMouseDown}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
       />
     </div>
   );

@@ -172,20 +172,24 @@ export function Ruler({
     return progress * duration;
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!onSeek || !onPreview) return;
 
+    e.preventDefault();
     setIsDragging(true);
-    const seekTime = getSeekTime(e.clientX);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const seekTime = getSeekTime(clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Start preview mode
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !onPreview) return;
 
-    const seekTime = getSeekTime(e.clientX);
+    e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const seekTime = getSeekTime(clientX);
     if (seekTime !== null) {
       onPreview(seekTime); // Update preview
     }
@@ -232,12 +236,36 @@ export function Ruler({
         }
       };
 
+      const handleGlobalTouchMove = (e: TouchEvent) => {
+        if (onPreview) {
+          e.preventDefault();
+          const seekTime = getSeekTime(e.touches[0].clientX);
+          if (seekTime !== null) {
+            onPreview(seekTime); // Update preview
+          }
+        }
+      };
+
+      const handleGlobalTouchEnd = () => {
+        if (onSeek && onPreview && previewTime !== undefined) {
+          onSeek(previewTime);
+        }
+        if (onPreview) {
+          onPreview(null);
+        }
+        setIsDragging(false);
+      };
+
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
 
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp);
         document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('touchend', handleGlobalTouchEnd);
+        document.removeEventListener('touchmove', handleGlobalTouchMove);
       };
     }
   }, [isDragging, onSeek, onPreview, previewTime, duration]);
@@ -251,6 +279,9 @@ export function Ruler({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onTouchStart={handleMouseDown}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
       />
     </div>
   );

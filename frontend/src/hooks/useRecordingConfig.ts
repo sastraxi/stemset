@@ -97,7 +97,7 @@ export function useRecordingConfig({
             config.effects.stereoExpander.enabled;
 
           if (hasSettings) {
-            toast.success('Settings loaded from database');
+            // toast.success('Settings loaded from database');
           }
         }
       } catch (error) {
@@ -131,9 +131,6 @@ export function useRecordingConfig({
 
       if (response.ok) {
         // Show success toast (but not for playback position - too noisy)
-        if (key !== 'playbackPosition') {
-          toast.success(`${key === 'stems' ? 'Volume' : 'Effects'} settings saved`);
-        }
       } else {
         throw new Error(`Server returned ${response.status}`);
       }
@@ -142,7 +139,7 @@ export function useRecordingConfig({
       apiSaveDisabledRef.current = true;
 
       const settingName = key === 'playbackPosition' ? 'playback position' :
-                         key === 'stems' ? 'volume' : 'effects';
+        key === 'stems' ? 'volume' : 'effects';
       toast.error(`Failed to save ${settingName} settings. Further saves disabled.`);
     }
   }, [recordingId, getToken]);

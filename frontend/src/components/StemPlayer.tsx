@@ -2,7 +2,7 @@ import { useStemPlayer } from '../hooks/useStemPlayer';
 import { WaveformVisualization } from './WaveformVisualization';
 import { Ruler } from './Ruler';
 import { Spinner } from './Spinner';
-import { Volume2, VolumeX, Music, Share, QrCode } from 'lucide-react';
+import { Music, Share, QrCode, Volume2, VolumeX } from 'lucide-react';
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { CompressorPanel } from './effects/CompressorPanel';
 import { ReverbPanel } from './effects/ReverbPanel';
 import { MasterVolumeControl } from './effects/MasterVolumeControl';
 import { QRCodeModal } from './QRCodeModal';
+import { MobileVolumeControl } from './MobileVolumeControl';
 
 interface StemPlayerProps {
   profileName: string;
@@ -34,6 +35,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
     const [previewTime, setPreviewTime] = useState<number | null>(null);
     const [showTimeRemaining, setShowTimeRemaining] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
+    const [volumeBeforeMute, setVolumeBeforeMute] = useState(0.8);
     const playerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -91,6 +93,19 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
       // resetStereoExpander,
       compressorGainReduction,
     } = useStemPlayer({ profileName, fileName, stemsData, recordingId });
+
+    // Master volume mute toggle (like desktop MasterVolumeControl)
+    const isMasterMuted = masterVolume === 0;
+    const handleToggleMasterMute = useCallback(() => {
+      if (isMasterMuted) {
+        // Unmute: restore previous volume (or default to 0.7 if none saved)
+        setMasterVolume(volumeBeforeMute > 0 ? volumeBeforeMute : 0.7);
+      } else {
+        // Mute: save current volume and set to 0
+        setVolumeBeforeMute(masterVolume);
+        setMasterVolume(0);
+      }
+    }, [isMasterMuted, masterVolume, volumeBeforeMute, setMasterVolume]);
 
     // Notify parent of loading state changes
     useEffect(() => {
@@ -201,6 +216,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         >
           <Share className="h-4 w-4" />
         </button>
+        <MobileVolumeControl
+          volume={masterVolume}
+          onVolumeChange={setMasterVolume}
+          isMuted={isMasterMuted}
+          onToggleMute={handleToggleMasterMute}
+          max={1}
+        />
         <div
           className="time-display clickable"
           onClick={() => setShowTimeRemaining(!showTimeRemaining)}
@@ -272,13 +294,19 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                       </span>
                     </div>
                     <div className="waveform-control-buttons flex gap-1">
+                      <MobileVolumeControl
+                        volume={stem.gain}
+                        onVolumeChange={(volume) => setStemGain(stemName, volume)}
+                        isMuted={stem.muted}
+                        onToggleMute={() => toggleMute(stemName)}
+                      />
                       <button
                         onClick={() => toggleMute(stemName)}
                         className={`mute-button ${stem.muted ? 'muted' : ''}`}
                         title={stem.muted ? "Unmute" : "Mute"}
                       >
                         {stem.muted ?
-                          <VolumeX className="h-4 w-4" color={stem.muted ? "#ff6666" : "currentColor"} /> :
+                          <VolumeX className="h-4 w-4" color="#ff6666" /> :
                           <Volume2 className="h-4 w-4" color="currentColor" />
                         }
                       </button>
