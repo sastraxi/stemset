@@ -8,7 +8,7 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
             { name: 'attack', defaultValue: 0.005, minValue: 0.001, maxValue: 0.05 },
             { name: 'hold', defaultValue: 0.02, minValue: 0.001, maxValue: 0.1 },
             { name: 'release', defaultValue: 0.1, minValue: 0.01, maxValue: 1.0 },
-            { name: 'makeupGain', defaultValue: 0, minValue: -12, maxValue: 12 }
+            { name: 'makeupGain', defaultValue: 0, minValue: -24, maxValue: 24 }
         ];
     }
 
