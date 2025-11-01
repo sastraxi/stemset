@@ -12,24 +12,24 @@ from typing import Annotated
 
 from litestar import post, get
 from litestar.params import Body
-from litestar.datastructures import State, UploadFile
+from litestar.datastructures import UploadFile
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.enums import RequestEncodingType
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..config import Config
 from ..db.config import get_engine
 from ..db.models import AudioFile, Job, Profile as DBProfile, Recording, Stem
 from ..models.metadata import StemsMetadata
 from ..storage import get_storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
 from ..utils import compute_file_hash, derive_output_name
+from .state import AppState
 
 
 @post("/api/jobs/{job_id:str}/complete/{verification_token:str}")
 async def job_complete(
-    job_id: str, verification_token: str, result: ProcessingResult, state: State
+    job_id: str, verification_token: str, result: ProcessingResult, state: AppState
 ) -> dict[str, str]:
     """Callback endpoint for GPU worker to report completion.
 
@@ -46,7 +46,7 @@ async def job_complete(
         NotFoundException: If job not found
         ValidationException: If verification token invalid
     """
-    config: Config = state.config
+    config = state.config
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
@@ -147,7 +147,7 @@ async def job_complete(
 
 
 @get("/api/jobs/{job_id:str}")
-async def job_status(job_id: str, state: State) -> dict[str, str | None]:
+async def job_status(job_id: str) -> dict[str, str | None]:
     """Get status of a processing job with long-polling support.
 
     Long-polls up to 60s waiting for job completion.
@@ -155,7 +155,6 @@ async def job_status(job_id: str, state: State) -> dict[str, str | None]:
 
     Args:
         job_id: Job identifier
-        state: Litestar application state
 
     Returns:
         Job status dict
@@ -213,7 +212,7 @@ async def job_status(job_id: str, state: State) -> dict[str, str | None]:
 async def upload_file(
     profile_name: str,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
-    state: State,
+    state: AppState,
 ) -> dict[str, str]:
     """Upload an audio file and trigger GPU processing.
 
@@ -229,7 +228,7 @@ async def upload_file(
         ValidationException: If file is invalid (wrong type, too large)
         ValueError: If GPU worker not configured or profile not found
     """
-    config: Config = state.config
+    config = state.config
 
     # Check GPU worker is configured
     if config.gpu_worker_url is None:
@@ -283,7 +282,7 @@ async def upload_file(
         print(f"Uploading {data.filename} to R2 (inputs/{profile_name}/)")
         _ = storage.upload_input_file(temp_path, profile_name, data.filename)
 
-        # Create database records
+        # Create database records (idempotent - handles retries)
         engine = get_engine()
         async with AsyncSession(engine, expire_on_commit=False) as session:
             # 1. Get or create Profile record
@@ -300,31 +299,59 @@ async def upload_file(
                 await session.commit()
                 await session.refresh(db_profile)
 
-            # 2. Create AudioFile record
-            audio_file = AudioFile(
-                profile_id=db_profile.id,
-                filename=data.filename,
-                file_hash=file_hash,
-                storage_url=f"inputs/{profile_name}/{data.filename}",
-                file_size_bytes=file_size,
-                duration_seconds=duration_seconds,
-            )
-            session.add(audio_file)
-            await session.commit()
-            await session.refresh(audio_file)
+            # 2. Get or create AudioFile record (deduplicate by hash)
+            stmt = select(AudioFile).where(AudioFile.file_hash == file_hash)
+            result = await session.exec(stmt)
+            audio_file = result.first()
+            if not audio_file:
+                audio_file = AudioFile(
+                    profile_id=db_profile.id,
+                    filename=data.filename,
+                    file_hash=file_hash,
+                    storage_url=f"inputs/{profile_name}/{data.filename}",
+                    file_size_bytes=file_size,
+                    duration_seconds=duration_seconds,
+                )
+                session.add(audio_file)
+                await session.commit()
+                await session.refresh(audio_file)
 
-            # 3. Create Recording record (initially empty, stems added on completion)
-            display_name = output_name  # Use output folder name as default
-            recording = Recording(
-                profile_id=db_profile.id,
-                output_name=output_name,
-                display_name=display_name,
+            # 3. Get or create Recording record for this output_name
+            stmt = select(Recording).where(
+                Recording.profile_id == db_profile.id,
+                Recording.output_name == output_name,
             )
-            session.add(recording)
-            await session.commit()
-            await session.refresh(recording)
+            result = await session.exec(stmt)
+            recording = result.first()
+            if not recording:
+                display_name = output_name  # Use output folder name as default
+                recording = Recording(
+                    profile_id=db_profile.id,
+                    output_name=output_name,
+                    display_name=display_name,
+                )
+                session.add(recording)
+                await session.commit()
+                await session.refresh(recording)
 
-            # 4. Create Job record with verification token
+            # 4. Check if there's already a completed job for this recording
+            stmt = select(Job).where(
+                Job.recording_id == recording.id,
+                Job.status == "completed",
+            )
+            result = await session.exec(stmt)
+            existing_completed_job = result.first()
+
+            if existing_completed_job:
+                # Job already completed - return existing job_id
+                print(f"File already processed (job {existing_completed_job.job_id}), skipping")
+                return {
+                    "job_id": existing_completed_job.job_id,
+                    "status": "completed",
+                    "message": "File already processed"
+                }
+
+            # 5. Create new Job record (or resume failed job)
             job_id = str(uuid.uuid4())
             verification_token = secrets.token_urlsafe(32)
 
@@ -343,7 +370,7 @@ async def upload_file(
             await session.commit()
 
         # 5. Create job payload with verification token in callback URL
-        backend_url: str = state.backend_url  # pyright: ignore[reportAttributeAccessIssue]
+        backend_url = state.backend_url
         callback_url = f"{backend_url}/api/jobs/{job_id}/complete/{verification_token}"
 
         job_payload = ProcessingJob(

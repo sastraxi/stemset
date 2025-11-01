@@ -26,8 +26,6 @@ required_env_vars = {
     "R2_SECRET_ACCESS_KEY": os.environ.get("R2_SECRET_ACCESS_KEY", ""),
     "R2_BUCKET_NAME": os.environ.get("R2_BUCKET_NAME", "stemset-media"),
     "R2_PUBLIC_URL": os.environ.get("R2_PUBLIC_URL", ""),
-    # Use production URL if set, otherwise fallback to standard
-    "BACKEND_URL": os.environ.get("BACKEND_URL_PRODUCTION", os.environ.get("BACKEND_URL", "")),
 }
 
 missing_vars = [k for k, v in required_env_vars.items() if not v]
@@ -224,7 +222,9 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             )
 
             # Call back to API if callback URL provided
-            if job.callback_url:
+            if not job.callback_url:
+                print("No callback URL provided, skipping callback")
+            else:
                 print(f"Calling back to: {job.callback_url}")
                 with httpx.Client() as client:
                     _ = client.post(job.callback_url, json=result.model_dump())

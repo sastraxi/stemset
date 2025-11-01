@@ -4,19 +4,18 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
 from pathlib import Path
 from collections.abc import AsyncGenerator
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
-from litestar.datastructures import State
 from litestar.static_files import create_static_files_router  # pyright: ignore[reportUnknownVariableType]
 
 from ..auth import auth_middleware
-from ..config import Config, get_config
+from ..config import get_config
 from ..db.config import get_engine
 
+from .state import AppState
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .profile_routes import (
     get_profile,
@@ -26,15 +25,6 @@ from .profile_routes import (
 )
 from .job_routes import job_complete, job_status, upload_file
 from .config_routes import get_recording_config, update_recording_config
-
-
-@dataclass
-class AppState:
-    """Type-safe application state."""
-
-    config: Config
-    backend_url: str
-    frontend_url: str | None
 
 
 @asynccontextmanager
@@ -77,9 +67,9 @@ allowed_origins = [
     "http://localhost:3000",  # Alternative dev port
 ]
 
-# Add production frontend URL from environment if set
-frontend_url = os.getenv("FRONTEND_URL")
-if frontend_url and frontend_url not in ["/", ""]:
+# Get frontend URL (defaults to localhost:5173 for development)
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+if frontend_url not in ["/", ""]:
     allowed_origins.append(frontend_url)
 
 cors_config = CORSConfig(
@@ -95,7 +85,7 @@ config = get_config()
 # Get backend URL for callbacks (defaults to localhost:8000 if not set)
 backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# Create type-safe state
+# Create type-safe state (now a proper State subclass)
 app_state = AppState(
     config=config,
     backend_url=backend_url,
@@ -121,7 +111,7 @@ app = Litestar(
     ],
     middleware=[auth_middleware],
     cors_config=cors_config,
-    state=State(asdict(app_state)),
+    state=app_state,  # Pass the State subclass directly
     request_max_body_size=1024 * 1024 * 150,  # 150MB max upload size
     lifespan=[database_lifespan],
 )
