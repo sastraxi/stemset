@@ -1,175 +1,175 @@
 /* Stem Player Styles */
 .stem-player {
-  outline: none;
+	outline: none;
 }
 
 .stem-player:focus {
-  outline: none;
+	outline: none;
 }
 
 .player-panel {
-  background: transparent;
-  border: none;
+	background: transparent;
+	border: none;
 }
 
 .stem-player.loading {
-  padding: 3rem;
-  text-align: center;
-  color: #888;
-  font-size: 0.9rem;
+	padding: 3rem;
+	text-align: center;
+	color: #888;
+	font-size: 0.9rem;
 }
 
 .waveform-controls.playback-controls {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 0;
 }
 
-.waveform-controls.playback-controls>button {
-  display: block;
-  width: 2rem;
+.waveform-controls.playback-controls > button {
+	display: block;
+	width: 2rem;
 }
 
 .share-button {
-  background: transparent;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  padding: 0.25rem;
-  margin-right: 0.5rem;
-  border-radius: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s ease;
+	background: transparent;
+	border: none;
+	color: #888;
+	cursor: pointer;
+	padding: 0.25rem;
+	margin-right: 0.5rem;
+	border-radius: 0.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: color 0.2s ease;
 }
 
 .share-button:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.1);
+	color: #fff;
+	background-color: rgba(255, 255, 255, 0.1);
 }
 
 .share-button:active {
-  background-color: rgba(255, 255, 255, 0.2);
+	background-color: rgba(255, 255, 255, 0.2);
 }
 
 .time-display {
-  margin-right: 1rem;
-  color: #888;
-  font-variant-numeric: tabular-nums;
+	margin-right: 1rem;
+	color: #888;
+	font-variant-numeric: tabular-nums;
 }
 
 .volume-slider {
-  width: 100%;
+	width: 100%;
 }
 
 .volume-label {
-  text-align: right;
-  font-size: 0.9rem;
-  color: #999;
-  font-variant-numeric: tabular-nums;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.25rem;
+	text-align: right;
+	font-size: 0.9rem;
+	color: #999;
+	font-variant-numeric: tabular-nums;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.25rem;
 }
 
 .mute-button,
 .solo-button,
 .reset-gain {
-  width: 2rem;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.85rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #888;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  opacity: 0.6;
+	width: 2rem;
+	padding: 0.3rem 0.5rem;
+	font-size: 0.85rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: #888;
+	cursor: pointer;
+	transition: all 0.2s;
+	min-width: unset;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	opacity: 0.6;
 }
 
 .waveform-row:hover .mute-button,
 .waveform-row:hover .solo-button,
 .waveform-row:hover .reset-gain {
-  opacity: 1;
+	opacity: 1;
 }
 
 .mute-button:hover {
-  outline: 2px solid #ff4444;
-  outline-offset: -1px;
-  color: #ff6666;
-  opacity: 1;
+	outline: 2px solid #ff4444;
+	outline-offset: -1px;
+	color: #ff6666;
+	opacity: 1;
 }
 
 .mute-button:hover svg {
-  color: #ff6666 !important;
+	color: #ff6666 !important;
 }
 
 .solo-button:hover {
-  outline: 2px solid #ffa500;
-  outline-offset: -1px;
-  color: #ffb347;
-  opacity: 1;
+	outline: 2px solid #ffa500;
+	outline-offset: -1px;
+	color: #ffb347;
+	opacity: 1;
 }
 
 .solo-button:hover svg {
-  color: #ffb347 !important;
+	color: #ffb347 !important;
 }
 
 .reset-gain:hover {
-  outline: 2px solid #4a9eff;
-  outline-offset: -1px;
-  color: #4a9eff;
-  opacity: 1;
+	outline: 2px solid #4a9eff;
+	outline-offset: -1px;
+	color: #4a9eff;
+	opacity: 1;
 }
 
 .mute-button.muted {
-  background: rgba(255, 68, 68, 0.15);
-  border-color: #ff4444;
-  color: #ff6666;
-  opacity: 1;
+	background: rgba(255, 68, 68, 0.15);
+	border-color: #ff4444;
+	color: #ff6666;
+	opacity: 1;
 }
 
 .mute-button.muted:hover {
-  background: rgba(255, 68, 68, 0.25);
-  border-color: #ff5555;
-  color: #ff7777;
+	background: rgba(255, 68, 68, 0.25);
+	border-color: #ff5555;
+	color: #ff7777;
 }
 
 .mute-button.muted:hover svg {
-  color: #ff7777 !important;
+	color: #ff7777 !important;
 }
 
 .solo-button.soloed {
-  background: rgba(255, 165, 0, 0.15);
-  border-color: #ffa500;
-  color: #ffb347;
-  opacity: 1;
+	background: rgba(255, 165, 0, 0.15);
+	border-color: #ffa500;
+	color: #ffb347;
+	opacity: 1;
 }
 
 .solo-button.soloed svg {
-  color: #ffb347 !important;
+	color: #ffb347 !important;
 }
 
 .solo-button.soloed:hover {
-  background: rgba(255, 165, 0, 0.25);
-  border-color: #ffb347;
-  color: #ffc266;
+	background: rgba(255, 165, 0, 0.25);
+	border-color: #ffb347;
+	color: #ffc266;
 }
 
 .solo-button.soloed:hover svg {
-  color: #ffc266 !important;
+	color: #ffc266 !important;
 }
 
 /* Range Input Styling */
 input[type="range"] {
-  cursor: pointer;
-  accent-color: #3a8eef;
-  height: 6px;
+	cursor: pointer;
+	accent-color: #3a8eef;
+	height: 6px;
 }

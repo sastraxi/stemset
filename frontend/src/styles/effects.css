@@ -1,522 +1,522 @@
 /* Master Effects Styles */
 .master-effects {
-  /* Break out of all parent containers to extend to full viewport width */
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* background: rgba(255, 0, 0, 0.4); */
-  padding: 0;
-  margin: 0;
-  width: 100vw;
-  margin-bottom: -2rem;
-  margin-left: -1rem;
+	/* Break out of all parent containers to extend to full viewport width */
+	position: absolute;
+	left: 0;
+	right: 0;
+	/* background: rgba(255, 0, 0, 0.4); */
+	padding: 0;
+	margin: 0;
+	width: 100vw;
+	margin-bottom: -2rem;
+	margin-left: -1rem;
 }
 
 @media (max-width: 768px) {
-  .master-effects {
-    display: none;
-  }
+	.master-effects {
+		display: none;
+	}
 }
 
 .master-effects-row {
-  display: flex;
-  flex-direction: row;
-  gap: 0.8rem;
-  align-items: flex-start;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding-left: calc(320px + 2.5rem);
-  padding-bottom: 0.5rem;
-  /* Add substantial padding to the right so content doesn't get cut off when scrolling */
-  padding-right: 4rem;
-  /* Smooth scrolling for better UX */
-  scroll-behavior: smooth;
-  /* Prevent browser navigation gestures from interfering with horizontal scrolling */
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: auto;
-  /* Prevent swipe gestures from triggering browser back/forward navigation */
-  touch-action: pan-x pinch-zoom;
-  /* Custom scrollbar styling */
-  scrollbar-width: none;
+	display: flex;
+	flex-direction: row;
+	gap: 0.8rem;
+	align-items: flex-start;
+	overflow-x: auto;
+	overflow-y: visible;
+	padding-left: calc(320px + 2.5rem);
+	padding-bottom: 0.5rem;
+	/* Add substantial padding to the right so content doesn't get cut off when scrolling */
+	padding-right: 4rem;
+	/* Smooth scrolling for better UX */
+	scroll-behavior: smooth;
+	/* Prevent browser navigation gestures from interfering with horizontal scrolling */
+	overscroll-behavior-x: contain;
+	overscroll-behavior-y: auto;
+	/* Prevent swipe gestures from triggering browser back/forward navigation */
+	touch-action: pan-x pinch-zoom;
+	/* Custom scrollbar styling */
+	scrollbar-width: none;
 }
 
 .master-effects-row::-webkit-scrollbar {
-  height: 6px;
+	height: 6px;
 }
 
 .master-effects-row::-webkit-scrollbar-track {
-  background: transparent;
+	background: transparent;
 }
 
 .master-effects-row::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
 }
 
 .master-effects-row::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+	background: rgba(255, 255, 255, 0.3);
 }
 
 .eq-section,
 .limiter-section,
 .reverb-section,
 .master-volume-section {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 0.85rem 1rem 1rem;
-  transition: border-color 0.2s;
-  flex-shrink: 0;
+	background: rgba(0, 0, 0, 0.3);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	padding: 0.85rem 1rem 1rem;
+	transition: border-color 0.2s;
+	flex-shrink: 0;
 }
 
 .eq-section:hover,
 .limiter-section:hover,
 .reverb-section:hover,
 .master-volume-section:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+	border-color: rgba(255, 255, 255, 0.15);
 }
 
 .eq-section {
-  width: auto;
+	width: auto;
 }
 
 .limiter-section {
-  width: 300px;
+	width: 300px;
 }
 
 .reverb-section {
-  width: 240px;
+	width: 240px;
 }
 
 .master-volume-section {
-  width: 230px;
+	width: 230px;
 }
 
 /* EQ Vertical Sliders */
 .eq-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
 }
 
 .eq-bands.vertical {
-  display: flex;
-  gap: 0.9rem;
-  align-items: flex-end;
-  padding: 0.5rem 0 0.25rem;
+	display: flex;
+	gap: 0.9rem;
+	align-items: flex-end;
+	padding: 0.5rem 0 0.25rem;
 }
 
 .eq-band-vertical {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 50px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 50px;
 }
 
 .eq-band-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #888;
-  text-align: center;
-  line-height: 1.3;
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #888;
+	text-align: center;
+	line-height: 1.3;
 }
 
 .eq-band-label small {
-  font-size: 0.55rem;
-  color: #666;
+	font-size: 0.55rem;
+	color: #666;
 }
 
 .eq-slider-vertical {
-  writing-mode: bt-lr;
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  width: 6px;
-  height: 110px;
-  padding: 0;
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.2s;
+	writing-mode: bt-lr;
+	-webkit-appearance: slider-vertical;
+	appearance: slider-vertical;
+	width: 6px;
+	height: 110px;
+	padding: 0;
+	cursor: pointer;
+	opacity: 0.8;
+	transition: opacity 0.2s;
 }
 
 .eq-slider-vertical:hover {
-  opacity: 1;
+	opacity: 1;
 }
 
 @supports not (-webkit-appearance: slider-vertical) {
-  .eq-slider-vertical {
-    transform: rotate(-90deg);
-    width: 110px;
-    height: 6px;
-    margin-top: 50px;
-  }
+	.eq-slider-vertical {
+		transform: rotate(-90deg);
+		width: 110px;
+		height: 6px;
+		margin-top: 50px;
+	}
 }
 
 .eq-band-value {
-  font-size: 0.65rem;
-  color: #888;
-  font-variant-numeric: tabular-nums;
+	font-size: 0.65rem;
+	color: #888;
+	font-variant-numeric: tabular-nums;
 }
 
 .eq-header,
 .limiter-header,
 .reverb-header,
 .master-volume-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.2rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 0.2rem;
+	padding-bottom: 0.6rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .eq-header h4,
 .limiter-header h4,
 .reverb-header h4,
 .master-volume-header h4 {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #e8e8e8;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: #e8e8e8;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin: 0;
 }
 
 .effect-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
 }
 
 .effect-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.6rem;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  user-select: none;
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.6rem;
+	color: #888;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	cursor: pointer;
+	user-select: none;
 }
 
 .effect-toggle input[type="checkbox"] {
-  width: 13px;
-  height: 13px;
-  cursor: pointer;
-  accent-color: #4a9eff;
+	width: 13px;
+	height: 13px;
+	cursor: pointer;
+	accent-color: #4a9eff;
 }
 
 .eq-header .reset-gain,
 .limiter-header .reset-gain,
 .reverb-header .reset-gain {
-  opacity: 0.3;
-  transition: opacity 0.2s;
-  font-size: 0.85rem;
-  padding: 0.2rem 0.35rem;
+	opacity: 0.3;
+	transition: opacity 0.2s;
+	font-size: 0.85rem;
+	padding: 0.2rem 0.35rem;
 }
 
 .eq-section:hover .reset-gain,
 .limiter-section:hover .reset-gain,
 .reverb-section:hover .reset-gain {
-  opacity: 1;
+	opacity: 1;
 }
 
 /* Limiter Styles */
 .limiter-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
 }
 
 .limiter-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  height: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	height: 100%;
 }
 
-.limiter-ceiling {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.effect-control {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
 }
 
-.limiter-ceiling label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+.effect-control label {
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	color: #888;
+	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
-.limiter-ceiling input[type="range"] {
-  width: 100%;
+.effect-control input[type="range"] {
+	width: 100%;
 }
 
 .limiter-reduction {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	grid-column: 1 / -1;
 }
 
 .meter-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	color: #888;
+	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
 .gr-meter {
-  position: relative;
-  width: 100%;
-  height: 14px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 7px;
-  overflow: hidden;
+	position: relative;
+	width: 100%;
+	height: 14px;
+	background: rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 7px;
+	overflow: hidden;
 }
 
 .gr-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4a9eff 0%, #ff9800 50%, #f44336 100%);
+	height: 100%;
+	background: linear-gradient(90deg, #4a9eff 0%, #ff9800 50%, #f44336 100%);
 }
 
 .limiter-enabled {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  color: #ccc;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.8rem;
+	color: #ccc;
 }
 
 /* Override generic range styling for vertical EQ sliders */
 .eq-slider-vertical {
-  height: 140px !important;
-  /* ensure vertical dimension */
+	height: 140px !important;
+	/* ensure vertical dimension */
 }
 
 @supports not (-webkit-appearance: slider-vertical) {
-  .eq-slider-vertical {
-    height: 10px !important;
-    /* rotated variant height */
-  }
+	.eq-slider-vertical {
+		height: 10px !important;
+		/* rotated variant height */
+	}
 }
 
 /* Stereo Expander Styles */
 .stereo-expander-section {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 0.85rem 1rem 1rem;
-  transition: border-color 0.2s;
-  flex-shrink: 0;
-  width: 600px;
-  /* Double the width of normal limiter sections */
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+	background: rgba(0, 0, 0, 0.3);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	padding: 0.85rem 1rem 1rem;
+	transition: border-color 0.2s;
+	flex-shrink: 0;
+	width: 600px;
+	/* Double the width of normal limiter sections */
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
 }
 
 .stereo-expander-section:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+	border-color: rgba(255, 255, 255, 0.15);
 }
 
 .stereo-expander-grid {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  gap: 0.3rem;
-  align-items: stretch;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr auto 1fr;
+	gap: 0.3rem;
+	align-items: stretch;
 }
 
 .stereo-band-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.2rem;
 }
 
 .band-header {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #e8e8e8;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  text-align: center;
-  vertical-align: bottom;
-  flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: #e8e8e8;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	text-align: center;
+	vertical-align: bottom;
+	flex-grow: 1;
 }
 
 .crossover-column {
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  flex-direction: column-reverse;
+	display: flex;
+	justify-content: center;
+	align-items: stretch;
+	flex-direction: column-reverse;
 }
 
 .crossover-vertical {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  height: 100%;
-  justify-content: space-between;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	height: 100%;
+	justify-content: space-between;
 }
 
 .crossover-label {
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.05em;
-  text-align: center;
-  line-height: 1.2;
-  margin-top: 0.5rem;
-  min-width: 2.5rem;
+	font-size: 0.55rem;
+	text-transform: uppercase;
+	color: #888;
+	letter-spacing: 0.05em;
+	text-align: center;
+	line-height: 1.2;
+	margin-top: 0.5rem;
+	min-width: 2.5rem;
 }
 
 .crossover-slider-vertical {
-  writing-mode: bt-lr;
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  width: 6px;
-  height: 120px;
-  padding: 0;
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.2s;
-  flex: 1;
+	writing-mode: bt-lr;
+	-webkit-appearance: slider-vertical;
+	appearance: slider-vertical;
+	width: 6px;
+	height: 120px;
+	padding: 0;
+	cursor: pointer;
+	opacity: 0.8;
+	transition: opacity 0.2s;
+	flex: 1;
 }
 
 .crossover-slider-vertical:hover {
-  opacity: 1;
+	opacity: 1;
 }
 
 @supports not (-webkit-appearance: slider-vertical) {
-  .crossover-slider-vertical {
-    transform: rotate(-90deg);
-    width: 120px;
-    height: 6px;
-    margin: 55px 0;
-  }
+	.crossover-slider-vertical {
+		transform: rotate(-90deg);
+		width: 120px;
+		height: 6px;
+		margin: 55px 0;
+	}
 
-  .crossover-vertical {
-    margin-top: -55px;
-    margin-bottom: -55px;
-  }
+	.crossover-vertical {
+		margin-top: -55px;
+		margin-bottom: -55px;
+	}
 }
 
 /* Reverb Styles */
 .reverb-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
 }
 
 .reverb-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  height: 100%;
-  padding-bottom: 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	height: 100%;
+	padding-bottom: 0.75rem;
 }
 
 .reverb-impulse {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
 }
 
 .reverb-impulse label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	color: #888;
+	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
 .reverb-mix label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	color: #888;
+	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
 .reverb-mix input[type="range"] {
-  width: 100%;
+	width: 100%;
 }
 
 .reverb-impulse input[type="range"] {
-  width: 100%;
+	width: 100%;
 }
 
 .reverb-impulse .impulse-select {
-  width: 100%;
-  padding: 0.5rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e8e8e8;
-  font-size: 0.8rem;
-  transition: border-color 0.2s;
-  cursor: pointer;
+	width: 100%;
+	padding: 0.5rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.8rem;
+	transition: border-color 0.2s;
+	cursor: pointer;
 }
 
 .reverb-impulse .impulse-select:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+	border-color: rgba(255, 255, 255, 0.2);
 }
 
 .reverb-impulse .impulse-select:focus {
-  outline: none;
-  border-color: #4a9eff;
+	outline: none;
+	border-color: #4a9eff;
 }
 
 .reverb-impulse .impulse-select option {
-  background: #2a2a2a;
-  color: #e8e8e8;
+	background: #2a2a2a;
+	color: #e8e8e8;
 }
 
 /* Master Volume Control Styles */
 .master-volume-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
 }
 
 .master-volume-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0 0.25rem;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0 0.25rem;
 }
 
 .volume-triangle {
-  outline: none;
-  touch-action: none;
-  user-select: none;
+	outline: none;
+	touch-action: none;
+	user-select: none;
 }
 
 .volume-triangle:focus-visible {
-  outline: 2px solid #4a9eff;
-  outline-offset: 2px;
-  border-radius: 4px;
+	outline: 2px solid #4a9eff;
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 .volume-value {
-  font-size: 0.65rem;
-  color: #888;
-  font-variant-numeric: tabular-nums;
-  min-width: 50px;
-  text-align: center;
+	font-size: 0.65rem;
+	color: #888;
+	font-variant-numeric: tabular-nums;
+	min-width: 50px;
+	text-align: center;
 }
 
 .master-volume-section .mute-button {
-  padding: 0.2rem 0.35rem;
-  opacity: 1;
+	padding: 0.2rem 0.35rem;
+	opacity: 1;
 }

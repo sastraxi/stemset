@@ -1,199 +1,199 @@
 /* QR Upload Overlay */
 .qr-upload-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(13, 13, 13, 0.95);
-    backdrop-filter: blur(12px);
-    z-index: 9998;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: qrUploadFadeIn 0.25s ease-out;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(13, 13, 13, 0.95);
+	backdrop-filter: blur(12px);
+	z-index: 9998;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: qrUploadFadeIn 0.25s ease-out;
 }
 
 .qr-upload-overlay.closing {
-    animation: qrUploadFadeOut 0.15s ease-in;
+	animation: qrUploadFadeOut 0.15s ease-in;
 }
 
 @keyframes qrUploadFadeIn {
-    from {
-        opacity: 0;
-        backdrop-filter: blur(0px);
-    }
+	from {
+		opacity: 0;
+		backdrop-filter: blur(0px);
+	}
 
-    to {
-        opacity: 1;
-        backdrop-filter: blur(12px);
-    }
+	to {
+		opacity: 1;
+		backdrop-filter: blur(12px);
+	}
 }
 
 @keyframes qrUploadFadeOut {
-    from {
-        opacity: 1;
-        backdrop-filter: blur(12px);
-    }
+	from {
+		opacity: 1;
+		backdrop-filter: blur(12px);
+	}
 
-    to {
-        opacity: 0;
-        backdrop-filter: blur(0px);
-    }
+	to {
+		opacity: 0;
+		backdrop-filter: blur(0px);
+	}
 }
 
 .qr-upload-content {
-    background: #1a1a1a;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 90vh;
-    overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    animation: qrUploadSlideIn 0.25s ease-out;
+	background: #1a1a1a;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 16px;
+	max-width: 500px;
+	width: 90%;
+	max-height: 90vh;
+	overflow: hidden;
+	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+	animation: qrUploadSlideIn 0.25s ease-out;
 }
 
 .qr-upload-overlay.closing .qr-upload-content {
-    animation: qrUploadSlideOut 0.15s ease-in;
+	animation: qrUploadSlideOut 0.15s ease-in;
 }
 
 @keyframes qrUploadSlideIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(20px);
-    }
+	from {
+		opacity: 0;
+		transform: scale(0.9) translateY(20px);
+	}
 
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
 }
 
 @keyframes qrUploadSlideOut {
-    from {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+	from {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
 
-    to {
-        opacity: 0;
-        transform: scale(0.95) translateY(-10px);
-    }
+	to {
+		opacity: 0;
+		transform: scale(0.95) translateY(-10px);
+	}
 }
 
 .qr-upload-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 2rem 2rem 0 2rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2rem 2rem 0 2rem;
 }
 
 .qr-upload-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #e8e8e8;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	font-size: 1.25rem;
+	font-weight: 600;
+	color: #e8e8e8;
 }
 
 .qr-upload-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    color: #888;
-    cursor: pointer;
-    transition: all 0.15s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	background: transparent;
+	border: none;
+	border-radius: 8px;
+	color: #888;
+	cursor: pointer;
+	transition: all 0.15s;
 }
 
 .qr-upload-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
+	background: rgba(255, 255, 255, 0.1);
+	color: #e8e8e8;
 }
 
 .qr-upload-body {
-    padding: 2rem;
+	padding: 2rem;
 }
 
 .qr-upload-description {
-    font-size: 1rem;
-    color: #b0b0b0;
-    margin: 0 0 2rem 0;
-    line-height: 1.6;
-    text-align: center;
+	font-size: 1rem;
+	color: #b0b0b0;
+	margin: 0 0 2rem 0;
+	line-height: 1.6;
+	text-align: center;
 }
 
 .qr-upload-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1.5rem;
 }
 
 .qr-upload-divider {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    margin: 0.5rem 0;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin: 0.5rem 0;
 }
 
 .qr-upload-divider::before,
 .qr-upload-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: rgba(255, 255, 255, 0.1);
 }
 
 .qr-upload-divider span {
-    padding: 0 1rem;
-    font-size: 0.875rem;
-    color: #666;
-    text-transform: uppercase;
-    font-weight: 500;
-    letter-spacing: 0.05em;
+	padding: 0 1rem;
+	font-size: 0.875rem;
+	color: #666;
+	text-transform: uppercase;
+	font-weight: 500;
+	letter-spacing: 0.05em;
 }
 
 .qr-upload-view-original {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.875rem 1.5rem;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    color: #e8e8e8;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 200px;
-    justify-content: center;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.875rem 1.5rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 8px;
+	color: #e8e8e8;
+	font-size: 0.9rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s;
+	min-width: 200px;
+	justify-content: center;
 }
 
 .qr-upload-view-original:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: #4a9eff;
-    color: #4a9eff;
+	background: rgba(255, 255, 255, 0.05);
+	border-color: #4a9eff;
+	color: #4a9eff;
 }
 
 /* Override Upload component styles when inside QR overlay */
 .qr-upload-overlay .upload-sidebar-button {
-    min-width: 200px;
-    justify-content: center;
-    background: rgba(74, 158, 255, 0.1);
-    border-color: #4a9eff;
-    color: #4a9eff;
+	min-width: 200px;
+	justify-content: center;
+	background: rgba(74, 158, 255, 0.1);
+	border-color: #4a9eff;
+	color: #4a9eff;
 }
 
 .qr-upload-overlay .upload-sidebar-button:hover {
-    background: rgba(74, 158, 255, 0.2);
-    border-color: #6bb3ff;
-    color: #6bb3ff;
+	background: rgba(74, 158, 255, 0.2);
+	border-color: #6bb3ff;
+	color: #6bb3ff;
 }

@@ -1,93 +1,93 @@
 /* Sidebar Styles */
 .profile-selector {
-  padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	padding: 1.5rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .profile-selector h2 {
-  font-size: 0.7rem;
-  margin-bottom: 0.75rem;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
+	font-size: 0.7rem;
+	margin-bottom: 0.75rem;
+	color: #888;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-weight: 500;
 }
 
 .profile-selector select {
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 0.75rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e8e8e8;
-  font-size: 0.9rem;
-  transition: border-color 0.2s;
+	width: 100%;
+	padding: 0.5rem;
+	margin-bottom: 0.75rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.9rem;
+	transition: border-color 0.2s;
 }
 
 .profile-selector select:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+	border-color: rgba(255, 255, 255, 0.2);
 }
 
 .profile-selector select:focus {
-  outline: none;
-  border-color: #4a9eff;
+	outline: none;
+	border-color: #4a9eff;
 }
 
 .profile-selector button {
-  width: 100%;
-  padding: 0.6rem 1rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e8e8e8;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
+	width: 100%;
+	padding: 0.6rem 1rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .profile-selector button:hover:not(:disabled),
 button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: #4a9eff;
-  color: #4a9eff;
+	background: rgba(255, 255, 255, 0.05);
+	border-color: #4a9eff;
+	color: #4a9eff;
 }
 
 .profile-selector button:disabled,
 button:disabled {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.05);
-  color: #444;
-  cursor: not-allowed;
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.05);
+	color: #444;
+	cursor: not-allowed;
 }
 
 .file-list {
-  padding: 1.5rem;
-  flex: 1;
-  overflow-y: auto;
-  /* Prevent scrollbar from showing until needed */
-  min-height: 0;
+	padding: 1.5rem;
+	flex: 1;
+	overflow-y: auto;
+	/* Prevent scrollbar from showing until needed */
+	min-height: 0;
 }
 
 .file-list ul {
-  /* This prevents the flash by giving a stable container */
-  min-height: 0;
+	/* This prevents the flash by giving a stable container */
+	min-height: 0;
 }
 
 .file-list h2 {
-  font-size: 0.7rem;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
+	font-size: 0.7rem;
+	color: #888;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-weight: 500;
 }
 
 .file-list ul {
-  padding-left: 0;
-  margin-left: 0;
+	padding-left: 0;
+	margin-left: 0;
 }
 
 .file-list li {
-  margin-left: 0;
-  padding-left: 1rem !important;
+	margin-left: 0;
+	padding-left: 1rem !important;
 }

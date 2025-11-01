@@ -1,73 +1,73 @@
 /* Upload Sidebar Button */
 .upload-sidebar-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  margin: 1.5rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e8e8e8;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1.5rem;
+	margin: 1.5rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .upload-sidebar-button:hover {
-  background: rgba(74, 158, 255, 0.1);
-  border-color: #4a9eff;
-  color: #4a9eff;
+	background: rgba(74, 158, 255, 0.1);
+	border-color: #4a9eff;
+	color: #4a9eff;
 }
 
 /* Full-screen Drop Overlay */
 .upload-fullscreen-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(13, 13, 13, 0.98);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.15s ease-out;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(13, 13, 13, 0.98);
+	backdrop-filter: blur(8px);
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: fadeIn 0.15s ease-out;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+	from {
+		opacity: 0;
+	}
 
-  to {
-    opacity: 1;
-  }
+	to {
+		opacity: 1;
+	}
 }
 
 .upload-fullscreen-content {
-  text-align: center;
-  pointer-events: none;
+	text-align: center;
+	pointer-events: none;
 }
 
 .upload-icon {
-  width: 96px;
-  height: 96px;
-  margin: 0 auto 2rem;
-  color: #4a9eff;
-  opacity: 0.8;
+	width: 96px;
+	height: 96px;
+	margin: 0 auto 2rem;
+	color: #4a9eff;
+	opacity: 0.8;
 }
 
 .upload-message {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: #e8e8e8;
-  margin: 0 0 0.75rem 0;
+	font-size: 1.5rem;
+	font-weight: 500;
+	color: #e8e8e8;
+	margin: 0 0 0.75rem 0;
 }
 
 .upload-hint {
-  font-size: 0.9rem;
-  color: #888;
-  margin: 0;
+	font-size: 0.9rem;
+	color: #888;
+	margin: 0;
 }

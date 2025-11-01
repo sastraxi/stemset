@@ -1,143 +1,145 @@
 /* QR Code Modal */
 .qr-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(8px);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.15s ease-out;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.8);
+	backdrop-filter: blur(8px);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: fadeIn 0.15s ease-out;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
+	from {
+		opacity: 0;
+	}
 
-    to {
-        opacity: 1;
-    }
+	to {
+		opacity: 1;
+	}
 }
 
 .qr-modal-content {
-    background: #1a1a1a;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    max-width: 400px;
-    width: 90%;
-    max-height: 90vh;
-    overflow: hidden;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-    animation: slideIn 0.15s ease-out;
+	background: #1a1a1a;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 12px;
+	max-width: 400px;
+	width: 90%;
+	max-height: 90vh;
+	overflow: hidden;
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+	animation: slideIn 0.15s ease-out;
 }
 
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-10px);
-    }
+	from {
+		opacity: 0;
+		transform: scale(0.95) translateY(-10px);
+	}
 
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
 }
 
 .qr-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 1.5rem 0 1.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.5rem 1.5rem 0 1.5rem;
 }
 
 .qr-modal-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #e8e8e8;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 1.125rem;
+	font-weight: 600;
+	color: #e8e8e8;
 }
 
 .qr-modal-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    color: #888;
-    cursor: pointer;
-    transition: all 0.15s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	color: #888;
+	cursor: pointer;
+	transition: all 0.15s;
 }
 
 .qr-modal-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
+	background: rgba(255, 255, 255, 0.1);
+	color: #e8e8e8;
 }
 
 .qr-modal-body {
-    padding: 1.5rem;
-    text-align: center;
+	padding: 1.5rem;
+	text-align: center;
 }
 
 .qr-modal-description {
-    font-size: 0.9rem;
-    color: #b0b0b0;
-    margin: 0 0 1.5rem 0;
-    line-height: 1.5;
+	font-size: 0.9rem;
+	color: #b0b0b0;
+	margin: 0 0 1.5rem 0;
+	line-height: 1.5;
 }
 
 .qr-modal-qr-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: #ffffff;
-    border-radius: 8px;
+	display: flex;
+	justify-content: center;
+	margin-bottom: 1.5rem;
+	padding: 1rem;
+	background: #ffffff;
+	border-radius: 8px;
 }
 
 .qr-modal-canvas {
-    display: block;
-    max-width: 100%;
-    height: auto;
+	display: block;
+	max-width: 100%;
+	height: auto;
 }
 
 .qr-modal-error {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-    color: #ff6666;
-    font-size: 0.9rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 300px;
+	color: #ff6666;
+	font-size: 0.9rem;
 }
 
 .qr-modal-url {
-    margin-top: 1rem;
+	margin-top: 1rem;
 }
 
 .qr-modal-url-input {
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    color: #e8e8e8;
-    font-size: 0.875rem;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-    cursor: pointer;
-    transition: border-color 0.15s;
+	width: 100%;
+	padding: 0.75rem;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.875rem;
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
+		monospace;
+	cursor: pointer;
+	transition: border-color 0.15s;
 }
 
 .qr-modal-url-input:hover,
 .qr-modal-url-input:focus {
-    border-color: #4a9eff;
-    outline: none;
+	border-color: #4a9eff;
+	outline: none;
 }
