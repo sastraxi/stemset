@@ -19,11 +19,7 @@ export interface UseAudioEffectsOptions {
   audioContext: AudioContext | null;
   masterInput: GainNode | null;
   masterOutput: GainNode | null;
-  initialConfig: AudioEffectsConfig;
-  onEqChange?: (config: EqConfig) => void;
-  onCompressorChange?: (config: CompressorConfig) => void;
-  onReverbChange?: (config: ReverbConfig) => void;
-  onStereoExpanderChange?: (config: StereoExpanderConfig) => void;
+  recordingId: string;
 }
 
 export interface UseAudioEffectsResult {
@@ -38,40 +34,34 @@ export interface UseAudioEffectsResult {
  *
  * Composes all effect hooks and manages the audio graph routing:
  * masterInput → EQ → stereoExpander → reverb → compressor → masterOutput
+ *
+ * Each effect now manages its own persistence directly via useConfigPersistence.
  */
 export function useAudioEffects({
   audioContext,
   masterInput,
   masterOutput,
-  initialConfig,
-  onEqChange,
-  onCompressorChange,
-  onReverbChange,
-  onStereoExpanderChange,
+  recordingId,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
 
   const eq = useEqEffect({
     audioContext,
-    initialConfig: initialConfig.eqConfig,
-    onConfigChange: onEqChange,
+    recordingId,
   });
 
   const stereoExpander = useStereoExpanderEffect({
     audioContext,
-    initialConfig: initialConfig.stereoExpanderConfig,
-    onConfigChange: onStereoExpanderChange,
+    recordingId,
   });
 
   const reverb = useReverbEffect({
     audioContext,
-    initialConfig: initialConfig.reverbConfig,
-    onConfigChange: onReverbChange,
+    recordingId,
   });
 
   const compressor = useCompressorEffect({
     audioContext,
-    initialConfig: initialConfig.compressorConfig,
-    onConfigChange: onCompressorChange,
+    recordingId,
   });
 
   const allEffects = [eq, stereoExpander, reverb, compressor];

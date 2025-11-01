@@ -1,18 +1,12 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAudioContext } from './useAudioContext';
-import { useRecordingConfig } from './useRecordingConfig';
+import { useConfigPersistence } from './useConfigPersistence';
 import { useAudioLoader } from './useAudioLoader';
 import type { LoadingMetrics } from './useAudioLoader';
 import { useStemAudioNodes } from './useStemAudioNodes';
 import { usePlaybackController } from './usePlaybackController';
 import { useAudioEffects } from './useAudioEffects';
-import type { StemViewModel, EffectsChainConfig, RecordingUserConfig } from '../types';
-import {
-  DEFAULT_EQ_CONFIG,
-  DEFAULT_COMPRESSOR_CONFIG,
-  DEFAULT_REVERB_CONFIG,
-  DEFAULT_STEREO_EXPANDER_CONFIG,
-} from './effects';
+import type { StemViewModel, StemUserConfig, EffectsChainConfig } from '../types';
 
 /**
  * Orchestrator hook for multi-stem audio player.
@@ -100,35 +94,30 @@ export function useStemPlayer({
   const masterInput = getMasterInput();
   const masterOutput = getMasterOutput();
 
-  // 2. Recording config (database persistence via API)
-  // config is undefined (loading), null (no config), or RecordingUserConfig (loaded)
-  const { config, isLoading: isConfigLoading, saveEffectsConfig } = useRecordingConfig({
+  // 2. Persist stem configs (volume, mute, solo) and playback position independently
+  const {
+    config: stemConfigs,
+    setConfig: setStemConfigsState,
+    isLoading: isStemConfigsLoading
+  } = useConfigPersistence<Record<string, StemUserConfig>>({
     recordingId,
+    configKey: 'stems',
+    defaultValue: {},
+    debounceMs: 500,
   });
 
-  // Default config to use when config is null (no saved config exists)
-  const DEFAULT_CONFIG: RecordingUserConfig = useMemo(() => ({
-    playbackPosition: 0,
-    stems: {},
-    effects: {
-      eq: DEFAULT_EQ_CONFIG,
-      compressor: DEFAULT_COMPRESSOR_CONFIG,
-      reverb: DEFAULT_REVERB_CONFIG,
-      stereoExpander: DEFAULT_STEREO_EXPANDER_CONFIG,
-    },
-  }), []);
+  const {
+    config: playbackPositionConfig,
+    setConfig: setPlaybackPositionConfig,
+    isLoading: isPlaybackPositionLoading
+  } = useConfigPersistence<{ position: number }>({
+    recordingId,
+    configKey: 'playbackPosition',
+    defaultValue: { position: 0 },
+    debounceMs: 1000, // Longer debounce for playback position
+  });
 
-  // Effective config for components:
-  // - undefined = still loading, components should disable controls
-  // - null or RecordingUserConfig = loaded, use actual config or defaults
-  const effectiveConfig = useMemo(() => {
-    if (config === undefined) {
-      // Still loading - return undefined to signal components to disable
-      return undefined;
-    }
-    // Config loaded: use it if it exists, otherwise use defaults
-    return config ?? DEFAULT_CONFIG;
-  }, [config, DEFAULT_CONFIG]);
+  const isConfigLoading = isStemConfigsLoading || isPlaybackPositionLoading;
 
   // 3. Load audio buffers
   const { isLoading, loadingMetrics, stems: loadedStems, duration, metadataBaseUrl } = useAudioLoader({
@@ -148,19 +137,21 @@ export function useStemPlayer({
   // 5. Stem view models (merge metadata + user config)
   const [stems, setStems] = useState<Record<string, StemViewModel>>({});
   const [stemOrder, setStemOrder] = useState<string[]>([]);
+  const stemsInitializedRef = useRef(false);
+  const playbackPositionInitializedRef = useRef(false);
 
   // Initialize stem view models when audio nodes are created AND config is loaded
+  // ONLY RUNS ONCE - subsequent changes to stemConfigs don't re-initialize
   useEffect(() => {
     if (stemNodes.size === 0) return;
-    // CRITICAL: Wait for config to load before initializing stems
-    // This prevents defaults from being used before saved config arrives
-    if (effectiveConfig === undefined) return;
+    if (isStemConfigsLoading) return; // Wait for config to load
+    if (stemsInitializedRef.current) return; // Already initialized, skip
 
     const newStems: Record<string, StemViewModel> = {};
     const order: string[] = [];
 
     stemNodes.forEach((node, name) => {
-      const savedStem = effectiveConfig.stems[name];
+      const savedStem = stemConfigs[name];
       const loadedStem = loadedStems.get(name);
       const metadata = loadedStem?.metadata;
 
@@ -185,7 +176,8 @@ export function useStemPlayer({
 
     setStems(newStems);
     setStemOrder(order);
-  }, [stemNodes, metadataBaseUrl, loadedStems, effectiveConfig]);
+    stemsInitializedRef.current = true; // Mark as initialized
+  }, [stemNodes, metadataBaseUrl, loadedStems, stemConfigs, isStemConfigsLoading]);
 
   // 6. Apply stem state to audio nodes (reactive!)
   useEffect(() => {
@@ -211,82 +203,61 @@ export function useStemPlayer({
     });
   }, [stems, stemNodes]);
 
-  // Store latest effectiveConfig in a ref to avoid recreating callbacks
-  const effectiveConfigRef = useRef(effectiveConfig);
+  // Persist stem configs when they change
   useEffect(() => {
-    effectiveConfigRef.current = effectiveConfig;
-  }, [effectiveConfig]);
+    if (Object.keys(stems).length === 0) return; // Not initialized yet
+    if (isStemConfigsLoading) return; // Don't save during initial load
 
-  // Create save callbacks for effects (stable reference, uses ref for latest config)
-  const saveEqConfig = useCallback((eqConfig: typeof DEFAULT_EQ_CONFIG) => {
-    const currentConfig = effectiveConfigRef.current;
-    saveEffectsConfig({
-      eq: eqConfig,
-      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
-      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
-      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
+    // Extract just the user config portion (gain, muted, soloed)
+    const configs: Record<string, StemUserConfig> = {};
+    Object.entries(stems).forEach(([name, stem]) => {
+      configs[name] = {
+        gain: stem.gain,
+        muted: stem.muted,
+        soloed: stem.soloed,
+      };
     });
-  }, [saveEffectsConfig]);
 
-  const saveCompressorConfig = useCallback((compressorConfig: typeof DEFAULT_COMPRESSOR_CONFIG) => {
-    const currentConfig = effectiveConfigRef.current;
-    saveEffectsConfig({
-      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
-      compressor: compressorConfig,
-      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
-      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
-    });
-  }, [saveEffectsConfig]);
+    setStemConfigsState(configs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stems, isStemConfigsLoading]); // Intentionally omit setStemConfigsState to avoid infinite loop
 
-  const saveReverbConfig = useCallback((reverbConfig: typeof DEFAULT_REVERB_CONFIG) => {
-    const currentConfig = effectiveConfigRef.current;
-    saveEffectsConfig({
-      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
-      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
-      reverb: reverbConfig,
-      stereoExpander: currentConfig?.effects.stereoExpander ?? DEFAULT_STEREO_EXPANDER_CONFIG,
-    });
-  }, [saveEffectsConfig]);
-
-  const saveStereoExpanderConfig = useCallback((stereoExpanderConfig: typeof DEFAULT_STEREO_EXPANDER_CONFIG) => {
-    const currentConfig = effectiveConfigRef.current;
-    saveEffectsConfig({
-      eq: currentConfig?.effects.eq ?? DEFAULT_EQ_CONFIG,
-      compressor: currentConfig?.effects.compressor ?? DEFAULT_COMPRESSOR_CONFIG,
-      reverb: currentConfig?.effects.reverb ?? DEFAULT_REVERB_CONFIG,
-      stereoExpander: stereoExpanderConfig,
-    });
-  }, [saveEffectsConfig]);
-
-  // 7. Audio effects (use defaults while loading, then switch to saved config)
+  // 7. Audio effects (each effect persists its own config independently)
   const { eq, compressor, reverb, stereoExpander} = useAudioEffects({
     audioContext,
     masterInput,
     masterOutput,
-    initialConfig: effectiveConfig ? {
-      eqConfig: effectiveConfig.effects.eq,
-      compressorConfig: effectiveConfig.effects.compressor,
-      reverbConfig: effectiveConfig.effects.reverb,
-      stereoExpanderConfig: effectiveConfig.effects.stereoExpander,
-    } : {
-      eqConfig: DEFAULT_EQ_CONFIG,
-      compressorConfig: DEFAULT_COMPRESSOR_CONFIG,
-      reverbConfig: DEFAULT_REVERB_CONFIG,
-      stereoExpanderConfig: DEFAULT_STEREO_EXPANDER_CONFIG,
-    },
-    onEqChange: saveEqConfig,
-    onCompressorChange: saveCompressorConfig,
-    onReverbChange: saveReverbConfig,
-    onStereoExpanderChange: saveStereoExpanderConfig,
+    recordingId,
   });
 
-  // 8. Playback control (use 0 position while config loads)
+  // 8. Playback control (use saved position or 0 if none)
   const { isPlaying, currentTime, play, pause, stop, seek, formatTime } = usePlaybackController({
     audioContext,
     duration,
     stemNodes,
-    initialPosition: effectiveConfig?.playbackPosition ?? 0,
+    initialPosition: playbackPositionConfig.position,
   });
+
+  // Mark playback position as initialized after first render to avoid saving initial state
+  useEffect(() => {
+    if (!isPlaybackPositionLoading) {
+      // Wait one more tick to ensure currentTime has been updated from initialPosition
+      const timer = setTimeout(() => {
+        playbackPositionInitializedRef.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaybackPositionLoading]);
+
+  // Persist playback position when playback stops or pauses (not during continuous playback)
+  useEffect(() => {
+    if (!playbackPositionInitializedRef.current) return; // Don't save until initialized
+    if (isPlaying) return; // Don't save while playing (too many updates)
+
+    // Save when paused/stopped or when user seeks while paused
+    setPlaybackPositionConfig({ position: currentTime });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, currentTime]); // Intentionally omit setPlaybackPositionConfig to avoid infinite loop
 
   // Validate and correct playback position once duration is loaded
   useEffect(() => {

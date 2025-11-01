@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useConfigPersistence } from '../useConfigPersistence';
 
 export interface StereoExpanderConfig {
   lowMidCrossover: number; // Hz, 50 to 2000
@@ -14,8 +15,7 @@ export interface StereoExpanderConfig {
 
 export interface UseStereoExpanderEffectOptions {
   audioContext: AudioContext | null;
-  initialConfig?: StereoExpanderConfig;
-  onConfigChange?: (config: StereoExpanderConfig) => void;
+  recordingId: string;
 }
 
 export interface UseStereoExpanderEffectResult {
@@ -42,53 +42,17 @@ export const DEFAULT_STEREO_EXPANDER_CONFIG: StereoExpanderConfig = {
 
 export function useStereoExpanderEffect({
   audioContext,
-  initialConfig,
-  onConfigChange,
+  recordingId,
 }: UseStereoExpanderEffectOptions): UseStereoExpanderEffectResult {
-  const [config, setConfig] = useState<StereoExpanderConfig>(() => {
-    return initialConfig || DEFAULT_STEREO_EXPANDER_CONFIG;
+  // Persist config directly to database
+  const { config, setConfig } = useConfigPersistence({
+    recordingId,
+    configKey: 'stereoExpander',
+    defaultValue: DEFAULT_STEREO_EXPANDER_CONFIG,
+    debounceMs: 500,
   });
 
   const [isReady, setIsReady] = useState(false);
-
-  // Track if this is the first render (don't save on initial load)
-  const isFirstRender = useRef(true);
-  const lastInitialConfigRef = useRef(initialConfig);
-
-  // Update config when initialConfig changes (e.g., loaded from server)
-  useEffect(() => {
-    if (initialConfig && initialConfig !== lastInitialConfigRef.current) {
-      console.log('[useStereoExpanderEffect] Initial config changed, updating state:', initialConfig);
-      isFirstRender.current = true;
-      setConfig(initialConfig);
-      lastInitialConfigRef.current = initialConfig;
-    }
-  }, [initialConfig]);
-
-  // Debounced save when config changes (skip first render and external updates)
-  const saveTimeoutRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      console.log('[useStereoExpanderEffect] First render, skipping save');
-      return;
-    }
-
-    if (onConfigChange) {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = window.setTimeout(() => {
-        console.log('[useStereoExpanderEffect] Saving config after user change:', config);
-        onConfigChange(config);
-      }, 500);
-    }
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [config, onConfigChange]);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const workletLoadedRef = useRef(false);
 

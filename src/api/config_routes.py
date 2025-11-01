@@ -23,6 +23,10 @@ class RecordingConfigResponse(BaseModel):
     playbackPosition: dict[str, Any] | None = None
     stems: dict[str, Any] | None = None
     effects: dict[str, Any] | None = None
+    eq: dict[str, Any] | None = None
+    compressor: dict[str, Any] | None = None
+    reverb: dict[str, Any] | None = None
+    stereoExpander: dict[str, Any] | None = None
 
 
 class UpdateConfigRequest(BaseModel):
@@ -78,6 +82,14 @@ async def get_recording_config(
                 response.stems = config.config_value
             elif config.config_key == "effects":
                 response.effects = config.config_value
+            elif config.config_key == "eq":
+                response.eq = config.config_value
+            elif config.config_key == "compressor":
+                response.compressor = config.config_value
+            elif config.config_key == "reverb":
+                response.reverb = config.config_value
+            elif config.config_key == "stereoExpander":
+                response.stereoExpander = config.config_value
 
         return response
 
@@ -95,8 +107,9 @@ async def update_recording_config(
     if not user_email:
         raise NotFoundException(detail="User not authenticated")
 
-    # Validate key
-    if data.key not in ("playbackPosition", "stems", "effects"):
+    # Validate key (allow individual effect configs plus legacy merged configs)
+    valid_keys = ("playbackPosition", "stems", "effects", "eq", "compressor", "reverb", "stereoExpander")
+    if data.key not in valid_keys:
         raise NotFoundException(detail=f"Invalid config key: {data.key}")
 
     engine = get_engine()
@@ -144,5 +157,13 @@ async def update_recording_config(
                 response.stems = config.config_value
             elif config.config_key == "effects":
                 response.effects = config.config_value
+            elif config.config_key == "eq":
+                response.eq = config.config_value
+            elif config.config_key == "compressor":
+                response.compressor = config.config_value
+            elif config.config_key == "reverb":
+                response.reverb = config.config_value
+            elif config.config_key == "stereoExpander":
+                response.stereoExpander = config.config_value
 
         return response

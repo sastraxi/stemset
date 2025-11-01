@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { StemAudioNode } from '../types';
 
 export interface UsePlaybackControllerOptions {
@@ -40,6 +40,16 @@ export function usePlaybackController({
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialPosition);
+  const lastInitialPositionRef = useRef(initialPosition);
+
+  // Update currentTime when initialPosition changes (e.g., loaded from config)
+  useEffect(() => {
+    if (initialPosition !== lastInitialPositionRef.current) {
+      setCurrentTime(initialPosition);
+      pausedAtRef.current = initialPosition;
+      lastInitialPositionRef.current = initialPosition;
+    }
+  }, [initialPosition]);
 
   // Audio source management
   const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
