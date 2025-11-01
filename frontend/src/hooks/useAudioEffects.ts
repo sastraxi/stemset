@@ -1,10 +1,10 @@
+import { useEffect } from "react";
 import type {
 	CompressorConfig,
 	EqConfig,
 	ReverbConfig,
 	StereoExpanderConfig,
 } from "@/types";
-import { useEffect } from "react";
 import type { UseCompressorEffectResult } from "./effects/useCompressorEffect";
 import { useCompressorEffect } from "./effects/useCompressorEffect";
 import type { UseEqEffectResult } from "./effects/useEqEffect";

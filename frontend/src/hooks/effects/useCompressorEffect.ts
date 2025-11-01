@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CompressorConfig } from "@/types";
 import { useConfigPersistence } from "../useConfigPersistence";
-import { CompressorConfig } from "@/types";
 
 export interface UseCompressorEffectOptions {
 	audioContext: AudioContext | null;

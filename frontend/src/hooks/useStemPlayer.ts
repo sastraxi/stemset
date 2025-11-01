@@ -1,17 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useAudioContext } from "./useAudioContext";
-import { useConfigPersistence } from "./useConfigPersistence";
-import { useAudioLoader } from "./useAudioLoader";
-import type { LoadingMetrics } from "./useAudioLoader";
-import { useStemAudioNodes } from "./useStemAudioNodes";
-import { usePlaybackController } from "./usePlaybackController";
-import { useAudioEffects } from "./useAudioEffects";
-import type {
-	StemViewModel,
-	StemUserConfig,
-	EffectsChainConfig,
-} from "../types";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StemResponse } from "../api/generated/types.gen";
+import type {
+	EffectsChainConfig,
+	StemUserConfig,
+	StemViewModel,
+} from "../types";
+import { useAudioContext } from "./useAudioContext";
+import { useAudioEffects } from "./useAudioEffects";
+import type { LoadingMetrics } from "./useAudioLoader";
+import { useAudioLoader } from "./useAudioLoader";
+import { useConfigPersistence } from "./useConfigPersistence";
+import { usePlaybackController } from "./usePlaybackController";
+import { useStemAudioNodes } from "./useStemAudioNodes";
 
 /**
  * Orchestrator hook for multi-stem audio player.

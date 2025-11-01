@@ -1,27 +1,27 @@
-import { useStemPlayer } from "../hooks/useStemPlayer";
-import { WaveformVisualization } from "./WaveformVisualization";
-import { Ruler } from "./Ruler";
-import { Spinner } from "./Spinner";
-import { Music, Share, QrCode, Volume2, VolumeX } from "lucide-react";
+import { Music, QrCode, Share, Volume2, VolumeX } from "lucide-react";
 import {
-	useState,
-	useEffect,
-	useRef,
 	forwardRef,
-	useImperativeHandle,
 	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
 } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { EqPanel } from "./effects/EqPanel";
-import { CompressorPanel } from "./effects/CompressorPanel";
-import { ReverbPanel } from "./effects/ReverbPanel";
-import { MasterVolumeControl } from "./effects/MasterVolumeControl";
-import { QRCodeModal } from "./QRCodeModal";
-import { MobileVolumeControl } from "./MobileVolumeControl";
+import type { StemResponse } from "@/api/generated";
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useMediaSession } from "../hooks/useMediaSession";
-import type { StemResponse } from "@/api/generated";
+import { useStemPlayer } from "../hooks/useStemPlayer";
+import { CompressorPanel } from "./effects/CompressorPanel";
+import { EqPanel } from "./effects/EqPanel";
+import { MasterVolumeControl } from "./effects/MasterVolumeControl";
+import { ReverbPanel } from "./effects/ReverbPanel";
+import { MobileVolumeControl } from "./MobileVolumeControl";
+import { QRCodeModal } from "./QRCodeModal";
+import { Ruler } from "./Ruler";
+import { Spinner } from "./Spinner";
+import { WaveformVisualization } from "./WaveformVisualization";
 
 interface StemPlayerProps {
 	profileName: string;
@@ -189,8 +189,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 
 		// Dump profile info once after load completes
 		const hasLoggedRef =
+			// biome-ignore lint/suspicious/noExplicitAny: WIP
 			(window as any).__stemPlayerLoggedRef ||
+			// biome-ignore lint/suspicious/noAssignInExpressions: WIP
+			// biome-ignore lint/suspicious/noExplicitAny: WIP
 			((window as any).__stemPlayerLoggedRef = { current: new Set<string>() });
+
 		const key = `${profileName}::${fileName}`;
 		if (!isLoading && !hasLoggedRef.current.has(key)) {
 			hasLoggedRef.current.add(key);
@@ -258,6 +262,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		const playbackControls = (
 			<>
 				<button
+					type="button"
 					onClick={() => setShowQRModal(true)}
 					className="share-button"
 					title="Show QR code for social sharing"
