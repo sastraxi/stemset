@@ -16,6 +16,8 @@ from src.api.types import AuthConnection, AuthenticatedUser
 
 from .config import Config
 
+BEARER_PREFIX = "Bearer "
+
 
 class JWTPayload(TypedDict):
     """JWT payload structure."""
@@ -124,8 +126,8 @@ def extract_token_from_request(connection: AuthConnection) -> str | None:
 
     # Try Authorization header
     auth_header = connection.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        return auth_header[7:]  # Remove "Bearer " prefix
+    if auth_header and auth_header.startswith(BEARER_PREFIX):
+        return auth_header.removeprefix(BEARER_PREFIX)
 
     return None
 
