@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -47,7 +48,7 @@ async def get_profile(profile_name: str) -> ProfileResponse:
         return ProfileResponse(name=profile.name, source_folder=profile.source_folder)
 
 
-def _build_config_data(configs: list[RecordingUserConfig]) -> RecordingConfigData:
+def _build_config_data(configs: Sequence[RecordingUserConfig]) -> RecordingConfigData:
     """Build RecordingConfigData from database records.
 
     Uses setattr to avoid repetitive if-statements - easily extensible for new config keys.
@@ -126,7 +127,9 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
 
 
 @get("/api/recordings/{recording_id:uuid}")
-async def get_recording(recording_id: UUID, request: Request[AuthenticatedUser, Any, Any]) -> FileWithStems:
+async def get_recording(
+    recording_id: UUID, request: Request[AuthenticatedUser, Any, Any]
+) -> FileWithStems:
     """Get a single recording with stems and user-specific config.
 
     This is the primary endpoint for loading a recording's full data when the user navigates to it.
@@ -173,6 +176,7 @@ async def get_recording(recording_id: UUID, request: Request[AuthenticatedUser, 
 
         # Get storage backend for generating URLs
         from ..storage import get_storage
+
         storage = get_storage()
 
         stems = [
@@ -244,6 +248,7 @@ async def update_display_name(
 
         # Return updated recording (metadata only)
         from ..storage import get_storage
+
         storage = get_storage()
 
         stems = [

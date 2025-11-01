@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import boto3
 from pathlib import Path
 from typing import Protocol
 from .config import Config, R2Config
-
 
 
 class StorageBackend(Protocol):
@@ -72,7 +70,7 @@ class LocalStorage:
         if not media_path.exists():
             return []
 
-        files = []
+        files: list[str] = []
         for folder in media_path.iterdir():
             if folder.is_dir() and not folder.name.startswith("."):
                 files.append(folder.name)
@@ -84,7 +82,7 @@ class LocalStorage:
         inputs_dir.mkdir(parents=True, exist_ok=True)
 
         dest_path = inputs_dir / filename
-        shutil.copy2(local_path, dest_path)
+        _ = shutil.copy2(local_path, dest_path)
 
         return str(dest_path)
 
@@ -95,19 +93,19 @@ class LocalStorage:
     def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
         """Copy input file from inputs directory to destination."""
         source_path = Path("inputs") / profile_name / filename
-        shutil.copy2(source_path, dest_path)
+        _ = shutil.copy2(source_path, dest_path)
 
     def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
         """Update metadata.json file."""
         metadata_path = Path("media") / profile_name / file_name / "metadata.json"
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         with open(metadata_path, "w") as f:
-            f.write(metadata_content)
+            _ = f.write(metadata_content)
 
     def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
         """Download metadata.json for a recording (copy from local)."""
         source_path = Path("media") / profile_name / output_name / "metadata.json"
-        shutil.copy2(source_path, dest_path)
+        _ = shutil.copy2(source_path, dest_path)
 
 
 class R2Storage:
@@ -175,11 +173,11 @@ class R2Storage:
         )
 
         # Extract folder names (common prefixes)
-        files = []
+        files: list[str] = []
         for common_prefix in response.get("CommonPrefixes", []):
-            folder_path = common_prefix["Prefix"]
+            folder_path = common_prefix.get("Prefix", "")
             # Remove profile prefix and trailing slash
-            folder_name = folder_path[len(prefix):].rstrip("/")
+            folder_name = folder_path[len(prefix) :].rstrip("/")
             if folder_name and not folder_name.startswith("."):
                 files.append(folder_name)
 
@@ -191,7 +189,7 @@ class R2Storage:
         profile_name: str,
         file_name: str,
         object_name: str,
-        extra_metadata: dict[str, str] | None = None
+        extra_metadata: dict[str, str] | None = None,
     ) -> None:
         """Upload a file to R2, preserving local mtime in metadata."""
         key = f"{profile_name}/{file_name}/{object_name}"
@@ -206,10 +204,7 @@ class R2Storage:
             metadata.update(extra_metadata)
 
         self.s3_client.upload_file(
-            str(local_path),
-            self.config.bucket_name,
-            key,
-            ExtraArgs={"Metadata": metadata}
+            str(local_path), self.config.bucket_name, key, ExtraArgs={"Metadata": metadata}
         )
 
     def upload_input_file(self, local_path: Path, profile_name: str, filename: str) -> str:
@@ -218,6 +213,7 @@ class R2Storage:
 
         # Compute SHA256 hash for deduplication
         import hashlib
+
         sha256_hash = hashlib.sha256()
         with open(local_path, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
@@ -228,11 +224,7 @@ class R2Storage:
             str(local_path),
             self.config.bucket_name,
             key,
-            ExtraArgs={
-                "Metadata": {
-                    "sha256": file_sha256
-                }
-            }
+            ExtraArgs={"Metadata": {"sha256": file_sha256}},
         )
         return key
 
@@ -263,7 +255,7 @@ class R2Storage:
     def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
         """Update metadata.json file in R2."""
         key = f"{profile_name}/{file_name}/metadata.json"
-        self.s3_client.put_object(
+        _ = self.s3_client.put_object(
             Bucket=self.config.bucket_name,
             Key=key,
             Body=metadata_content.encode("utf-8"),
@@ -298,6 +290,7 @@ def get_storage(config: Config | None = None) -> StorageBackend:
     # Load config if not provided
     if config is None:
         from .config import get_config
+
         config = get_config()
 
     # Use R2 if configured, otherwise local storage

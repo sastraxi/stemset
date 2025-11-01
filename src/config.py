@@ -150,7 +150,6 @@ class Config(BaseModel):
     strategies: dict[str, Strategy] = Field(
         default_factory=dict, description="Available separation strategies"
     )
-    profiles: list[Profile] = Field(default_factory=list, description="List of processing profiles")
     auth: AuthConfig | None = Field(
         default=None, description="Authentication configuration (optional)"
     )

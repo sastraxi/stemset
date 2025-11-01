@@ -1,17 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useConfigPersistence } from '../useConfigPersistence';
-
-export interface StereoExpanderConfig {
-  lowMidCrossover: number; // Hz, 50 to 2000
-  midHighCrossover: number; // Hz, 800 to 12000
-  expLow: number; // 0.5 to 2.0 (1.0 = unchanged)
-  compLow: number; // 0 to 1
-  expMid: number; // 0.5 to 2.0
-  compMid: number; // 0 to 1
-  expHigh: number; // 0.5 to 2.0
-  compHigh: number; // 0 to 1
-  enabled: boolean;
-}
+import { StereoExpanderConfig } from '@/types';
 
 export interface UseStereoExpanderEffectOptions {
   audioContext: AudioContext | null;

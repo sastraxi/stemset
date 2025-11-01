@@ -129,7 +129,13 @@ def save_to_database(
     """Synchronous wrapper for save_processing_results_to_db."""
     asyncio.run(
         save_processing_results_to_db(
-            profile, input_file, file_hash, output_folder_name, output_folder, stem_paths, stem_metadata
+            profile,
+            input_file,
+            file_hash,
+            output_folder_name,
+            output_folder,
+            stem_paths,
+            stem_metadata,
         )
     )
 
@@ -182,11 +188,7 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
             print("Using GPU worker for processing (use --local to process locally)")
             try:
                 stem_paths, stem_metadata = process_file_remotely(
-                    config,
-                    profile,
-                    file_path,
-                    output_folder_name,
-                    output_folder
+                    config, profile, file_path, output_folder_name, output_folder
                 )
 
                 print()
@@ -199,7 +201,13 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
                 # Save to database
                 print("Saving to database...")
                 save_to_database(
-                    profile, file_path, file_hash, output_folder_name, output_folder, stem_paths, stem_metadata
+                    profile,
+                    file_path,
+                    file_hash,
+                    output_folder_name,
+                    output_folder,
+                    stem_paths,
+                    stem_metadata,
                 )
 
                 # Sync to R2 after processing (remote already uploaded, but sync handles conflicts)
@@ -219,8 +227,7 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
                 # Run separation (blocking operation)
                 # Metadata and waveforms are saved automatically
                 stem_paths, stem_metadata = separator.separate_and_normalize(
-                    file_path,
-                    output_folder
+                    file_path, output_folder
                 )
 
                 print()
@@ -233,7 +240,13 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
                 # Save to database
                 print("Saving to database...")
                 save_to_database(
-                    profile, file_path, file_hash, output_folder_name, output_folder, stem_paths, stem_metadata
+                    profile,
+                    file_path,
+                    file_hash,
+                    output_folder_name,
+                    output_folder,
+                    stem_paths,
+                    stem_metadata,
                 )
 
                 # Sync to R2 after processing
@@ -302,11 +315,7 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
 
                 try:
                     stem_paths, stem_metadata = process_file_remotely(
-                        config,
-                        profile,
-                        input_file,
-                        output_name,
-                        output_folder
+                        config, profile, input_file, output_name, output_folder
                     )
 
                     processed_count += 1
@@ -318,7 +327,13 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
                     # Save to database
                     file_hash = compute_file_hash(input_file)
                     save_to_database(
-                        profile, input_file, file_hash, output_name, output_folder, stem_paths, stem_metadata
+                        profile,
+                        input_file,
+                        file_hash,
+                        output_name,
+                        output_folder,
+                        stem_paths,
+                        stem_metadata,
                     )
                     print()
 
@@ -343,8 +358,7 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
                     # Run separation (blocking operation)
                     # Metadata and waveforms are saved automatically
                     stem_paths, stem_metadata = separator.separate_and_normalize(
-                        input_file,
-                        output_folder
+                        input_file, output_folder
                     )
 
                     processed_count += 1
@@ -356,7 +370,13 @@ def process_profile(profile: Profile, use_gpu: bool) -> int:
                     # Save to database
                     file_hash = compute_file_hash(input_file)
                     save_to_database(
-                        profile, input_file, file_hash, output_name, output_folder, stem_paths, stem_metadata
+                        profile,
+                        input_file,
+                        file_hash,
+                        output_name,
+                        output_folder,
+                        stem_paths,
+                        stem_metadata,
                     )
                     print()
 

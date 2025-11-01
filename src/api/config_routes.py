@@ -6,7 +6,6 @@ from typing import Any
 from uuid import UUID
 
 from litestar import patch
-from litestar.connection import Request
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.response import Response
 from litestar.status_codes import HTTP_204_NO_CONTENT
@@ -14,7 +13,8 @@ from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..auth import AuthenticatedUser
+from src.api.types import AppRequest
+
 from ..db.config import get_engine
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
 from ..db.models import User
@@ -24,7 +24,7 @@ class UpdateConfigRequest(BaseModel):
     """Request to update a specific config key."""
 
     key: str  # 'playbackPosition', 'stems', 'eq', 'compressor', 'reverb', 'stereoExpander'
-    value: dict[str, Any]
+    value: dict[str, Any]  # pyright: ignore[reportExplicitAny]
 
 
 async def get_user_id_from_email(session: AsyncSession, email: str) -> UUID:
@@ -41,7 +41,7 @@ async def get_user_id_from_email(session: AsyncSession, email: str) -> UUID:
 
 @patch("/api/recordings/{recording_id:uuid}/config")
 async def update_recording_config(
-    recording_id: UUID, request: Request[AuthenticatedUser, str, Any], data: UpdateConfigRequest
+    recording_id: UUID, request: AppRequest, data: UpdateConfigRequest
 ) -> Response[None]:
     """Update a specific config key for a recording (upsert).
 
@@ -52,9 +52,19 @@ async def update_recording_config(
     user = request.user
 
     # Validate key (allow individual effect configs plus legacy merged configs)
-    valid_keys = ("playbackPosition", "stems", "effects", "eq", "compressor", "reverb", "stereoExpander")
+    valid_keys = (
+        "playbackPosition",
+        "stems",
+        "effects",
+        "eq",
+        "compressor",
+        "reverb",
+        "stereoExpander",
+    )
     if data.key not in valid_keys:
-        raise ValidationException(detail=f"Invalid config key: {data.key}. Must be one of: {', '.join(valid_keys)}")
+        raise ValidationException(
+            detail=f"Invalid config key: {data.key}. Must be one of: {', '.join(valid_keys)}"
+        )
 
     engine = get_engine()
     async with AsyncSession(engine, expire_on_commit=False) as session:

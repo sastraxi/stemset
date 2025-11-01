@@ -1,7 +1,5 @@
 """OAuth and authentication endpoints."""
 
-from __future__ import annotations
-
 import os
 import secrets
 from urllib.parse import urlencode
@@ -9,15 +7,16 @@ from urllib.parse import urlencode
 import httpx
 
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated
 
 from litestar import get
-from litestar.connection import Request
 from litestar.exceptions import NotAuthorizedException
 from litestar.params import Parameter
-from litestar.response import Redirect, Response
+from litestar.response import Redirect
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.api.types import AppRequest
 
 from ..auth import (
     UserInfo,
@@ -30,13 +29,13 @@ from ..auth import (
 from ..config import get_config
 from ..db.config import get_engine
 from ..db.models import User
-from .models import AuthStatusResponse, LoginCallbackResponse, LogoutResponse
+from .models import AuthStatusResponse, LogoutResponse
 
 _oauth_states: dict[str, str] = {}
 
 
 @get("/auth/status")
-async def auth_status(request: Request[Any, Any, Any]) -> AuthStatusResponse:  # pyright: ignore[reportExplicitAny]
+async def auth_status(request: AppRequest) -> AuthStatusResponse:
     """Get current auth status and user info"""
     config = get_config()
 
@@ -123,14 +122,14 @@ async def auth_callback(
                 "grant_type": "authorization_code",
             },
         )
-        token_response.raise_for_status()
+        _ = token_response.raise_for_status()
         tokens = token_response.json()
 
         userinfo_response = await client.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
             headers={"Authorization": f"Bearer {tokens['access_token']}"},
         )
-        userinfo_response.raise_for_status()
+        _ = userinfo_response.raise_for_status()
         userinfo = UserInfo(**userinfo_response.json())
 
     if not is_email_allowed(userinfo.email, config):

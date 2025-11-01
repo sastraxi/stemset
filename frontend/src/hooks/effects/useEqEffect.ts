@@ -1,18 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useConfigPersistence } from '../useConfigPersistence';
-
-export interface EqBand {
-  id: string;
-  frequency: number;
-  type: BiquadFilterType;
-  gain: number;
-  q: number;
-}
-
-export interface EqConfig {
-  bands: EqBand[];
-  enabled: boolean;
-}
+import { EqBand, EqConfig } from '@/types';
 
 export interface UseEqEffectOptions {
   audioContext: AudioContext | null;
@@ -80,7 +68,7 @@ export function useEqEffect({
     setIsReady(true);
 
     return () => {
-      createdNodes.forEach(f => { try { f.disconnect(); } catch {} });
+      createdNodes.forEach(f => { try { f.disconnect(); } catch { } });
       setIsReady(false);
       nodesRef.current = [];
     };

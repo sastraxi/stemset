@@ -9,7 +9,7 @@ import { Upload } from './Upload'
 import { QRUploadOverlay } from './QRUploadOverlay'
 import { Spinner } from './Spinner'
 import { Button } from './ui/button'
-import { useProfiles, useProfileFilesWithDisplayNames, useRecording, useUpdateDisplayName } from '../hooks/queries'
+import { useProfiles, useProfileFiles, useRecording, useUpdateDisplayName } from '../hooks/queries'
 import type { StemFileWithDisplayName } from '../types'
 import { toast } from 'sonner'
 import {
@@ -64,13 +64,13 @@ export function AuthenticatedApp({
         isLoading: filesLoading,
         error: filesError,
         refetch: refetchFiles
-    } = useProfileFilesWithDisplayNames(selectedProfile || undefined)
+    } = useProfileFiles(selectedProfile || undefined)
 
     const updateDisplayNameMutation = useUpdateDisplayName()
 
     // Fetch the full recording data (with config) when we have a selected file
     // This primes the React Query cache for useConfigPersistence
-    const { data: recordingData, isLoading: recordingLoading } = useRecording(selectedFile?.id);
+    useRecording(selectedFile?.id);
 
     // Set selected profile based on initial or first available
     useEffect(() => {
@@ -166,9 +166,13 @@ export function AuthenticatedApp({
 
         try {
             await updateDisplayNameMutation.mutateAsync({
-                profileName: selectedProfile,
-                fileName: selectedFile.name,
-                displayName: newDisplayName
+                path: {
+                    profile_name: selectedProfile,
+                    output_name: selectedFile.name,
+                },
+                body: {
+                    display_name: newDisplayName
+                }
             })
 
             toast.success('Display name updated')

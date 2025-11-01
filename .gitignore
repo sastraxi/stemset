@@ -60,3 +60,6 @@ frontend/build/
 .env
 .env.local
 .env.production
+
+# Generated API client
+frontend/src/api/generated/

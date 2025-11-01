@@ -12,11 +12,12 @@ import { ReverbPanel } from './effects/ReverbPanel';
 import { MasterVolumeControl } from './effects/MasterVolumeControl';
 import { QRCodeModal } from './QRCodeModal';
 import { MobileVolumeControl } from './MobileVolumeControl';
+import type { StemResponse } from '@/api/generated';
 
 interface StemPlayerProps {
   profileName: string;
   fileName: string;
-  stemsData: import('../types').StemResponse[];
+  stemsData: StemResponse[];
   onLoadingChange?: (isLoading: boolean) => void;
   recordingId: string;
 }

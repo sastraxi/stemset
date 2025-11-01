@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import type { StemMetadata, StemAudioData } from '../types';
+import type { StemAudioData } from '../types';
+import type { StemResponse } from '../api/generated/types.gen';
 
 export interface StemTiming {
   name: string;
@@ -20,7 +21,7 @@ export interface LoadingMetrics {
 export interface UseAudioLoaderOptions {
   profileName: string;
   fileName: string;
-  stemsData: import('../types').StemResponse[];
+  stemsData: StemResponse[];
   audioContext: AudioContext | null;
 }
 
@@ -115,19 +116,9 @@ export function useAudioLoader({
               const decodeEnd = performance.now();
               if (signal.aborted) return;
 
-              // Convert StemResponse to StemMetadata format for compatibility
-              const metadata: StemMetadata = {
-                stem_type: stemResponse.stem_type,
-                measured_lufs: stemResponse.measured_lufs,
-                peak_amplitude: stemResponse.peak_amplitude,
-                stem_gain_adjustment_db: stemResponse.stem_gain_adjustment_db,
-                stem_url: stemResponse.audio_url,
-                waveform_url: stemResponse.waveform_url,
-              };
-
               newMap.set(stemResponse.stem_type, {
                 buffer,
-                metadata,
+                metadata: stemResponse,
               });
 
               // Set duration from first loaded buffer

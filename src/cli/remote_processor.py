@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import time
+import secrets
 import uuid
 import httpx
 from pathlib import Path
+
+from src.models.metadata import StemMetadata
 
 from ..config import Config, Profile
 from ..storage import get_storage, R2Storage
@@ -19,7 +21,7 @@ def process_file_remotely(
     input_file: Path,
     output_folder_name: str,
     output_folder: Path,
-) -> tuple[dict[str, Path], dict[str, dict[str, str | float]]]:
+) -> tuple[dict[str, Path], dict[str, StemMetadata]]:
     """Process a file using remote GPU worker.
 
     Args:
@@ -39,13 +41,11 @@ def process_file_remotely(
     if config.gpu_worker_url is None:
         raise ValueError(
             "Remote processing requires gpu_worker_url in config.yaml. "
-            "Add: gpu_worker_url: ${GPU_WORKER_URL}"
+            + "Add: gpu_worker_url: ${GPU_WORKER_URL}"
         )
 
     if config.r2 is None:
-        raise ValueError(
-            "Remote processing requires R2 storage configured in config.yaml"
-        )
+        raise ValueError("Remote processing requires R2 storage configured in config.yaml")
 
     # Get storage (must be R2 for remote processing)
     storage = get_storage(config)
@@ -91,6 +91,7 @@ def process_file_remotely(
 
     # Create job payload
     job_id = str(uuid.uuid4())
+    verification_token = secrets.token_urlsafe(32)
     job = ProcessingJob(
         job_id=job_id,
         profile_name=profile.name,
@@ -99,10 +100,11 @@ def process_file_remotely(
         output_name=output_folder_name,
         output_config=profile.output,
         callback_url=None,  # CLI doesn't need callback, we'll poll
+        verification_token=verification_token,
     )
 
     # Trigger GPU worker
-    print(f"  Triggering GPU worker...", end="", flush=True)
+    print("  Triggering GPU worker...", end="", flush=True)
     gpu_worker_url = config.gpu_worker_url.rstrip("/")
 
     with httpx.Client(timeout=300.0, follow_redirects=True) as client:
@@ -111,8 +113,8 @@ def process_file_remotely(
             gpu_worker_url,
             json=job.model_dump(),
         )
-        response.raise_for_status()
-        result_data = response.json()
+        _ = response.raise_for_status()
+        result_data = response.json()  # pyright: ignore[reportAny]
 
     result = ProcessingResult.model_validate(result_data)
     print(" ✓")
@@ -175,18 +177,8 @@ def process_file_remotely(
     # Load metadata from downloaded file
     from ..models.metadata import StemsMetadata
 
-    if metadata_path.exists():
-        stems_metadata_obj = StemsMetadata.from_file(metadata_path)
-        # Convert to dict format expected by caller
-        stem_metadata = {
-            stem_name: {
-                "stem_type": meta.stem_type,
-                "measured_lufs": meta.measured_lufs,
-            }
-            for stem_name, meta in stems_metadata_obj.stems.items()
-        }
-    else:
-        # No metadata available
-        stem_metadata = {stem_name: {} for stem_name in result.stems}
+    if not metadata_path.exists():
+        raise RuntimeError("No metadata.json found in processing results")
 
-    return stem_paths, stem_metadata
+    stems_metadata_obj = StemsMetadata.from_file(metadata_path)
+    return stem_paths, stems_metadata_obj.stems

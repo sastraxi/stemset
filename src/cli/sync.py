@@ -1,11 +1,11 @@
 """Bidirectional sync between local media and R2 storage."""
 
-from __future__ import annotations
-
+import logging
 import os
-from pathlib import Path
 from ..config import Config, Profile
 from ..storage import R2Storage
+
+logger = logging.getLogger(__name__)
 
 
 def should_sync() -> bool:
@@ -55,8 +55,12 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
         )
 
         for obj in response.get("Contents", []):
-            key = obj["Key"]
-            filename = key[len(prefix):]  # Remove prefix to get filename
+            key = obj.get("Key")
+            if not key:
+                logger.warning("R2 object with no Key found, skipping", extra=obj)
+                continue
+
+            filename = key[len(prefix) :]  # Remove prefix to get filename
 
             if not filename:  # Skip the folder itself
                 continue
@@ -86,8 +90,8 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
                     r2_mtime = float(original_mtime_str)
                 else:
                     # Fall back to LastModified (for old uploads without metadata)
-                    r2_last_modified = obj["LastModified"]
-                    r2_mtime = r2_last_modified.timestamp()
+                    r2_last_modified = obj.get("LastModified")
+                    r2_mtime = r2_last_modified.timestamp() if r2_last_modified else 0
 
                 # Compare with small tolerance for floating point
                 if abs(r2_mtime - local_mtime) > 1.0 and r2_mtime > local_mtime:
@@ -169,10 +173,14 @@ def sync_profile_to_r2(config: Config, profile: Profile) -> None:
                 Prefix=prefix,
             )
 
-            r2_files = set()
+            r2_files: set[str] = set()
             for obj in response.get("Contents", []):
-                key = obj["Key"]
-                filename = key[len(prefix):]
+                key = obj.get("Key")
+                if not key:
+                    logger.warning("R2 object with no Key found, skipping", extra=obj)
+                    continue
+
+                filename = key[len(prefix) :]
                 if filename:
                     r2_files.add(filename)
 

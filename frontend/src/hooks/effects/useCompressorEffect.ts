@@ -1,13 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useConfigPersistence } from '../useConfigPersistence';
-
-export interface CompressorConfig {
-  threshold: number; // dB, -48 to 0
-  attack: number; // seconds, 0.001 to 0.05
-  hold: number; // seconds, 0.001 to 0.1
-  release: number; // seconds, 0.01 to 1.0
-  enabled: boolean;
-}
+import { CompressorConfig } from '@/types';
 
 export interface UseCompressorEffectOptions {
   audioContext: AudioContext | null;

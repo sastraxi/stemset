@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { Profile } from '../types';
+import type { ProfileResponse as Profile } from '../api/generated/types.gen';
 
 interface ProfileSelectorProps {
   profiles: Profile[]

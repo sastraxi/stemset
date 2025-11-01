@@ -7,6 +7,7 @@ import { useStemAudioNodes } from './useStemAudioNodes';
 import { usePlaybackController } from './usePlaybackController';
 import { useAudioEffects } from './useAudioEffects';
 import type { StemViewModel, StemUserConfig, EffectsChainConfig } from '../types';
+import type { StemResponse } from '../api/generated/types.gen';
 
 /**
  * Orchestrator hook for multi-stem audio player.
@@ -27,7 +28,7 @@ import type { StemViewModel, StemUserConfig, EffectsChainConfig } from '../types
 export interface UseStemPlayerOptions {
   profileName: string;
   fileName: string;
-  stemsData: import('../types').StemResponse[];
+  stemsData: StemResponse[];
   sampleRate?: number;
   recordingId: string;
 }
@@ -97,7 +98,6 @@ export function useStemPlayer({
   const {
     config: stemConfigs,
     setConfig: setStemConfigsState,
-    isLoading: isStemConfigsLoading
   } = useConfigPersistence<Record<string, StemUserConfig>>({
     recordingId,
     configKey: 'stems',
@@ -217,7 +217,7 @@ export function useStemPlayer({
   }, [stems]); // Intentionally omit setStemConfigsState to avoid infinite loop
 
   // 7. Audio effects (each effect persists its own config independently)
-  const { eq, compressor, reverb, stereoExpander} = useAudioEffects({
+  const { eq, compressor, reverb, stereoExpander } = useAudioEffects({
     audioContext,
     masterInput,
     masterOutput,

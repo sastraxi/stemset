@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import type { StemMetadata } from '../types';
+import type { StemResponse } from '../api/generated/types.gen';
 
 export interface RecordingStem {
   name: string;
   audioUrl: string;
   waveformUrl: string;
   initialGain: number;
-  metadata: StemMetadata | null;
+  metadata: StemResponse | null;
 }
 
 export interface UseRecordingMetadataOptions {
   profileName: string;
   fileName: string;
-  stemsData: import('../types').StemResponse[];
+  stemsData: StemResponse[];
 }
 
 export interface UseRecordingMetadataResult {
@@ -62,14 +62,7 @@ export function useRecordingMetadata({
           audioUrl: stemData.audio_url,
           waveformUrl: stemData.waveform_url,
           initialGain,
-          metadata: {
-            stem_type: stemData.stem_type,
-            measured_lufs: stemData.measured_lufs,
-            peak_amplitude: stemData.peak_amplitude,
-            stem_gain_adjustment_db: stemData.stem_gain_adjustment_db,
-            stem_url: stemData.audio_url,
-            waveform_url: stemData.waveform_url,
-          },
+          metadata: stemData,
         };
       });
 

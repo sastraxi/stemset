@@ -1,30 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useConfigPersistence } from '../useConfigPersistence';
-
-export const IMPULSES = {
-  'sparkling-hall': "Sparkling Hall",
-  'ambience-close-mic': "Ambience Close Mic",
-  'ambience-with-punch': "Ambience with Punch",
-  'arena-south-west': "Arena South West",
-  'big-bright-room': "Big Bright Room",
-  'gothic-church': "Gothic Church",
-  'in-the-silo-revised': "In the Silo (Revised)",
-  'masonic-lodge': "Masonic Lodge",
-  'nice-drum-room': "Nice Drum Room",
-  'onewall-on-a-room': "One Wall on a Room",
-  'ruby-room': "Ruby Room",
-  'scala-milan-opera-hall': "Scala Milan Opera Hall",
-  'small-studio': "Small Studio",
-  'stonewall-room': "Stonewall Room",
-}
-
-export type ImpulseName = keyof typeof IMPULSES;
-
-export interface ReverbConfig {
-  impulse: ImpulseName; // impulse response name (e.g., 'sparkling-hall')
-  mix: number; // 0 to 1 (wet/dry)
-  enabled: boolean;
-}
+import { ReverbConfig } from '@/types';
 
 export interface UseReverbEffectOptions {
   audioContext: AudioContext | null;

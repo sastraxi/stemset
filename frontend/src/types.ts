@@ -1,58 +1,11 @@
+import type { FileWithStems, StemResponse } from './api/generated/types.gen';
+
 // ============================================================================
 // API / Server Metadata Types (immutable, from backend)
 // ============================================================================
 
-export interface Profile {
-  name: string;
-  source_folder: string;
-}
-
-export interface RecordingConfigData {
-  playbackPosition?: { position: number } | null;
-  stems?: Record<string, StemUserConfig> | null;
-  effects?: Record<string, any> | null;
-  eq?: Record<string, any> | null;
-  compressor?: Record<string, any> | null;
-  reverb?: Record<string, any> | null;
-  stereoExpander?: Record<string, any> | null;
-}
-
-export interface StemFile {
-  id: string;  // recording UUID
-  name: string;
-  display_name: string;
-  stems: StemResponse[];
-  created_at: string;
-  config?: RecordingConfigData | null;  // User-specific config (only present when fetching via /api/recordings/{id})
-}
-
-export interface StemResponse {
-  stem_type: string;
-  measured_lufs: number;
-  peak_amplitude: number;
-  stem_gain_adjustment_db: number;
-  audio_url: string;
-  waveform_url: string;
-  file_size_bytes: number;
-  duration_seconds: number;
-}
-
-export interface StemFileWithDisplayName extends StemFile {
+export interface StemFileWithDisplayName extends FileWithStems {
   displayName: string; // Computed from display_name or defaults to name
-}
-
-export interface StemMetadata {
-  stem_type: string;
-  measured_lufs: number | null;
-  peak_amplitude: number;
-  stem_gain_adjustment_db: number;
-  stem_url: string;  // Relative URL to audio file
-  waveform_url: string;  // Relative URL to waveform PNG
-}
-
-export interface StemsMetadata {
-  stems: Record<string, StemMetadata>;
-  display_name: string;
 }
 
 // ============================================================================
@@ -61,7 +14,7 @@ export interface StemsMetadata {
 
 export interface StemAudioData {
   buffer: AudioBuffer;
-  metadata: StemMetadata;
+  metadata: StemResponse;
 }
 
 export interface StemAudioNode {
@@ -72,8 +25,71 @@ export interface StemAudioNode {
 }
 
 // ============================================================================
+// Effects Configuration Types (used in audio effects hooks)
+// ============================================================================
+
+export interface CompressorConfig {
+  threshold: number; // dB, -48 to 0
+  attack: number; // seconds, 0.001 to 0.05
+  hold: number; // seconds, 0.001 to 0.1
+  release: number; // seconds, 0.01 to 1.0
+  enabled: boolean;
+}
+
+export const IMPULSES = {
+  'sparkling-hall': "Sparkling Hall",
+  'ambience-close-mic': "Ambience Close Mic",
+  'ambience-with-punch': "Ambience with Punch",
+  'arena-south-west': "Arena South West",
+  'big-bright-room': "Big Bright Room",
+  'gothic-church': "Gothic Church",
+  'in-the-silo-revised': "In the Silo (Revised)",
+  'masonic-lodge': "Masonic Lodge",
+  'nice-drum-room': "Nice Drum Room",
+  'onewall-on-a-room': "One Wall on a Room",
+  'ruby-room': "Ruby Room",
+  'scala-milan-opera-hall': "Scala Milan Opera Hall",
+  'small-studio': "Small Studio",
+  'stonewall-room': "Stonewall Room",
+}
+
+export type ImpulseName = keyof typeof IMPULSES;
+
+export interface ReverbConfig {
+  impulse: ImpulseName; // impulse response name (e.g., 'sparkling-hall')
+  mix: number; // 0 to 1 (wet/dry)
+  enabled: boolean;
+}
+
+export interface StereoExpanderConfig {
+  lowMidCrossover: number; // Hz, 50 to 2000
+  midHighCrossover: number; // Hz, 800 to 12000
+  expLow: number; // 0.5 to 2.0 (1.0 = unchanged)
+  compLow: number; // 0 to 1
+  expMid: number; // 0.5 to 2.0
+  compMid: number; // 0 to 1
+  expHigh: number; // 0.5 to 2.0
+  compHigh: number; // 0 to 1
+  enabled: boolean;
+}
+
+
+// ============================================================================
 // User Config Types (mutable, persisted to localStorage)
 // ============================================================================
+
+export interface EqBand {
+  id: string;
+  frequency: number;
+  type: BiquadFilterType;
+  gain: number;
+  q: number;
+}
+
+export interface EqConfig {
+  bands: EqBand[];
+  enabled: boolean;
+}
 
 export interface StemUserConfig {
   gain: number;      // Volume slider value (0-2)
@@ -82,10 +98,10 @@ export interface StemUserConfig {
 }
 
 export interface EffectsChainConfig {
-  eq: import('./hooks/effects/useEqEffect').EqConfig;
-  compressor: import('./hooks/effects/useCompressorEffect').CompressorConfig;
-  reverb: import('./hooks/effects/useReverbEffect').ReverbConfig;
-  stereoExpander: import('./hooks/effects/useStereoExpanderEffect').StereoExpanderConfig;
+  eq: EqConfig;
+  compressor: CompressorConfig;
+  reverb: ReverbConfig;
+  stereoExpander: StereoExpanderConfig;
   // Future: order: Array<'eq' | 'compressor' | 'reverb' | 'stereoExpander'>;
 }
 

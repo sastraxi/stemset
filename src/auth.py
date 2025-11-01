@@ -1,20 +1,30 @@
-# pyright: reportUnreachable=false
 """Authentication module for Google OAuth and JWT."""
-
-from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict, cast, override
 
 import jwt
-from litestar.connection import ASGIConnection
 from litestar.exceptions import NotAuthorizedException
-from litestar.middleware.authentication import AbstractAuthenticationMiddleware, AuthenticationResult
+from litestar.middleware.authentication import (
+    AbstractAuthenticationMiddleware,
+    AuthenticationResult,
+)
 from pydantic import BaseModel
+
+from src.api.types import AuthConnection, AuthenticatedUser
 
 if TYPE_CHECKING:
     from .config import Config
+
+
+class JWTPayload(TypedDict):
+    """JWT payload structure."""
+
+    email: str
+    name: str | None
+    picture: str | None
+    exp: int
 
 
 class TokenData(BaseModel):
@@ -34,14 +44,6 @@ class UserInfo(BaseModel):
     picture: str
 
 
-class AuthenticatedUser(BaseModel):
-    """Authenticated user model for request.user."""
-
-    email: str
-    name: str | None = None
-    picture: str | None = None
-
-
 def is_auth_bypassed() -> bool:
     """Check if auth is bypassed via environment variable."""
     return os.getenv("STEMSET_BYPASS_AUTH", "false").lower() in ("true", "1", "yes")
@@ -54,7 +56,13 @@ def is_email_allowed(email: str, config: Config) -> bool:
     return email.lower() in [e.lower() for e in config.auth.allowed_emails]
 
 
-def create_jwt_token(email: str, secret: str, name: str | None = None, picture: str | None = None, expires_delta: timedelta | None = None) -> str:
+def create_jwt_token(
+    email: str,
+    secret: str,
+    name: str | None = None,
+    picture: str | None = None,
+    expires_delta: timedelta | None = None,
+) -> str:
     """Create a JWT token for the user.
 
     Args:
@@ -88,12 +96,12 @@ def decode_jwt_token(token: str, secret: str) -> TokenData:
         NotAuthorizedException: If token is invalid or expired
     """
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        payload = cast(JWTPayload, jwt.decode(token, secret, algorithms=["HS256"]))  # pyright: ignore[reportUnknownMemberType]
         return TokenData(
             email=payload["email"],
             name=payload.get("name"),
             picture=payload.get("picture"),
-            exp=datetime.fromtimestamp(payload["exp"])
+            exp=datetime.fromtimestamp(payload["exp"]),
         )
     except jwt.ExpiredSignatureError as e:
         raise NotAuthorizedException(detail="Token has expired") from e
@@ -101,7 +109,7 @@ def decode_jwt_token(token: str, secret: str) -> TokenData:
         raise NotAuthorizedException(detail="Invalid token") from e
 
 
-def extract_token_from_request(connection: ASGIConnection) -> str | None:
+def extract_token_from_request(connection: AuthConnection) -> str | None:
     """Extract JWT token from request cookies or Authorization header.
 
     Args:
@@ -133,7 +141,8 @@ class JWTAuthenticationMiddleware(AbstractAuthenticationMiddleware):
     4. Populates request.user with AuthenticatedUser
     """
 
-    async def authenticate_request(self, connection: ASGIConnection) -> AuthenticationResult:
+    @override
+    async def authenticate_request(self, connection: AuthConnection) -> AuthenticationResult:
         """Authenticate request and return user.
 
         Args:
@@ -159,6 +168,7 @@ class JWTAuthenticationMiddleware(AbstractAuthenticationMiddleware):
             raise NotAuthorizedException(detail="No authentication token provided")
 
         from .config import get_config
+
         config = get_config()
 
         # Decode token

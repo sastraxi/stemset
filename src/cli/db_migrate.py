@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from venv import logger
 
 import soundfile as sf
 from sqlmodel import Session, select
@@ -94,7 +95,10 @@ def build_input_file_hash_lookup() -> dict[str, tuple[str, Path | None]]:
             )
 
             for obj in response.get("Contents", []):
-                key = obj["Key"]
+                key = obj.get("Key")
+                if not key:
+                    logger.warning("R2 object with no Key found, skipping", extra=obj)
+                    continue
 
                 # Get object metadata to check SHA256
                 try:
