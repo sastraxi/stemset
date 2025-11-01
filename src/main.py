@@ -8,13 +8,7 @@ from .config import load_config
 
 def main():
     """Run the Stemset backend server."""
-    # Load configuration on startup
-    config = load_config()
-    print(f"Loaded {len(config.profiles)} profile(s)")
-    for profile in config.profiles:
-        print(f"  - {profile.name}: {profile.source_folder}")
-
-    # Run server
+    _ = load_config()
     uvicorn.run(
         app,
         host="0.0.0.0",

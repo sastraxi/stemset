@@ -10,9 +10,9 @@ from pathlib import Path
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..config import Profile, get_config
+from ..config import get_config
 from ..db.config import get_engine
-from ..db.models import AudioFile, Profile as DBProfile, Recording, Stem
+from ..db.models import AudioFile, Profile, Recording, Stem
 from ..models.metadata import StemMetadata
 from ..utils import compute_file_hash, derive_output_name
 from ..modern_separator import StemSeparator
@@ -47,17 +47,10 @@ async def save_processing_results_to_db(
 
     async with AsyncSession(engine) as session:
         # 1. Get or create Profile record
-        result = await session.exec(select(DBProfile).where(DBProfile.name == profile.name))
+        result = await session.exec(select(Profile).where(Profile.name == profile.name))
         db_profile = result.first()
         if not db_profile:
-            db_profile = DBProfile(
-                name=profile.name,
-                source_folder=profile.source_folder,
-                strategy_name=profile.strategy,
-            )
-            session.add(db_profile)
-            await session.commit()
-            await session.refresh(db_profile)
+            raise ValueError(f"Profile not found in database: {profile.name}")
 
         # 2. Get or create AudioFile record
         result = await session.exec(select(AudioFile).where(AudioFile.file_hash == file_hash))
@@ -221,7 +214,7 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
         else:
             # Local processing
             print("Processing locally")
-            separator = StemSeparator(profile)
+            separator = StemSeparator(profile.name, profile.strategy_name)
 
             try:
                 # Run separation (blocking operation)
@@ -257,146 +250,6 @@ def process_single_file(profile: Profile, file_path: Path, use_gpu: bool) -> int
             except Exception as e:
                 print(f"✗ Failed: {e}", file=sys.stderr)
                 return 1
-
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-
-
-def process_profile(profile: Profile, use_gpu: bool) -> int:
-    """Process all files for a given profile.
-
-    Args:
-        profile: Profile object to process
-        use_local: If True, force local; if False, force GPU; if None, auto-detect
-
-    Returns:
-        Exit code (0 for success, 1 for error)
-    """
-    try:
-        config = get_config()
-
-        # Sync from R2 before processing
-        sync_profile_from_r2(config, profile)
-
-        print(f"Processing profile: {profile.name}")
-        print(f"Source folder: {profile.source_folder}")
-        print(f"Output format: {profile.output.format} @ {profile.output.bitrate}kbps")
-        print()
-
-        # Scan for new files
-        print("Scanning for new files...")
-        source_path = profile.get_source_path()
-        media_path = profile.get_media_path()
-        new_files = scan_for_new_files(source_path, media_path, profile.name)
-
-        if not new_files:
-            print("No new files found.")
-            return 0
-
-        print(f"Found {len(new_files)} new file(s):")
-        for file_path, output_name in new_files:
-            print(f"  - {file_path.name} -> {output_name}")
-        print()
-
-        # Process all files sequentially
-        processed_count = 0
-        failed_count = 0
-
-        if use_gpu:
-            print("Using GPU worker for processing (use --local to process locally)")
-            print()
-
-            for i, (input_file, output_name) in enumerate(new_files):
-                output_folder = media_path / output_name
-
-                print(f"[{i + 1}/{len(new_files)}] Processing: {input_file.name}")
-                print(f"  Output folder: {output_folder}")
-
-                try:
-                    stem_paths, stem_metadata = process_file_remotely(
-                        config, profile, input_file, output_name, output_folder
-                    )
-
-                    processed_count += 1
-
-                    print(f"  ✓ Success! Created {len(stem_paths)} stems")
-                    for stem_name, stem_path in stem_paths.items():
-                        print(f"    - {stem_name}: {stem_path.name}")
-
-                    # Save to database
-                    file_hash = compute_file_hash(input_file)
-                    save_to_database(
-                        profile,
-                        input_file,
-                        file_hash,
-                        output_name,
-                        output_folder,
-                        stem_paths,
-                        stem_metadata,
-                    )
-                    print()
-
-                except Exception as e:
-                    failed_count += 1
-                    print(f"  ✗ Failed: {e}", file=sys.stderr)
-                    print()
-
-        else:
-            # Local processing
-            print("Processing locally")
-            print()
-            separator = StemSeparator(profile)
-
-            for i, (input_file, output_name) in enumerate(new_files):
-                output_folder = media_path / output_name
-
-                print(f"[{i + 1}/{len(new_files)}] Processing: {input_file.name}")
-                print(f"  Output folder: {output_folder}")
-
-                try:
-                    # Run separation (blocking operation)
-                    # Metadata and waveforms are saved automatically
-                    stem_paths, stem_metadata = separator.separate_and_normalize(
-                        input_file, output_folder
-                    )
-
-                    processed_count += 1
-
-                    print(f"  ✓ Success! Created {len(stem_paths)} stems")
-                    for stem_name, stem_path in stem_paths.items():
-                        print(f"    - {stem_name}: {stem_path.name}")
-
-                    # Save to database
-                    file_hash = compute_file_hash(input_file)
-                    save_to_database(
-                        profile,
-                        input_file,
-                        file_hash,
-                        output_name,
-                        output_folder,
-                        stem_paths,
-                        stem_metadata,
-                    )
-                    print()
-
-                except Exception as e:
-                    failed_count += 1
-                    print(f"  ✗ Failed: {e}", file=sys.stderr)
-                    print()
-
-        # Sync to R2 after all processing
-        if processed_count > 0:
-            sync_profile_to_r2(config, profile)
-
-        # Summary
-        print("=" * 60)
-        print(f"Processing complete!")
-        print(f"  Successful: {processed_count}")
-        print(f"  Failed: {failed_count}")
-        print(f"  Total: {len(new_files)}")
-
-        return 0 if failed_count == 0 else 1
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

@@ -10,8 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 from pydantic import BaseModel
 
-from ..config import Profile
-
 
 class StemMetadata(BaseModel):
     """Metadata for a single stem."""
@@ -33,7 +31,7 @@ class StemsMetadata(BaseModel):
     def to_file(self, file_path: Path) -> None:
         """Write metadata to a JSON file."""
         with open(file_path, "w") as f:
-            f.write(self.model_dump_json(indent=2))
+            _ = f.write(self.model_dump_json(indent=2))
 
     @classmethod
     def from_file(cls, file_path: Path) -> "StemsMetadata":

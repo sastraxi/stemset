@@ -2,7 +2,10 @@
 
 import logging
 import os
-from ..config import Config, Profile
+from pathlib import Path
+
+from src.db.models import Profile
+from ..config import Config
 from ..storage import R2Storage
 
 logger = logging.getLogger(__name__)
@@ -31,7 +34,6 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
         return  # No R2 configured, nothing to sync
 
     r2 = R2Storage(config.r2)
-    local_media_path = profile.get_media_path()
 
     # Get list of all output folders in R2
     r2_folders = r2.list_files(profile.name)
@@ -44,7 +46,7 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
     updated_count = 0
 
     for folder_name in r2_folders:
-        local_folder = local_media_path / folder_name
+        local_folder = Path(profile.output_folder) / folder_name
         local_folder.mkdir(parents=True, exist_ok=True)
 
         # List all objects in this R2 folder
@@ -65,7 +67,7 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
             if not filename:  # Skip the folder itself
                 continue
 
-            local_file = local_media_path / folder_name / filename
+            local_file = local_folder / filename
 
             # Download if file doesn't exist or R2 version is newer
             should_download = False
@@ -131,7 +133,7 @@ def sync_profile_to_r2(config: Config, profile: Profile) -> None:
         return  # No R2 configured, nothing to sync
 
     r2 = R2Storage(config.r2)
-    local_media_path = profile.get_media_path()
+    local_media_path = Path(profile.output_folder)
 
     if not local_media_path.exists():
         return  # No local files to upload

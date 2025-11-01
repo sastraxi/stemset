@@ -79,14 +79,3 @@ strategies:
       bass: bass
       drums: drums
       other: other
-  
-
-profiles:
-#################################
-  - name: "Parallel Creak"
-    source_folder: "/"
-    strategy: "vocal_then_ft"
-    remote: true
-    output:
-      format: "opus"
-      bitrate: 192

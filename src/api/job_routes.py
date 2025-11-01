@@ -19,7 +19,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
-from ..db.models import AudioFile, Job, Profile as DBProfile, Recording, Stem
+from ..db.models import AudioFile, Job, Profile, Recording, Stem
 from ..models.metadata import StemsMetadata
 from ..storage import get_storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
@@ -78,7 +78,7 @@ async def job_complete(
 
         try:
             # Get profile name from job
-            stmt = select(DBProfile).where(DBProfile.id == job.profile_id)
+            stmt = select(Profile).where(Profile.id == job.profile_id)
             profile_result = await session.exec(stmt)
             profile = profile_result.first()
             if profile is None:
@@ -236,9 +236,13 @@ async def upload_file(
             "File upload requires GPU worker. Set GPU_WORKER_URL environment variable."
         )
 
-    # Get profile from config
-    profile_config = config.get_profile(profile_name)
-    if profile_config is None:
+    # Get profile from database
+    async with AsyncSession(get_engine()) as session:
+        stmt = select(Profile).where(Profile.name == profile_name)
+        result = await session.exec(stmt)
+        profile = result.first()
+
+    if profile is None:
         raise ValueError(f"Profile '{profile_name}' not found")
 
     # Validate file size (150MB max)
@@ -285,27 +289,13 @@ async def upload_file(
         # Create database records (idempotent - handles retries)
         engine = get_engine()
         async with AsyncSession(engine, expire_on_commit=False) as session:
-            # 1. Get or create Profile record
-            stmt = select(DBProfile).where(DBProfile.name == profile_name)
-            result = await session.exec(stmt)
-            db_profile = result.first()
-            if not db_profile:
-                db_profile = DBProfile(
-                    name=profile_name,
-                    source_folder=profile_config.source_folder,
-                    strategy_name=profile_config.strategy,
-                )
-                session.add(db_profile)
-                await session.commit()
-                await session.refresh(db_profile)
-
-            # 2. Get or create AudioFile record (deduplicate by hash)
+            # 1. Get or create AudioFile record (deduplicate by hash)
             stmt = select(AudioFile).where(AudioFile.file_hash == file_hash)
             result = await session.exec(stmt)
             audio_file = result.first()
             if not audio_file:
                 audio_file = AudioFile(
-                    profile_id=db_profile.id,
+                    profile_id=profile.id,
                     filename=data.filename,
                     file_hash=file_hash,
                     storage_url=f"inputs/{profile_name}/{data.filename}",
@@ -316,9 +306,9 @@ async def upload_file(
                 await session.commit()
                 await session.refresh(audio_file)
 
-            # 3. Get or create Recording record for this output_name
+            # 2. Get or create Recording record for this output_name
             stmt = select(Recording).where(
-                Recording.profile_id == db_profile.id,
+                Recording.profile_id == profile.id,
                 Recording.output_name == output_name,
             )
             result = await session.exec(stmt)
@@ -326,7 +316,7 @@ async def upload_file(
             if not recording:
                 display_name = output_name  # Use output folder name as default
                 recording = Recording(
-                    profile_id=db_profile.id,
+                    profile_id=profile.id,
                     output_name=output_name,
                     display_name=display_name,
                 )
@@ -334,7 +324,7 @@ async def upload_file(
                 await session.commit()
                 await session.refresh(recording)
 
-            # 4. Check if there's already a completed job for this recording
+            # 3. Check if there's already a completed job for this recording
             stmt = select(Job).where(
                 Job.recording_id == recording.id,
                 Job.status == "completed",
@@ -348,17 +338,17 @@ async def upload_file(
                 return {
                     "job_id": existing_completed_job.job_id,
                     "status": "completed",
-                    "message": "File already processed"
+                    "message": "File already processed",
                 }
 
-            # 5. Create new Job record (or resume failed job)
+            # 4. Create new Job record (or resume failed job)
             job_id = str(uuid.uuid4())
             verification_token = secrets.token_urlsafe(32)
 
             job = Job(
                 job_id=job_id,
                 verification_token=verification_token,
-                profile_id=db_profile.id,
+                profile_id=profile.id,
                 recording_id=recording.id,
                 audio_file_id=audio_file.id,
                 filename=data.filename,
@@ -377,10 +367,10 @@ async def upload_file(
             job_id=job_id,
             verification_token=verification_token,
             profile_name=profile_name,
-            strategy_name=profile_config.strategy,
+            strategy_name=profile.strategy_name,
             input_key=f"inputs/{profile_name}/{data.filename}",
             output_name=output_name,
-            output_config=profile_config.output,
+            output_config=profile.output,
             callback_url=callback_url,
         )
 

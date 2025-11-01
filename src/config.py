@@ -117,33 +117,6 @@ class R2Config(BaseModel):
     )
 
 
-class Profile(BaseModel):
-    """A processing profile with source folder and settings."""
-
-    name: str = Field(..., description="Profile name (unique identifier)")
-    source_folder: str = Field(..., description="Path to folder containing audio files")
-    strategy: str = Field(..., description="Strategy name to use for separation")
-    remote: bool = Field(default=False, description="Use remote GPU processing instead of local")
-    output: OutputConfig = Field(
-        default_factory=OutputConfig, description="Output format configuration"
-    )
-
-    @field_validator("source_folder")
-    @classmethod
-    def validate_source_folder(cls, v: str) -> str:
-        """Expand and validate source folder path."""
-        path = Path(v).expanduser().resolve()
-        return str(path)
-
-    def get_source_path(self) -> Path:
-        """Get source folder as Path object."""
-        return Path(self.source_folder)
-
-    def get_media_path(self) -> Path:
-        """Get the media output path for this profile."""
-        return Path("media") / self.name
-
-
 class Config(BaseModel):
     """Global configuration."""
 
@@ -237,7 +210,7 @@ class Config(BaseModel):
 
         # Validate environment variables for enabled sections only
         # Only check env vars for sections that are present and not None
-        required_vars = set()
+        required_vars: set[str] = set()
 
         # Always check R2 if present
         if data.get("r2") is not None:
@@ -252,7 +225,7 @@ class Config(BaseModel):
             required_vars.update(cls._collect_required_env_vars(data["auth"]))
 
         # Check other top-level sections
-        for key in ["strategies", "profiles"]:
+        for key in ["strategies"]:
             if data.get(key) is not None:
                 required_vars.update(cls._collect_required_env_vars(data[key]))
 
@@ -261,30 +234,21 @@ class Config(BaseModel):
         if missing_vars:
             raise ValueError(
                 f"Missing required environment variables: {', '.join(sorted(missing_vars))}\n"
-                f"Please set these in your .env file or environment.\n"
-                f"See .env.example for reference."
+                + "Please set these in your .env file or environment.\n"
+                + "See .env.example for reference."
             )
 
         # Substitute environment variables
         data = cls._substitute_env_vars(data)
 
         # Parse strategies from YAML
-        strategies_dict = {}
+        strategies_dict: dict[str, Strategy] = {}
         if "strategies" in data:
             for strategy_name, strategy_data in data["strategies"].items():
                 strategies_dict[strategy_name] = Strategy.from_dict(strategy_name, strategy_data)
             data["strategies"] = strategies_dict
 
         config = cls(**data)
-
-        # Validate profile strategy references
-        for profile in config.profiles:
-            if profile.strategy not in config.strategies:
-                available = ", ".join(config.strategies.keys())
-                raise ValueError(
-                    f"Profile '{profile.name}' references unknown strategy '{profile.strategy}'. "
-                    + f"Available strategies: {available}"
-                )
 
         # Note: Strategy output slot validation happens at execution time
         # in StrategyExecutor, where we have the actual model instances
@@ -294,17 +258,6 @@ class Config(BaseModel):
     def get_strategy(self, name: str) -> Strategy | None:
         """Get a strategy by name."""
         return self.strategies.get(name)
-
-    def get_profile(self, name: str) -> Profile | None:
-        """Get a profile by name."""
-        for profile in self.profiles:
-            if profile.name == name:
-                return profile
-        return None
-
-    def get_profile_names(self) -> list[str]:
-        """Get list of all profile names."""
-        return [p.name for p in self.profiles]
 
 
 # Global config instance

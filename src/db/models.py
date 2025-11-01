@@ -2,12 +2,15 @@
 """Database models for Stemset using SQLModel."""
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Column, Field, Relationship, SQLModel  # pyright: ignore[reportUnknownVariableType]
+from sqlmodel import Column, Field, Relationship, SQLModel
+
+from src.config import OutputConfig  # pyright: ignore[reportUnknownVariableType]
 
 
 def utc_now() -> datetime:
@@ -78,6 +81,19 @@ class Profile(SQLModel, table=True):
     recordings: list["Recording"] = Relationship(
         back_populates="profile", sa_relationship_kwargs={"lazy": "noload"}
     )
+
+    # TODO: Set output configuration in the database?
+    @property
+    def output(self):
+        return OutputConfig()
+
+    @property
+    def input_folder(self) -> str:
+        return f"input/{self.name}"
+
+    @property
+    def output_folder(self) -> str:
+        return f"media/{self.name}"
 
 
 class AudioFile(SQLModel, table=True):

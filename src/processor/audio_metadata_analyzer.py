@@ -1,5 +1,5 @@
 from pathlib import Path
-from profile import Profile
+
 from src.models.metadata import StemMetadata, StemsMetadata
 from src.processor.waveform_generator import WaveformGenerator
 
@@ -44,16 +44,12 @@ class AudioMetadataAnalyzer:
 
         return float(loudness_lufs), peak_amplitude
 
-    def create_stem_metadata(
-        self, stem_name: str, audio_file: Path, profile: Profile, song_name: str
-    ) -> StemMetadata:
+    def create_stem_metadata(self, stem_name: str, audio_file: Path) -> StemMetadata:
         """Create metadata for a single stem.
 
         Args:
             stem_name: Name of the stem (e.g., "vocals", "drums")
             audio_file: Path to the stem audio file
-            profile: Profile configuration
-            song_name: Name of the song/output folder
 
         Returns:
             StemMetadata model
@@ -92,13 +88,14 @@ class AudioMetadataAnalyzer:
         )
 
     def create_stems_metadata(
-        self, stem_paths: dict[str, Path], profile: Profile, output_folder: Path
+        self,
+        stem_paths: dict[str, Path],
+        output_folder: Path,
     ) -> StemsMetadata:
         """Create metadata for multiple stems and generate waveforms.
 
         Args:
             stem_paths: Dictionary mapping stem names to file paths
-            profile: Profile configuration
             output_folder: Output folder where waveforms will be saved
 
         Returns:

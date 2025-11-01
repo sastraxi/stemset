@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
 from typing import Annotated
 
+from sqlmodel import Session, select
 import typer
 from dotenv import load_dotenv
 
-from .processor import process_profile, process_single_file
+from src.db.config import get_sync_engine
+from src.db.models import Profile
+
+from .processor import process_single_file
 from .db_migrate import migrate_command
 from ..config import get_config
 
@@ -23,24 +26,31 @@ app = typer.Typer(
 @app.command(name="process")
 def process_cmd(
     profile: Annotated[str, typer.Argument(help="Profile name from config.yaml")],
-    file: Annotated[Path | None, typer.Argument(help="Specific audio file to process")] = None,
-    local: Annotated[bool | None, typer.Option("--local", help="Process locally instead of using GPU worker (defaults to True if GPU_WORKER_URL is not set)")] = None,
+    file: Annotated[Path, typer.Argument(help="Specific audio file to process")],
+    local: Annotated[
+        bool | None,
+        typer.Option(
+            "--local",
+            help="Process locally instead of using GPU worker (defaults to True if GPU_WORKER_URL is not set)",
+        ),
+    ] = None,
 ) -> None:
-    """Process audio files for stem separation.
+    """Processes an audio file for stem separation.
 
     By default, uses remote GPU processing if GPU_WORKER_URL is configured.
     Otherwise, processes locally. Use --local flag to force local processing.
-
-    If FILE is provided, processes that specific file.
-    Otherwise, scans the profile's source folder for new files and processes them.
     """
     # Get config and profile
     config = get_config()
-    profile_obj = config.get_profile(profile)
-    if not profile_obj:
-        print(f"Error: Profile '{profile}' not found in config.yaml", file=sys.stderr)
-        print(f"Available profiles: {', '.join(p.name for p in config.profiles)}", file=sys.stderr)
-        raise typer.Exit(1)
+
+    # Get profile from database
+    with Session(get_sync_engine()) as session:
+        stmt = select(Profile).where(Profile.name == profile)
+        result = session.exec(stmt)
+        db_profile = result.first()
+
+    if db_profile is None:
+        raise ValueError(f"Profile '{profile}' not found")
 
     # Determine processing mode:
     # 1. If --local flag is set explicitly, use local
@@ -51,17 +61,11 @@ def process_cmd(
     elif local is False:
         should_use_gpu = True
     else:
-        # Auto-detect: use profile.remote if set, otherwise check GPU_WORKER_URL
-        should_use_gpu = profile_obj.remote or (config.gpu_worker_url is not None)
+        # Auto-detect: use remote if GPU_WORKER_URL is set
+        should_use_gpu = config.gpu_worker_url is not None
 
-    if file:
-        # Single file mode
-        file_path = file.expanduser().resolve()
-        exit_code = process_single_file(profile_obj, file_path, should_use_gpu)
-    else:
-        # Directory scan mode
-        exit_code = process_profile(profile_obj, should_use_gpu)
-
+    file_path = file.expanduser().resolve()
+    exit_code = process_single_file(db_profile, file_path, should_use_gpu)
     raise typer.Exit(code=exit_code)
 
 

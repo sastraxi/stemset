@@ -129,32 +129,14 @@ def build_input_file_hash_lookup() -> dict[str, tuple[str, Path | None]]:
 
 def migrate_profile(
     session: Session,
-    profile_name: str,
-    profile_source: str,
-    strategy_name: str,
+    profile: Profile,
     hash_lookup: dict[str, tuple[str, Path | None]],
 ) -> None:
     """Migrate one profile's data from filesystem to database."""
-    media_dir = Path("media") / profile_name
+    media_dir = Path(profile.output_folder)
     if not media_dir.exists():
-        print(f"  📁 No media directory found for profile '{profile_name}', skipping")
+        print(f"  📁 No media directory found for profile '{profile.name}', skipping")
         return
-
-    # Create or get Profile record
-    result = session.exec(select(Profile).where(Profile.name == profile_name))
-    profile = result.first()
-    if not profile:
-        profile = Profile(
-            name=profile_name,
-            source_folder=profile_source,
-            strategy_name=strategy_name,
-        )
-        session.add(profile)
-        session.commit()
-        session.refresh(profile)
-        print(f"  ✅ Created profile: {profile_name}")
-    else:
-        print(f"  ℹ️  Profile '{profile_name}' already exists")
 
     # Scan output directories (each is one recording)
     recording_dirs = [d for d in media_dir.iterdir() if d.is_dir()]
@@ -201,7 +183,7 @@ def migrate_profile(
                 source_audio_path = potential_source
                 file_hash = compute_file_hash(source_audio_path)
                 source_filename = source_audio_path.name
-                storage_url = f"inputs/{profile_name}/{source_filename}"
+                storage_url = f"={profile.input_folder}/{source_filename}"
                 break
 
         # If not found locally, try to find by matching partial hash from folder name
@@ -243,7 +225,7 @@ def migrate_profile(
                 # Use output_name as fallback hash for placeholder
                 file_hash = hashlib.sha256(output_name.encode()).hexdigest()
                 source_filename = f"{output_name}.wav"  # Inferred
-                storage_url = f"inputs/{profile_name}/{source_filename}"
+                storage_url = f"{profile.input_folder}/{source_filename}"
 
                 print(
                     f"    ℹ️  No source file found for '{output_name}', "
@@ -333,20 +315,12 @@ def run_migration() -> None:
     hash_lookup = build_input_file_hash_lookup()
     print()
 
-    # Load config to get profiles
-    config = load_config()
-
+    # Iterate over all Profiles in the database
     engine = get_sync_engine()
     with Session(engine) as session:
-        for profile_config in config.profiles:
-            print(f"📋 Processing profile: {profile_config.name}")
-            migrate_profile(
-                session,
-                profile_config.name,
-                profile_config.source_folder,
-                profile_config.strategy,
-                hash_lookup,
-            )
+        for profile in session.exec(select(Profile)):
+            print(f"📋 Processing profile: {profile.name}")
+            migrate_profile(session, profile, hash_lookup)
             print()
 
     print("✨ Migration complete!")

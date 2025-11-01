@@ -72,5 +72,6 @@ target-version = "py313"
 allow-insecure-host = ["*.r2.cloudflarestorage.com"]
 default-groups = ["shared"]
 
-[tool.pyright]
+[tool.basedpyright]
+include = ["src/"]
 exclude = ["**/migrations/**"]

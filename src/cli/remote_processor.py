@@ -7,9 +7,10 @@ import uuid
 import httpx
 from pathlib import Path
 
-from src.models.metadata import StemMetadata
+from src.db.models import Profile
+from src.models.metadata import StemMetadata, StemsMetadata
 
-from ..config import Config, Profile
+from ..config import Config
 from ..storage import get_storage, R2Storage
 from ..gpu_worker.models import ProcessingJob, ProcessingResult
 from ..utils import compute_file_hash
@@ -74,19 +75,23 @@ def process_file_remotely(
             local_sha256 = compute_file_hash(input_file)
 
             if r2_sha256 == local_sha256:
-                print(f"  Input already in R2 (identical) ✓")
+                print("  Input already in R2 (identical) ✓")
                 should_upload = False
             else:
-                print(f"  Input exists but differs, re-uploading...", end="", flush=True)
+                print("  Input exists but differs, re-uploading...", end="", flush=True)
         else:
             # Old upload without SHA256 metadata, re-upload to add metadata
-            print(f"  Input exists (no hash metadata), re-uploading...", end="", flush=True)
+            print("  Input exists (no hash metadata), re-uploading...", end="", flush=True)
     except storage.s3_client.exceptions.NoSuchKey:
         # File doesn't exist, need to upload
-        print(f"  Uploading input to R2...", end="", flush=True)
+        print("  Uploading input to R2...", end="", flush=True)
 
     if should_upload:
-        storage.upload_input_file(input_file, profile.name, input_filename)
+        _ = storage.upload_input_file(
+            input_file,
+            profile.name,
+            input_filename,
+        )
         print(" ✓")
 
     # Create job payload
@@ -95,7 +100,7 @@ def process_file_remotely(
     job = ProcessingJob(
         job_id=job_id,
         profile_name=profile.name,
-        strategy_name=profile.strategy,
+        strategy_name=profile.strategy_name,
         input_key=input_key,
         output_name=output_folder_name,
         output_config=profile.output,
@@ -129,7 +134,7 @@ def process_file_remotely(
     print(f"  GPU processing complete! Created {len(result.stems)} stems")
 
     # Download results from R2 to local media folder
-    print(f"  Downloading results to local media...", end="", flush=True)
+    print("  Downloading results to local media...", end="", flush=True)
     output_folder.mkdir(parents=True, exist_ok=True)
 
     stem_paths: dict[str, Path] = {}
@@ -173,9 +178,6 @@ def process_file_remotely(
         pass  # Metadata is optional
 
     print(" ✓")
-
-    # Load metadata from downloaded file
-    from ..models.metadata import StemsMetadata
 
     if not metadata_path.exists():
         raise RuntimeError("No metadata.json found in processing results")

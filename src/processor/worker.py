@@ -96,7 +96,7 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
     sys.path.insert(0, "/root")
 
     from src.gpu_worker.models import ProcessingJob, ProcessingResult
-    from src.config import Profile, get_config
+    from src.config import get_config
     from src.storage import R2Storage
     from src.modern_separator import StemSeparator
     from src.utils import compute_file_hash
@@ -133,21 +133,13 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             if strategy is None:
                 raise ValueError(f"Strategy '{job.strategy_name}' not found")
 
-            # Create temporary profile for processing
-            temp_profile = Profile(
-                name=job.profile_name,
-                source_folder="/tmp/unused",  # Not used during processing
-                strategy=job.strategy_name,
-                output=job.output_config,
-            )
-
-            # Process the audio
-            print(f"Processing with strategy: {job.strategy_name}")
-            separator = StemSeparator(temp_profile)
-
             # Create temp output directory
             output_dir = temp_path / "output"
             output_dir.mkdir()
+
+            # Process the audio
+            print(f"Processing with strategy: {job.strategy_name}")
+            separator = StemSeparator(job.profile_name, job.strategy_name)
 
             # Run separation (this creates stems, metadata.json, and waveforms)
             stem_paths, _metadata = separator.separate_and_normalize(input_path, output_dir)
@@ -184,9 +176,9 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                         print(f"Overwriting existing output (size ratio: {size_ratio:.1f}x)")
 
             except ClientError as e:
-                if e.response["Error"]["Code"] == "404":
+                if e.response.get("Error", {}).get("Code") == "404":
                     # No existing output, proceed normally
-                    print(f"No existing output found")
+                    print("No existing output found")
                 else:
                     # Some other S3 error
                     raise
