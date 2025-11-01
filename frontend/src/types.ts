@@ -7,12 +7,23 @@ export interface Profile {
   source_folder: string;
 }
 
+export interface RecordingConfigData {
+  playbackPosition?: { position: number } | null;
+  stems?: Record<string, StemUserConfig> | null;
+  effects?: Record<string, any> | null;
+  eq?: Record<string, any> | null;
+  compressor?: Record<string, any> | null;
+  reverb?: Record<string, any> | null;
+  stereoExpander?: Record<string, any> | null;
+}
+
 export interface StemFile {
   id: string;  // recording UUID
   name: string;
   display_name: string;
   stems: StemResponse[];
   created_at: string;
+  config?: RecordingConfigData | null;  // User-specific config (only present when fetching via /api/recordings/{id})
 }
 
 export interface StemResponse {

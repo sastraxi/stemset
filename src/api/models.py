@@ -39,6 +39,18 @@ class StemResponse(BaseModel):
     duration_seconds: float
 
 
+class RecordingConfigData(BaseModel):
+    """User-specific recording configuration (nested in FileWithStems)."""
+
+    playbackPosition: dict | None = None
+    stems: dict | None = None
+    effects: dict | None = None
+    eq: dict | None = None
+    compressor: dict | None = None
+    reverb: dict | None = None
+    stereoExpander: dict | None = None
+
+
 class FileWithStems(BaseModel):
     """File with stems information from database."""
 
@@ -48,6 +60,7 @@ class FileWithStems(BaseModel):
     stems: list[StemResponse]
     created_at: str
     status: str | None = None  # "processing" if job exists and incomplete, None if complete
+    config: RecordingConfigData | None = None  # User-specific config (only populated when fetching single recording)
 
 
 class LogoutResponse(BaseModel):

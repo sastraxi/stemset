@@ -5,34 +5,25 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from litestar import get, patch
+from litestar import patch
 from litestar.connection import Request
-from litestar.exceptions import NotFoundException
+from litestar.exceptions import NotFoundException, ValidationException
+from litestar.response import Response
+from litestar.status_codes import HTTP_204_NO_CONTENT
 from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..auth import AuthenticatedUser
 from ..db.config import get_engine
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
 from ..db.models import User
 
 
-class RecordingConfigResponse(BaseModel):
-    """Recording configuration response (all keys for a recording)."""
-
-    playbackPosition: dict[str, Any] | None = None
-    stems: dict[str, Any] | None = None
-    effects: dict[str, Any] | None = None
-    eq: dict[str, Any] | None = None
-    compressor: dict[str, Any] | None = None
-    reverb: dict[str, Any] | None = None
-    stereoExpander: dict[str, Any] | None = None
-
-
 class UpdateConfigRequest(BaseModel):
     """Request to update a specific config key."""
 
-    key: str  # 'playbackPosition', 'stems', or 'effects'
+    key: str  # 'playbackPosition', 'stems', 'eq', 'compressor', 'reverb', 'stereoExpander'
     value: dict[str, Any]
 
 
@@ -48,73 +39,26 @@ async def get_user_id_from_email(session: AsyncSession, email: str) -> UUID:
     return user.id
 
 
-@get("/api/recordings/{recording_id:uuid}/config")
-async def get_recording_config(
-    recording_id: UUID, request: Request[Any, Any, Any]
-) -> RecordingConfigResponse:
-    """Get all configuration for a recording (user-specific).
-
-    Returns separate keys for playbackPosition, stems, and effects.
-    """
-    # Get user email from auth middleware
-    user_email = request.scope.get("state", {}).get("user_email")
-    if not user_email:
-        raise NotFoundException(detail="User not authenticated")
-
-    engine = get_engine()
-    async with AsyncSession(engine, expire_on_commit=False) as session:
-        user_id = await get_user_id_from_email(session, user_email)
-
-        # Fetch all config records for this user + recording
-        stmt = select(DBRecordingUserConfig).where(
-            DBRecordingUserConfig.user_id == user_id,
-            DBRecordingUserConfig.recording_id == recording_id,
-        )
-        result = await session.exec(stmt)
-        configs = result.all()
-
-        # Build response with separate keys
-        response = RecordingConfigResponse()
-        for config in configs:
-            if config.config_key == "playbackPosition":
-                response.playbackPosition = config.config_value
-            elif config.config_key == "stems":
-                response.stems = config.config_value
-            elif config.config_key == "effects":
-                response.effects = config.config_value
-            elif config.config_key == "eq":
-                response.eq = config.config_value
-            elif config.config_key == "compressor":
-                response.compressor = config.config_value
-            elif config.config_key == "reverb":
-                response.reverb = config.config_value
-            elif config.config_key == "stereoExpander":
-                response.stereoExpander = config.config_value
-
-        return response
-
-
 @patch("/api/recordings/{recording_id:uuid}/config")
 async def update_recording_config(
-    recording_id: UUID, request: Request[Any, Any, Any], data: UpdateConfigRequest
-) -> RecordingConfigResponse:
+    recording_id: UUID, request: Request[AuthenticatedUser, str, Any], data: UpdateConfigRequest
+) -> Response[None]:
     """Update a specific config key for a recording (upsert).
 
     Supports partial updates - only updates the specified key.
+    Returns 204 No Content on success.
     """
-    # Get user email from auth middleware
-    user_email = request.scope.get("state", {}).get("user_email")
-    if not user_email:
-        raise NotFoundException(detail="User not authenticated")
+    # Get user from auth middleware (properly typed!)
+    user = request.user
 
     # Validate key (allow individual effect configs plus legacy merged configs)
     valid_keys = ("playbackPosition", "stems", "effects", "eq", "compressor", "reverb", "stereoExpander")
     if data.key not in valid_keys:
-        raise NotFoundException(detail=f"Invalid config key: {data.key}")
+        raise ValidationException(detail=f"Invalid config key: {data.key}. Must be one of: {', '.join(valid_keys)}")
 
     engine = get_engine()
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        user_id = await get_user_id_from_email(session, user_email)
+        user_id = await get_user_id_from_email(session, user.email)
 
         # Check if config record exists
         stmt = select(DBRecordingUserConfig).where(
@@ -140,30 +84,5 @@ async def update_recording_config(
 
         await session.commit()
 
-        # Fetch all configs to return full state after update
-        stmt = select(DBRecordingUserConfig).where(
-            DBRecordingUserConfig.user_id == user_id,
-            DBRecordingUserConfig.recording_id == recording_id,
-        )
-        result = await session.exec(stmt)
-        configs = result.all()
-
-        # Build response with separate keys
-        response = RecordingConfigResponse()
-        for config in configs:
-            if config.config_key == "playbackPosition":
-                response.playbackPosition = config.config_value
-            elif config.config_key == "stems":
-                response.stems = config.config_value
-            elif config.config_key == "effects":
-                response.effects = config.config_value
-            elif config.config_key == "eq":
-                response.eq = config.config_value
-            elif config.config_key == "compressor":
-                response.compressor = config.config_value
-            elif config.config_key == "reverb":
-                response.reverb = config.config_value
-            elif config.config_key == "stereoExpander":
-                response.stereoExpander = config.config_value
-
-        return response
+        # Return 204 No Content - frontend will update cache manually
+        return Response(content=None, status_code=HTTP_204_NO_CONTENT)

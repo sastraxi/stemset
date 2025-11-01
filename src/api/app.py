@@ -9,9 +9,10 @@ from collections.abc import AsyncGenerator
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
+from litestar.middleware import DefineMiddleware
 from litestar.static_files import create_static_files_router  # pyright: ignore[reportUnknownVariableType]
 
-from ..auth import auth_middleware
+from ..auth import JWTAuthenticationMiddleware
 from ..config import get_config
 from ..db.config import get_engine
 
@@ -21,10 +22,11 @@ from .profile_routes import (
     get_profile,
     get_profile_files,
     get_profiles,
+    get_recording,
     update_display_name,
 )
 from .job_routes import job_complete, job_status, upload_file
-from .config_routes import get_recording_config, update_recording_config
+from .config_routes import update_recording_config
 
 
 @asynccontextmanager
@@ -92,6 +94,12 @@ app_state = AppState(
     frontend_url=frontend_url,
 )
 
+# Authentication configuration - exclude /auth/* routes from auth requirement
+auth_middleware = DefineMiddleware(
+    JWTAuthenticationMiddleware,
+    exclude=["/auth", "/schema"],  # Exclude auth routes and OpenAPI schema
+)
+
 app = Litestar(
     route_handlers=[
         auth_status,
@@ -101,8 +109,8 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
+        get_recording,
         update_display_name,
-        get_recording_config,
         update_recording_config,
         job_complete,
         job_status,

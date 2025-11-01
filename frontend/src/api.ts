@@ -49,6 +49,14 @@ export async function getProfileFiles(name: string): Promise<StemFile[]> {
   return response.json();
 }
 
+export async function getRecording(recordingId: string): Promise<StemFile> {
+  const response = await authFetch(`${API_BASE}/api/recordings/${recordingId}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch recording: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export async function updateDisplayName(
   profileName: string,
   fileName: string,

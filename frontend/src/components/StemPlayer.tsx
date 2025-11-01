@@ -64,7 +64,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 
     const {
       isLoading,
-      isConfigLoading,
       loadingMetrics,
       isPlaying,
       currentTime,
@@ -236,7 +235,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         </div>
         <button
           onClick={isPlaying ? pause : play}
-          disabled={stemOrder.length === 0 || isConfigLoading}
+          disabled={stemOrder.length === 0}
           className="playback-button"
           title={isPlaying ? "Pause" : "Play"}
         >
@@ -244,7 +243,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         </button>
         <button
           onClick={stop}
-          disabled={(!isPlaying && currentTime === 0) || isConfigLoading}
+          disabled={!isPlaying && currentTime === 0}
           className="playback-button stop-button"
           title="Reset"
         >
@@ -288,7 +287,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                         value={stem.gain}
                         onChange={(e) => setStemGain(stemName, parseFloat(e.target.value))}
                         className="volume-slider"
-                        disabled={stem.muted || isConfigLoading}
+                        disabled={stem.muted}
                       />
                       <span className="volume-label">
                         {stem.muted ? 'Muted' : `${(stem.gain * 100).toFixed(0)}%`}
@@ -305,7 +304,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                         onClick={() => toggleMute(stemName)}
                         className={`mute-button ${stem.muted ? 'muted' : ''}`}
                         title={stem.muted ? "Unmute" : "Mute"}
-                        disabled={isConfigLoading}
                       >
                         {stem.muted ?
                           <VolumeX className="h-4 w-4" color="#ff6666" /> :
@@ -316,7 +314,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                         onClick={() => toggleSolo(stemName)}
                         className={`solo-button ${stem.soloed ? 'soloed' : ''}`}
                         title={stem.soloed ? "Unsolo" : "Solo"}
-                        disabled={isConfigLoading}
                       >
                         <Music className="h-4 w-4" color={stem.soloed ? "#ffb347" : "currentColor"} />
                       </button>
@@ -324,7 +321,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
                         onClick={() => resetStemGain(stemName)}
                         className="reset-gain"
                         title="Reset to initial gain"
-                        disabled={isConfigLoading}
                       >
                         ↺
                       </button>

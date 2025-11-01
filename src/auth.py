@@ -5,13 +5,12 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import jwt
 from litestar.connection import ASGIConnection
 from litestar.exceptions import NotAuthorizedException
-from litestar.middleware import DefineMiddleware
-from litestar.types import ASGIApp, Receive, Scope, Send
+from litestar.middleware.authentication import AbstractAuthenticationMiddleware, AuthenticationResult
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -33,6 +32,14 @@ class UserInfo(BaseModel):
     email: str
     name: str
     picture: str
+
+
+class AuthenticatedUser(BaseModel):
+    """Authenticated user model for request.user."""
+
+    email: str
+    name: str | None = None
+    picture: str | None = None
 
 
 def is_auth_bypassed() -> bool:
@@ -94,76 +101,57 @@ def decode_jwt_token(token: str, secret: str) -> TokenData:
         raise NotAuthorizedException(detail="Invalid token") from e
 
 
-def extract_token_from_request(request: ASGIConnection[Any, Any, Any, Any]) -> str | None:
+def extract_token_from_request(connection: ASGIConnection) -> str | None:
     """Extract JWT token from request cookies or Authorization header.
 
     Args:
-        request: Litestar request object
+        connection: Litestar ASGI connection
 
     Returns:
         JWT token string or None if not found
     """
     # Try cookie first
-    token = request.cookies.get("stemset_token")
+    token = connection.cookies.get("stemset_token")
     if token:
         return token
 
     # Try Authorization header
-    auth_header = request.headers.get("Authorization")
+    auth_header = connection.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header[7:]  # Remove "Bearer " prefix
 
     return None
 
 
-class AuthMiddleware:
-    """Middleware to protect routes with JWT authentication."""
+class JWTAuthenticationMiddleware(AbstractAuthenticationMiddleware):
+    """Litestar authentication middleware using JWT tokens.
 
-    app: ASGIApp
+    This middleware:
+    1. Bypasses auth if STEMSET_BYPASS_AUTH=true
+    2. Extracts JWT from cookie or Authorization header
+    3. Validates JWT and checks email against allowlist
+    4. Populates request.user with AuthenticatedUser
+    """
 
-    def __init__(self, app: ASGIApp) -> None:
-        """Initialize middleware.
-
-        Args:
-            app: Next ASGI app in chain
-        """
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """Process request through auth middleware.
-
-        This middleware:
-        1. Bypasses auth if STEMSET_BYPASS_AUTH=true
-        2. Allows unauthenticated access to /auth/* routes
-        3. Requires valid JWT for all other routes
-        4. Validates JWT and checks email against allowlist
+    async def authenticate_request(self, connection: ASGIConnection) -> AuthenticationResult:
+        """Authenticate request and return user.
 
         Args:
-            scope: ASGI scope
-            receive: ASGI receive callable
-            send: ASGI send callable
+            connection: ASGI connection
+
+        Returns:
+            AuthenticationResult with authenticated user
 
         Raises:
             NotAuthorizedException: If authentication fails
         """
-        # Only process HTTP requests (skip websockets, lifespan, etc.)
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        # Create a connection to access request details
-        connection = ASGIConnection[str, str, str, str](scope=scope, receive=receive)
-
-        # Bypass auth if environment variable is set
+        # Bypass auth if environment variable is set (development mode)
         if is_auth_bypassed():
-            await self.app(scope, receive, send)
-            return
-
-        # Allow unauthenticated access to auth routes
-        path = scope.get("path", "")
-        if path.startswith("/auth/"):
-            await self.app(scope, receive, send)
-            return
+            # Return anonymous user for dev mode
+            return AuthenticationResult(
+                user=AuthenticatedUser(email="dev@localhost"),
+                auth=None,
+            )
 
         # Extract and validate token
         token = extract_token_from_request(connection)
@@ -183,13 +171,12 @@ class AuthMiddleware:
         if not is_email_allowed(token_data.email, config):
             raise NotAuthorizedException(detail="Email not authorized")
 
-        # Store user info in scope state for use in route handlers
-        if "state" not in scope:
-            scope["state"] = {}
-        scope["state"]["user_email"] = token_data.email
-
-        await self.app(scope, receive, send)
-
-
-# Middleware definition for Litestar
-auth_middleware = DefineMiddleware(AuthMiddleware)
+        # Return authenticated user
+        return AuthenticationResult(
+            user=AuthenticatedUser(
+                email=token_data.email,
+                name=token_data.name,
+                picture=token_data.picture,
+            ),
+            auth=token,
+        )

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProfiles, getProfileFiles, updateDisplayName } from '../api'
+import { getProfiles, getProfileFiles, getRecording, updateDisplayName } from '../api'
 import type { StemFileWithDisplayName } from '../types'
 
 export function useProfiles() {
@@ -43,6 +43,32 @@ export function useProfileFilesWithDisplayNames(profileName: string | undefined)
         },
         enabled: !!profileName,
         staleTime: 30 * 1000, // 30 seconds since data is more stable now
+        gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    })
+}
+
+/**
+ * Hook to fetch a single recording with stems and user config.
+ * This is the primary data source when navigating to a specific recording.
+ */
+export function useRecording(recordingId: string | undefined) {
+    return useQuery({
+        queryKey: ['recording', recordingId],
+        queryFn: async () => {
+            if (!recordingId) return null
+
+            const recording = await getRecording(recordingId)
+
+            // Transform to match StemFileWithDisplayName interface
+            const recordingWithDisplayName: StemFileWithDisplayName = {
+                ...recording,
+                displayName: recording.display_name || recording.name,
+            }
+
+            return recordingWithDisplayName
+        },
+        enabled: !!recordingId,
+        staleTime: 60 * 1000, // 1 minute - config changes frequently
         gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     })
 }

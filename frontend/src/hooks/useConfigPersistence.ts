@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import { useRecording } from './queries';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -59,38 +60,11 @@ export function useConfigPersistence<T>({
   // Debounce timer
   const debounceTimerRef = useRef<number | null>(null);
 
-  // Fetch config from API
-  const { data: fetchedConfig, isLoading, error } = useQuery({
-    queryKey: ['recordingConfig', recordingId, configKey],
-    queryFn: async (): Promise<T | null> => {
-      const token = getToken();
-      if (!token) {
-        throw new Error('No auth token available');
-      }
+  // Fetch config from recording (uses cached recording data from useRecording)
+  const { data: recording, isLoading, error } = useRecording(recordingId);
 
-      const response = await fetch(`${API_BASE}/api/recordings/${recordingId}/config`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null; // No config exists yet
-        }
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Extract the specific config key from the response
-      const configValue = data[configKey] as T | undefined;
-      return configValue ?? null;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-  });
+  // Extract the specific config key from the recording
+  const fetchedConfig = recording?.config?.[configKey as keyof typeof recording.config] as T | null | undefined;
 
   // Mutation for saving config
   const mutation = useMutation({
@@ -113,14 +87,27 @@ export function useConfigPersistence<T>({
         throw new Error(`Server returned ${response.status}`);
       }
 
-      return response.json();
+      // Server returns 204 No Content, no need to parse response
+      return;
     },
-    onSuccess: () => {
-      // Invalidate OTHER config queries for this recording (multi-tab sync)
-      // But don't refetch THIS query to avoid infinite loop
+    onSuccess: (_data, newValue) => {
+      // Manually update the recording cache with the new config value
+      queryClient.setQueryData(['recording', recordingId], (old: any) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          config: {
+            ...old.config,
+            [configKey]: newValue,
+          },
+        };
+      });
+
+      // Mark as stale for multi-tab sync (other tabs will refetch)
       queryClient.invalidateQueries({
-        queryKey: ['recordingConfig', recordingId],
-        refetchType: 'none', // Don't trigger refetch, just mark as stale
+        queryKey: ['recording', recordingId],
+        refetchType: 'none',
       });
     },
     onError: () => {
