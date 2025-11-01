@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 from venv import logger
 
-import soundfile as sf
+import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 from sqlmodel import Session, select
 
 from src.config import load_config

@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..auth import AuthenticatedUser
+from .types import AuthenticatedUser
 from ..db.config import get_engine
 from ..db.models import Profile as DBProfile, Recording, RecordingUserConfig, User
 from .models import FileWithStems, ProfileResponse, RecordingConfigData, StemResponse

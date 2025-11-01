@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
-import soundfile as sf
+import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 import tempfile
 import uuid
 from pathlib import Path
@@ -109,10 +109,10 @@ async def job_complete(
                 file_size_bytes = 0
                 if isinstance(storage, R2Storage):
                     try:
-                        head_response = storage.s3_client.head_object(  # pyright: ignore[reportUnknownMemberType]
+                        head_response = storage.s3_client.head_object(
                             Bucket=storage.config.bucket_name, Key=r2_key
                         )
-                        file_size_bytes = int(head_response.get("ContentLength", 0))  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        file_size_bytes = int(head_response.get("ContentLength", 0))
                     except Exception as e:
                         print(f"Warning: Could not get file size for {r2_key}: {e}")
                         file_size_bytes = 0
@@ -274,8 +274,8 @@ async def upload_file(
         file_hash = compute_file_hash(temp_path)
 
         # Extract audio metadata
-        info = sf.info(str(temp_path))
-        duration_seconds = float(info.duration)
+        info = sf.info(str(temp_path))  # pyright: ignore[reportUnknownMemberType]
+        duration_seconds = float(info.duration)  # pyright: ignore[reportAny]
 
         # Derive output name
         base_output_name = derive_output_name(Path(data.filename))

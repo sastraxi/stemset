@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import soundfile as sf
+import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 import sys
 from pathlib import Path
 

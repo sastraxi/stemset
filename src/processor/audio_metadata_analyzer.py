@@ -29,7 +29,7 @@ class AudioMetadataAnalyzer:
             Tuple of (loudness_lufs, peak_amplitude)
         """
         import numpy as np
-        import soundfile as sf
+        import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 
         audio_data, _rate = sf.read(str(audio_file))
         loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)

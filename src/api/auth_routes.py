@@ -123,14 +123,14 @@ async def auth_callback(
             },
         )
         _ = token_response.raise_for_status()
-        tokens = token_response.json()
+        tokens = token_response.json()  # pyright: ignore[reportAny]
 
         userinfo_response = await client.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
             headers={"Authorization": f"Bearer {tokens['access_token']}"},
         )
         _ = userinfo_response.raise_for_status()
-        userinfo = UserInfo(**userinfo_response.json())
+        userinfo = UserInfo(**userinfo_response.json())  # pyright: ignore[reportAny]
 
     if not is_email_allowed(userinfo.email, config):
         raise NotAuthorizedException(detail=f"Email {userinfo.email} is not authorized")
