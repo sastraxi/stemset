@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useEqEffect } from './effects/useEqEffect';
-import type { UseEqEffectResult, EqConfig } from './effects/useEqEffect';
+import type { UseEqEffectResult } from './effects/useEqEffect';
 import { useCompressorEffect } from './effects/useCompressorEffect';
-import type { UseCompressorEffectResult, CompressorConfig } from './effects/useCompressorEffect';
+import type { UseCompressorEffectResult } from './effects/useCompressorEffect';
 import { useReverbEffect } from './effects/useReverbEffect';
-import type { UseReverbEffectResult, ReverbConfig } from './effects/useReverbEffect';
+import type { UseReverbEffectResult } from './effects/useReverbEffect';
 import { useStereoExpanderEffect } from './effects/useStereoExpanderEffect';
-import type { UseStereoExpanderEffectResult, StereoExpanderConfig } from './effects/useStereoExpanderEffect';
+import type { UseStereoExpanderEffectResult } from './effects/useStereoExpanderEffect';
+import type { EqConfig, CompressorConfig, ReverbConfig, StereoExpanderConfig } from '@/types';
 
 export interface AudioEffectsConfig {
   eqConfig?: EqConfig;

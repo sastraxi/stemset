@@ -2,7 +2,7 @@
 
 import os
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, TypedDict, cast, override
+from typing import TypedDict, cast, override
 
 import jwt
 from litestar.exceptions import NotAuthorizedException
@@ -14,8 +14,7 @@ from pydantic import BaseModel
 
 from src.api.types import AuthConnection, AuthenticatedUser
 
-if TYPE_CHECKING:
-    from .config import Config
+from .config import Config
 
 
 class JWTPayload(TypedDict):

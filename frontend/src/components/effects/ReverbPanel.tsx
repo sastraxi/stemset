@@ -1,5 +1,5 @@
-import type { ImpulseName, ReverbConfig } from '../../hooks/effects/useReverbEffect';
-import { IMPULSES } from '../../hooks/effects/useReverbEffect';
+import type { ImpulseName, ReverbConfig } from '@/types';
+import { IMPULSES } from '@/types';
 
 export interface ReverbPanelProps {
   config: ReverbConfig;

@@ -1,4 +1,4 @@
-import type { CompressorConfig } from '../../hooks/effects/useCompressorEffect';
+import type { CompressorConfig } from '@/types';
 
 export interface CompressorPanelProps {
   config: CompressorConfig;

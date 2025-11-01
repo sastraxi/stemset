@@ -93,13 +93,12 @@ export function useAudioContext({
     setMasterVolumeState(volume);
     if (masterOutputRef.current) {
       masterOutputRef.current.gain.value = volume;
-      console.log('[useAudioContext] Master volume set to:', volume);
     }
     // Persist to localStorage
     try {
       localStorage.setItem(MASTER_VOLUME_KEY, volume.toString());
     } catch (e) {
-      console.warn('[useAudioContext] Failed to save master volume to localStorage:', e);
+      console.error('[useAudioContext] Failed to save master volume to localStorage:', e);
     }
   }, []);
 
@@ -107,7 +106,6 @@ export function useAudioContext({
   useEffect(() => {
     if (masterOutputRef.current && masterOutputRef.current.gain.value !== masterVolume) {
       masterOutputRef.current.gain.value = masterVolume;
-      console.log('[useAudioContext] Synced master output gain to:', masterVolume);
     }
   }, [masterVolume]);
 

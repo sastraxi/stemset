@@ -1,4 +1,4 @@
-import type { StereoExpanderConfig } from '../../hooks/effects/useStereoExpanderEffect';
+import type { StereoExpanderConfig } from '@/types';
 
 interface BandColumnProps {
   title: string;

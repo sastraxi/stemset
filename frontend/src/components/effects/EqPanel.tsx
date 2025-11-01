@@ -1,4 +1,4 @@
-import type { EqBand, EqConfig } from '../../hooks/effects/useEqEffect';
+import type { EqBand, EqConfig } from '@/types';
 
 export interface EqPanelProps {
   config: EqConfig;

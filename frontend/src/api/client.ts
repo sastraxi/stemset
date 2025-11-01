@@ -6,7 +6,7 @@ const TOKEN_KEY = 'stemset_token';
 
 client.setConfig({
   baseUrl: API_BASE,
-  headers: () => {
+  headers: (() => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
       return {
@@ -14,5 +14,5 @@ client.setConfig({
       };
     }
     return {};
-  },
+  })(),
 });
