@@ -1,4 +1,4 @@
-import { Music, QrCode, Share, Volume2, VolumeX } from "lucide-react";
+import { Music, QrCode, Share, Trash2, Volume2, VolumeX } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -10,9 +10,11 @@ import {
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import type { StemResponse } from "@/api/generated";
+import { apiRecordingsRecordingIdDeleteRecording } from "@/api/generated";
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useStemPlayer } from "../hooks/useStemPlayer";
+import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { CompressorPanel } from "./effects/CompressorPanel";
 import { EqPanel } from "./effects/EqPanel";
 import { MasterVolumeControl } from "./effects/MasterVolumeControl";
@@ -45,6 +47,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		const [previewTime, setPreviewTime] = useState<number | null>(null);
 		const [showTimeRemaining, setShowTimeRemaining] = useState(false);
 		const [showQRModal, setShowQRModal] = useState(false);
+		const [showDeleteModal, setShowDeleteModal] = useState(false);
+		const [isDeleting, setIsDeleting] = useState(false);
 		const [volumeBeforeMute, setVolumeBeforeMute] = useState(0.8);
 		const playerRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +81,29 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			return url.toString();
 		}, [profileName, fileName]);
 
+		// Handle recording deletion
+		const handleDelete = useCallback(async () => {
+			try {
+				setIsDeleting(true);
+
+				await apiRecordingsRecordingIdDeleteRecording({
+					path: {
+						recording_id: recordingId,
+					},
+				});
+
+				toast.success("Recording deleted successfully");
+
+				// Navigate back to profile page
+				window.location.href = `/p/${profileName}`;
+			} catch (error) {
+				console.error("Error deleting recording:", error);
+				toast.error("Failed to delete recording");
+			} finally {
+				setIsDeleting(false);
+				setShowDeleteModal(false);
+			}
+		}, [recordingId, profileName]);
 		const {
 			isLoading,
 			loadingMetrics,
@@ -270,6 +297,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					<QrCode className="h-4 w-4" />
 				</button>
 				<button
+					type="button"
 					onClick={async () => {
 						const shareUrl = generateShareUrl(currentTime);
 						try {
@@ -288,6 +316,14 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				>
 					<Share className="h-4 w-4" />
 				</button>
+				<button
+					type="button"
+					onClick={() => setShowDeleteModal(true)}
+					className="share-button"
+					title="Delete recording"
+				>
+					<Trash2 className="h-4 w-4" />
+				</button>
 				<MobileVolumeControl
 					volume={masterVolume}
 					onVolumeChange={setMasterVolume}
@@ -295,6 +331,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					onToggleMute={handleToggleMasterMute}
 					max={1}
 				/>
+				{/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
+				{/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
 				<div
 					className="time-display clickable"
 					onClick={() => setShowTimeRemaining(!showTimeRemaining)}
@@ -305,6 +343,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 						: `${formatTime(previewTime !== null ? previewTime : currentTime)} / ${formatTime(duration)}`}
 				</div>
 				<button
+					type="button"
 					onClick={isPlaying ? pause : handlePlay}
 					disabled={stemOrder.length === 0}
 					className="playback-button"
@@ -313,6 +352,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					{isPlaying ? "⏸" : "▶"}
 				</button>
 				<button
+					type="button"
 					onClick={stop}
 					disabled={!isPlaying && currentTime === 0}
 					className="playback-button stop-button"
@@ -327,6 +367,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			<>
 				{playbackControlsContainer &&
 					createPortal(playbackControls, playbackControlsContainer)}
+				{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
 				<div className="stem-player" ref={playerRef} tabIndex={0}>
 					<div className="waveforms-section">
 						{/* Ruler row - now just ruler without controls */}
@@ -349,9 +390,15 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							return (
 								<div key={stemName} className={"waveform-row"}>
 									<div className="waveform-controls">
-										<label className="waveform-stem-label">{stemName}</label>
+										<label
+											htmlFor={`stem-${stemName}-gain`}
+											className="waveform-stem-label"
+										>
+											{stemName}
+										</label>
 										<div className="waveform-volume-control">
 											<input
+												id={`stem-${stemName}-gain`}
 												type="range"
 												min={0}
 												max={2}
@@ -379,6 +426,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												onToggleMute={() => toggleMute(stemName)}
 											/>
 											<button
+												type="button"
 												onClick={() => toggleMute(stemName)}
 												className={`mute-button ${stem.muted ? "muted" : ""}`}
 												title={stem.muted ? "Unmute" : "Mute"}
@@ -390,6 +438,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												)}
 											</button>
 											<button
+												type="button"
 												onClick={() => toggleSolo(stemName)}
 												className={`solo-button ${stem.soloed ? "soloed" : ""}`}
 												title={stem.soloed ? "Unsolo" : "Solo"}
@@ -400,6 +449,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												/>
 											</button>
 											<button
+												type="button"
 												onClick={() => resetStemGain(stemName)}
 												className="reset-gain"
 												title="Reset to initial gain"
@@ -463,6 +513,15 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					isOpen={showQRModal}
 					onClose={() => setShowQRModal(false)}
 					url={generateQRUrl()}
+				/>
+
+				{/* Delete Confirmation Modal */}
+				<DeleteConfirmationModal
+					isOpen={showDeleteModal}
+					onClose={() => setShowDeleteModal(false)}
+					onConfirm={handleDelete}
+					isDeleting={isDeleting}
+					recordingTitle={fileName}
 				/>
 			</>
 		);

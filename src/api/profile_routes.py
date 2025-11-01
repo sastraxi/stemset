@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from litestar import get, patch
+from litestar import delete, get, patch
 from litestar.connection import Request
 from litestar.exceptions import NotFoundException
 from pydantic import BaseModel
@@ -15,10 +15,12 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from .types import AuthenticatedUser
 from ..db.config import get_engine
-from ..db.models import Profile as DBProfile, Recording, RecordingUserConfig, User
+from ..db.models import Job, Recording, RecordingUserConfig, User
+from ..db.models import Profile as DBProfile
+from ..storage import get_storage
 from .models import FileWithStems, ProfileResponse, RecordingConfigData, StemResponse
+from .types import AuthenticatedUser
 
 
 @get("/api/profiles")
@@ -277,3 +279,84 @@ async def update_display_name(
             created_at=recording.created_at.isoformat(),
             # config omitted - client should refetch if needed
         )
+
+
+@delete("/api/recordings/{recording_id:uuid}")
+async def delete_recording(recording_id: UUID) -> None:
+    """Delete a recording and all its associated files from storage."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Get recording with profile and stems
+        stmt = (
+            select(Recording)
+            .where(Recording.id == recording_id)
+            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+        )
+        result = await session.exec(stmt)
+        recording = result.first()
+
+        if recording is None:
+            raise NotFoundException(detail=f"Recording not found: {recording_id}")
+
+        # Get profile for storage operations
+        profile_result = await session.exec(
+            select(DBProfile).where(DBProfile.id == recording.profile_id)
+        )
+        profile = profile_result.first()
+        if not profile:
+            raise NotFoundException(detail="Profile not found for recording")
+
+        storage = get_storage()
+
+        # Delete all stem files from storage
+        if hasattr(storage, "delete_file"):
+            for stem in recording.stems:
+                # Delete audio file
+                try:
+                    storage.delete_file(
+                        profile.name, recording.output_name, stem.stem_type, ".opus"
+                    )
+                except Exception as e:
+                    print(f"Warning: Could not delete audio file for stem {stem.stem_type}: {e}")
+
+                # Delete waveform file
+                try:
+                    storage.delete_file(
+                        profile.name, recording.output_name, stem.stem_type, "_waveform.png"
+                    )
+                except Exception as e:
+                    print(f"Warning: Could not delete waveform file for stem {stem.stem_type}: {e}")
+
+            # Delete metadata file
+            try:
+                storage.delete_file(profile.name, recording.output_name, "", "metadata.json")
+            except Exception as e:
+                print(f"Warning: Could not delete metadata file: {e}")
+
+        # Delete from database
+        # First delete all stems
+        for stem in recording.stems:
+            await session.delete(stem)
+
+        # Delete any user configs for this recording
+        config_stmt = select(RecordingUserConfig).where(
+            RecordingUserConfig.recording_id == recording.id
+        )
+        config_result = await session.exec(config_stmt)
+        for config in config_result.all():
+            await session.delete(config)
+
+        # Delete the associated job
+        job = select(Job).where(Job.recording_id == recording.id)
+        job_result = await session.exec(job)
+        job_record = job_result.first()
+        if job_record:
+            await session.delete(job_record)
+
+        # Delete the recording itself
+        await session.delete(recording)
+
+        await session.commit()
+
+        return None

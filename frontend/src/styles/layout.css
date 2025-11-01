@@ -175,6 +175,12 @@
 		order: 1;
 	}
 
+	/* Hide QR code and delete buttons on mobile to save space */
+	.playback-controls-header .share-button[title="Show QR code for social sharing"],
+	.playback-controls-header .share-button[title="Delete recording"] {
+		display: none;
+	}
+
 	.playback-controls-header .mobile-volume-button {
 		order: 2;
 	}

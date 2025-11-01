@@ -3,30 +3,32 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from collections.abc import AsyncGenerator
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
 from litestar.middleware import DefineMiddleware
-from litestar.static_files import create_static_files_router  # pyright: ignore[reportUnknownVariableType]
+from litestar.static_files import (
+    create_static_files_router,  # pyright: ignore[reportUnknownVariableType]
+)
 
 from ..auth import JWTAuthenticationMiddleware
 from ..config import get_config
 from ..db.config import get_engine
-
-from .state import AppState
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
+from .config_routes import update_recording_config
+from .job_routes import job_complete, job_status, upload_file
 from .profile_routes import (
+    delete_recording,
     get_profile,
     get_profile_files,
     get_profiles,
     get_recording,
     update_display_name,
 )
-from .job_routes import job_complete, job_status, upload_file
-from .config_routes import update_recording_config
+from .state import AppState
 
 
 @asynccontextmanager
@@ -76,7 +78,7 @@ if frontend_url not in ["/", ""]:
 
 cors_config = CORSConfig(
     allow_origins=allowed_origins,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
     allow_credentials=True,
 )
@@ -111,6 +113,7 @@ app = Litestar(
         get_profile_files,
         get_recording,
         update_display_name,
+        delete_recording,
         update_recording_config,
         job_complete,
         job_status,

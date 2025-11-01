@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import shutil
-import boto3
 from pathlib import Path
 from typing import Protocol
+
+import boto3
+
 from .config import Config, R2Config
 
 
@@ -46,6 +48,10 @@ class StorageBackend(Protocol):
 
     def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
         """Download metadata.json for a recording."""
+        ...
+
+    def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
+        """Delete a file from storage."""
         ...
 
 
@@ -106,6 +112,24 @@ class LocalStorage:
         """Download metadata.json for a recording (copy from local)."""
         source_path = Path("media") / profile_name / output_name / "metadata.json"
         _ = shutil.copy2(source_path, dest_path)
+
+    def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
+        """Delete a file from local storage."""
+        if stem_name and ext:
+            # Regular stem file
+            file_path = Path("media") / profile_name / file_name / f"{stem_name}{ext}"
+        elif ext:
+            # Special case for metadata.json
+            file_path = Path("media") / profile_name / file_name / ext
+        else:
+            # Directory
+            file_path = Path("media") / profile_name / file_name
+
+        if file_path.exists():
+            if file_path.is_file():
+                file_path.unlink()
+            elif file_path.is_dir():
+                shutil.rmtree(file_path)
 
 
 class R2Storage:
@@ -270,6 +294,28 @@ class R2Storage:
             key,
             str(dest_path),
         )
+
+    def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
+        """Delete a file from R2 storage."""
+        if stem_name and ext:
+            # Regular stem file
+            key = f"{profile_name}/{file_name}/{stem_name}{ext}"
+            _ = self.s3_client.delete_object(Bucket=self.config.bucket_name, Key=key)
+        elif ext:
+            # Special case for metadata.json
+            key = f"{profile_name}/{file_name}/{ext}"
+            _ = self.s3_client.delete_object(Bucket=self.config.bucket_name, Key=key)
+        else:
+            # Directory - delete all objects with this prefix one by one
+            prefix = f"{profile_name}/{file_name}/"
+            response = self.s3_client.list_objects_v2(Bucket=self.config.bucket_name, Prefix=prefix)
+
+            if "Contents" in response:
+                for obj in response["Contents"]:
+                    if "Key" in obj and obj["Key"]:
+                        _ = self.s3_client.delete_object(
+                            Bucket=self.config.bucket_name, Key=obj["Key"]
+                        )
 
 
 # Global storage instance
