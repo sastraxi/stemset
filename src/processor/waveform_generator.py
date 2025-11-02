@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Any
+
+from numpy.typing import NDArray
 
 
 class WaveformGenerator:
@@ -64,7 +67,7 @@ class WaveformGenerator:
         # Apply perceptual (logarithmic) filter for better visual representation
         # Human hearing is logarithmic, so this makes quiet details more visible
         # while preventing loud parts from dominating the display
-        def apply_perceptual_filter(data, threshold=0.001):
+        def apply_perceptual_filter(data, threshold=0.001) -> NDArray[Any]:
             """Apply logarithmic scaling to match human audio perception"""
             # Use sign-preserving logarithmic scaling
             sign = np.sign(data)
@@ -82,7 +85,7 @@ class WaveformGenerator:
 
         # Apply visual scaling fudge factor to make waveforms more prominent
         # This compensates for anti-aliasing reducing apparent peaks
-        VISUAL_SCALE_FACTOR = 2.5  # Reduced from 3.0 since log scaling helps visibility
+        VISUAL_SCALE_FACTOR = 2.0
         waveform_data = waveform_data * VISUAL_SCALE_FACTOR
 
         # Clamp to [-1, 1] to prevent overflow

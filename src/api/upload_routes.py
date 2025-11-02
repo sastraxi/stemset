@@ -11,7 +11,6 @@ from typing import Annotated
 from uuid import UUID
 
 import httpx
-import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 from litestar import get, post
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
@@ -98,10 +97,8 @@ async def upload_file(
         _ = temp_file.write(content)
 
     try:
-        # Compute hash and extract metadata
+        # Compute hash and initialize duration
         file_hash = compute_file_hash(temp_path)
-        info = sf.info(str(temp_path))  # pyright: ignore[reportUnknownMemberType]
-        duration_seconds = float(info.duration)  # pyright: ignore[reportAny]
 
         # Derive output name
         base_output_name = derive_output_name(Path(data.filename))
@@ -126,7 +123,7 @@ async def upload_file(
                     file_hash=file_hash,
                     storage_url=f"inputs/{profile_name}/{data.filename}",
                     file_size_bytes=file_size,
-                    duration_seconds=duration_seconds,
+                    duration_seconds=0,  # Will be updated by worker callback
                 )
                 session.add(audio_file)
                 await session.commit()
@@ -366,6 +363,16 @@ async def recording_complete(
         # Update recording status
         recording.status = "complete"
         recording.error_message = None
+
+        # Update audio file duration from the first stem
+        if stems_data:
+            audio_file.duration_seconds = stems_data[0].duration_seconds
+            print(
+                f"Updated audio file {audio_file.id} duration to {audio_file.duration_seconds:.2f}s"
+            )
+        else:
+            audio_file.duration_seconds = -1.0  # Sentinel value
+
         await session.commit()
 
         print(f"Recording {recording_id} completed: {len(stems_data)} stems created")
