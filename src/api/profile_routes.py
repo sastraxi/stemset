@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID
 
 from litestar import delete, get, patch
@@ -89,7 +90,7 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
                     peak_amplitude=stem.peak_amplitude,
                     stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
                     audio_url=storage.get_file_url(
-                        profile_name, recording.output_name, stem.stem_type, ".opus"
+                        profile_name, recording.output_name, stem.stem_type, Path(stem.audio_url).suffix
                     ),
                     waveform_url=storage.get_waveform_url(
                         profile_name, recording.output_name, stem.stem_type
@@ -139,11 +140,18 @@ class UpdateDisplayNameRequest(BaseModel):
     display_name: str
 
 
+class UpdateDisplayNameResponse(BaseModel):
+    """Response for updating display name."""
+
+    display_name: str
+    updated_at: str
+
+
 @patch("/api/profiles/{profile_name:str}/files/{output_name:str}/display-name")
 async def update_display_name(
     profile_name: str, output_name: str, data: UpdateDisplayNameRequest
-) -> FileWithStems:
-    """Update the display name for a recording (returns metadata only, no config)."""
+) -> UpdateDisplayNameResponse:
+    """Update the display name for a recording."""
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
@@ -154,10 +162,8 @@ async def update_display_name(
             raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
         # Get recording
-        stmt = (
-            select(Recording)
-            .where(Recording.profile_id == profile.id, Recording.output_name == output_name)
-            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+        stmt = select(Recording).where(
+            Recording.profile_id == profile.id, Recording.output_name == output_name
         )
         result = await session.exec(stmt)
         recording = result.first()
@@ -172,36 +178,9 @@ async def update_display_name(
         await session.commit()
         await session.refresh(recording)
 
-        # Return updated recording (metadata only)
-        from ..storage import get_storage
-
-        storage = get_storage()
-
-        stems = [
-            StemResponse(
-                stem_type=stem.stem_type,
-                measured_lufs=stem.measured_lufs,
-                peak_amplitude=stem.peak_amplitude,
-                stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
-                audio_url=storage.get_file_url(
-                    profile_name, recording.output_name, stem.stem_type, ".opus"
-                ),
-                waveform_url=storage.get_waveform_url(
-                    profile_name, recording.output_name, stem.stem_type
-                ),
-                file_size_bytes=stem.file_size_bytes,
-                duration_seconds=stem.duration_seconds,
-            )
-            for stem in recording.stems
-        ]
-
-        return FileWithStems(
-            id=str(recording.id),
-            name=recording.output_name,
+        return UpdateDisplayNameResponse(
             display_name=recording.display_name,
-            stems=stems,
-            created_at=recording.created_at.isoformat(),
-            # config omitted - client should refetch if needed
+            updated_at=recording.updated_at.isoformat(),
         )
 
 

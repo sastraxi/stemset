@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { X, Upload as UploadIcon, ArrowRight } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Upload as UploadIcon, X } from "lucide-react";
+import { useState } from "react";
 import { Upload } from "./Upload";
 import "./QRUploadOverlay.css";
 
@@ -45,6 +45,7 @@ export function QRUploadOverlay({
 						<span>Upload Your Track</span>
 					</div>
 					<button
+						type="button"
 						onClick={handleClose}
 						className="qr-upload-close"
 						title="Close and view original track"
@@ -64,7 +65,6 @@ export function QRUploadOverlay({
 							profileName={profileName}
 							onUploadComplete={onUploadComplete}
 							onNavigateToRecording={onNavigateToRecording}
-							shouldAutoNavigate={() => true}
 						/>
 
 						<div className="qr-upload-divider">
@@ -72,6 +72,7 @@ export function QRUploadOverlay({
 						</div>
 
 						<button
+							type="button"
 							onClick={handleGoToRecording}
 							className="qr-upload-view-original"
 						>

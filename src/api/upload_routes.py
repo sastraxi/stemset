@@ -279,7 +279,7 @@ async def _process_and_callback(
         output_dir = Path("media") / profile_name / output_name
 
         # Run separation using shared core logic
-        stem_data_list = process_audio_file(
+        stem_data_list = await process_audio_file(
             input_path=input_path,
             output_dir=output_dir,
             profile_name=profile_name,

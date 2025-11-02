@@ -1,10 +1,24 @@
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-
+import {
+	Calendar as CalendarIcon,
+	Check,
+	ChevronsUpDown,
+	Loader2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import type {
+	FileWithStems,
+	RecordingStatusResponse,
+} from "@/api/generated/types.gen";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import {
 	Command,
 	CommandEmpty,
@@ -14,18 +28,20 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
 import {
-	useProfileSongs,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+	useCreateLocation,
 	useCreateSong,
 	useProfileLocations,
-	useCreateLocation,
-	useUpdateRecordingMetadata,
+	useProfileSongs,
 	useRecording,
+	useUpdateRecordingMetadata,
 } from "@/hooks/queries";
-import type { RecordingStatusResponse, FileWithStems } from "@/api/generated/types.gen";
+import { cn } from "@/lib/utils";
 
 interface MetadataPageProps {
 	recording: RecordingStatusResponse | FileWithStems;
@@ -40,7 +56,8 @@ export function MetadataPage({
 	wasInitiallyProcessing,
 	onContinue,
 }: MetadataPageProps) {
-	const recordingId = "recording_id" in recording ? recording.recording_id : recording.id;
+	const recordingId =
+		"recording_id" in recording ? recording.recording_id : recording.id;
 
 	// Poll for recording status updates (every 5 seconds if processing)
 	const { data: polledRecording } = useRecording(recordingId);
@@ -48,8 +65,9 @@ export function MetadataPage({
 	// Use polled recording if available, otherwise use prop
 	const currentRecording = polledRecording || recording;
 
-	const { data: songs = [], isLoading: songsLoading } = useProfileSongs(profileId);
-	const { data: locations = [], isLoading: locationsLoading } = useProfileLocations(profileId);
+	// FIXME: use the loading state of these metadata bits
+	const { data: songs = [] } = useProfileSongs(profileId);
+	const { data: locations = [] } = useProfileLocations(profileId);
 	const createSong = useCreateSong();
 	const createLocation = useCreateLocation();
 	const updateMetadata = useUpdateRecordingMetadata();
@@ -59,7 +77,9 @@ export function MetadataPage({
 		"song" in recording && recording.song ? recording.song.id : null,
 	);
 	const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
-		"location" in recording && recording.location ? recording.location.id : null,
+		"location" in recording && recording.location
+			? recording.location.id
+			: null,
 	);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
 		"date_recorded" in recording && recording.date_recorded
@@ -79,13 +99,16 @@ export function MetadataPage({
 	// Auto-save when values change (debounced)
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			const recordingId = "recording_id" in recording ? recording.recording_id : recording.id;
+			const recordingId =
+				"recording_id" in recording ? recording.recording_id : recording.id;
 			updateMetadata.mutate({
 				path: { recording_id: recordingId },
 				body: {
 					song_id: selectedSongId || undefined,
 					location_id: selectedLocationId || undefined,
-					date_recorded: selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined,
+					date_recorded: selectedDate
+						? format(selectedDate, "yyyy-MM-dd")
+						: undefined,
 				},
 			});
 		}, 500);
@@ -126,13 +149,19 @@ export function MetadataPage({
 				<CardHeader>
 					<div className="flex items-center gap-2">
 						<CardTitle>Recording Metadata</CardTitle>
-						{isProcessing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+						{isProcessing && (
+							<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+						)}
 						{isComplete && <Check className="h-4 w-4 text-green-500" />}
 					</div>
 					<CardDescription>
-						{isProcessing && "Processing... You can add metadata while waiting."}
-						{isComplete && !showContinueButton && "Edit metadata for this recording"}
-						{showContinueButton && "Processing complete! Add metadata or continue to playback."}
+						{isProcessing &&
+							"Processing... You can add metadata while waiting."}
+						{isComplete &&
+							!showContinueButton &&
+							"Edit metadata for this recording"}
+						{showContinueButton &&
+							"Processing complete! Add metadata or continue to playback."}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
@@ -187,7 +216,9 @@ export function MetadataPage({
 													<Check
 														className={cn(
 															"mr-2 h-4 w-4",
-															selectedSongId === song.id ? "opacity-100" : "opacity-0",
+															selectedSongId === song.id
+																? "opacity-100"
+																: "opacity-0",
 														)}
 													/>
 													{song.name}
@@ -212,7 +243,9 @@ export function MetadataPage({
 									aria-expanded={locationOpen}
 									className="w-full justify-between"
 								>
-									{selectedLocation ? selectedLocation.name : "Select location..."}
+									{selectedLocation
+										? selectedLocation.name
+										: "Select location..."}
 									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 								</Button>
 							</PopoverTrigger>
@@ -251,7 +284,9 @@ export function MetadataPage({
 													<Check
 														className={cn(
 															"mr-2 h-4 w-4",
-															selectedLocationId === location.id ? "opacity-100" : "opacity-0",
+															selectedLocationId === location.id
+																? "opacity-100"
+																: "opacity-0",
 														)}
 													/>
 													{location.name}
@@ -278,7 +313,11 @@ export function MetadataPage({
 									)}
 								>
 									<CalendarIcon className="mr-2 h-4 w-4" />
-									{selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+									{selectedDate ? (
+										format(selectedDate, "PPP")
+									) : (
+										<span>Pick a date</span>
+									)}
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent className="w-auto p-0" align="start">
@@ -289,7 +328,9 @@ export function MetadataPage({
 										setSelectedDate(date);
 										setDateOpen(false);
 									}}
-									disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+									disabled={(date) =>
+										date > new Date() || date < new Date("1900-01-01")
+									}
 									initialFocus
 								/>
 							</PopoverContent>

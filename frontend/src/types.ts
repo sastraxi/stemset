@@ -1,12 +1,4 @@
-import type { FileWithStems, StemResponse } from "./api/generated/types.gen";
-
-// ============================================================================
-// API / Server Metadata Types (immutable, from backend)
-// ============================================================================
-
-export interface StemFileWithDisplayName extends FileWithStems {
-	displayName: string; // Computed from display_name or defaults to name
-}
+import type { StemResponse } from "./api/generated/types.gen";
 
 // ============================================================================
 // Audio Layer Types (Web Audio API, derived from metadata)

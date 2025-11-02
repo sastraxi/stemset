@@ -117,7 +117,7 @@ def _pad_audio_if_too_short(
     return padded_path, min_duration_seconds
 
 
-def process_audio_file(
+async def process_audio_file(
     input_path: Path,
     output_dir: Path,
     profile_name: str,
@@ -161,7 +161,7 @@ def process_audio_file(
 
     # Run separation
     separator = StemSeparator(profile_name, strategy_name, FINAL_OUTPUT_CONFIG)
-    stems_metadata = separator.separate_and_normalize(padded_input_path, output_dir)
+    stems_metadata = await separator.separate_and_normalize(padded_input_path, output_dir)
 
     # Convert to callback format
     stem_data_list: list[StemData] = []

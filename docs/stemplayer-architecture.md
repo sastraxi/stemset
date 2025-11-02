@@ -43,10 +43,6 @@ export interface StemFile {
   metadata_url: string;
 }
 
-export interface StemFileWithDisplayName extends StemFile {
-  displayName: string;
-}
-
 export interface StemMetadata {
   stem_type: string;
   measured_lufs: number | null;

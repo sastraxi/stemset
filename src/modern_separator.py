@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from .config import AudioFormat, OutputConfig, get_config
@@ -37,10 +38,10 @@ class StemSeparator:
         self.executor = StrategyExecutor(strategy, LOSSLESS_OUTPUT_CONFIG)
         self.output_config = output_config
 
-    def separate_and_normalize(
+    async def separate_and_normalize(
         self, input_file: Path, output_folder: Path, delete_intermediates: bool = True
     ) -> StemsMetadata:
-        """Separate audio into stems with metadata.
+        """Separate audio into stems with metadata asynchronously.
 
         Args:
             input_file: Path to input WAV file
@@ -52,6 +53,21 @@ class StemSeparator:
 
         Raises:
             RuntimeError: If separation fails
+        """
+        return await asyncio.to_thread(
+            self._separate_and_normalize_sync,
+            input_file,
+            output_folder,
+            delete_intermediates,
+        )
+
+    def _separate_and_normalize_sync(
+        self, input_file: Path, output_folder: Path, delete_intermediates: bool = True
+    ) -> StemsMetadata:
+        """Synchronous core logic for audio separation.
+
+        This method contains the CPU-bound operations and is intended to be run
+        in a separate thread via asyncio.to_thread.
         """
         # Execute strategy tree
         stem_paths = self.executor.execute(input_file, output_folder)

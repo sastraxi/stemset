@@ -188,12 +188,52 @@ export type UpdateDisplayNameRequest = {
 };
 
 /**
+ * UpdateDisplayNameResponse
+ */
+export type UpdateDisplayNameResponse = {
+  display_name: string;
+  updated_at: string;
+};
+
+/**
  * UpdateRecordingMetadataRequest
  */
 export type UpdateRecordingMetadataRequest = {
   song_id?: string | null;
   location_id?: string | null;
   date_recorded?: string | null;
+};
+
+/**
+ * UploadResponse
+ */
+export type UploadResponse = {
+  recording_id: string;
+  profile_name: string;
+  output_name: string;
+  filename: string;
+  status: string;
+  message?: string | null;
+};
+
+/**
+ * WorkerAcceptedResponse
+ */
+export type WorkerAcceptedResponse = {
+  status: string;
+  recording_id: string;
+};
+
+/**
+ * WorkerJobPayload
+ */
+export type WorkerJobPayload = {
+  recording_id: string;
+  profile_name: string;
+  strategy_name: string;
+  input_filename: string;
+  output_name: string;
+  callback_url: string;
 };
 
 export type AuthStatusAuthStatusData = {
@@ -409,7 +449,7 @@ export type ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameRes
     /**
      * Request fulfilled, document follows
      */
-    200: FileWithStems;
+    200: UpdateDisplayNameResponse;
   };
 
 export type ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponse =
@@ -715,9 +755,7 @@ export type ApiUploadProfileNameUploadFileResponses = {
   /**
    * Document created, URL follows
    */
-  201: {
-    [key: string]: string;
-  };
+  201: UploadResponse;
 };
 
 export type ApiUploadProfileNameUploadFileResponse =
@@ -806,9 +844,7 @@ export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse =
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses[keyof ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses];
 
 export type ApiProcessProcessLocalData = {
-  body: {
-    [key: string]: string;
-  };
+  body: WorkerJobPayload;
   path?: never;
   query?: never;
   url: "/api/process";
@@ -837,9 +873,7 @@ export type ApiProcessProcessLocalResponses = {
   /**
    * Document created, URL follows
    */
-  201: {
-    [key: string]: string;
-  };
+  201: WorkerAcceptedResponse;
 };
 
 export type ApiProcessProcessLocalResponse =

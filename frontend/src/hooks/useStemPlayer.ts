@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { StemResponse } from "../api/generated/types.gen";
 import type {
 	EffectsChainConfig,
@@ -15,20 +15,7 @@ import { useStemAudioNodes } from "./useStemAudioNodes";
 
 /**
  * Orchestrator hook for multi-stem audio player.
- *
- * NEW ARCHITECTURE - No getter functions, all state at top level
- *
- * Data flow:
- * 1. Load audio buffers (useAudioLoader)
- * 2. Create audio nodes (useStemAudioNodes)
- * 3. Manage stem state (local state in this hook)
- * 4. Apply stem state to audio nodes (useEffect)
- * 5. Persist changes to localStorage (useRecordingConfig)
- *
- * Key insight: Stem state (gains, mutes, solos) is just React state.
- * Audio nodes react to state changes via useEffect.
  */
-
 export interface UseStemPlayerOptions {
 	profileName: string;
 	fileName: string;
@@ -118,7 +105,7 @@ export function useStemPlayer({
 	const masterOutput = getMasterOutput();
 
 	// 2. Persist stem configs (volume, mute, solo) and playback position independently
-	const { config: stemConfigs, setConfig: setStemConfigsState } =
+	const { config: stemConfigs, setConfig: setStemConfigs } =
 		useConfigPersistence<Record<string, StemUserConfig>>({
 			recordingId,
 			configKey: "stems",
@@ -142,7 +129,6 @@ export function useStemPlayer({
 		loadingMetrics,
 		stems: loadedStems,
 		duration,
-		metadataBaseUrl,
 	} = useAudioLoader({
 		profileName,
 		fileName,
@@ -157,53 +143,37 @@ export function useStemPlayer({
 		stems: loadedStems,
 	});
 
-	// 5. Stem view models (merge metadata + user config)
-	const [stems, setStems] = useState<Record<string, StemViewModel>>({});
-	const [stemOrder, setStemOrder] = useState<string[]>([]);
-	const stemsInitializedRef = useRef(false);
-	const playbackPositionInitializedRef = useRef(false);
+	// 5. Stem view models (derived from nodes and persisted config)
+	const stemOrder = useMemo(() => {
+		if (stemNodes.size === 0) return [];
+		const order = Array.from(stemNodes.keys());
+		order.sort((a, b) => a.localeCompare(b));
+		return order;
+	}, [stemNodes]);
 
-	// Initialize stem view models when audio nodes are created
-	// ONLY RUNS ONCE - subsequent changes to stemConfigs don't re-initialize
-	useEffect(() => {
-		if (stemNodes.size === 0) return;
-		if (stemsInitializedRef.current) return; // Already initialized, skip
-
+	const stems: Record<string, StemViewModel> = useMemo(() => {
 		const newStems: Record<string, StemViewModel> = {};
-		const order: string[] = [];
-
 		stemNodes.forEach((node, name) => {
 			const savedStem = stemConfigs[name];
 			const loadedStem = loadedStems.get(name);
 			const metadata = loadedStem?.metadata;
 
 			newStems[name] = {
-				// Identity
 				name,
-
-				// From metadata (immutable)
 				stemType: metadata?.stem_type || "unknown",
 				waveformUrl: metadata?.waveform_url || "",
 				initialGain: node.initialGain,
-
-				// From user config (mutable)
 				gain: savedStem?.gain ?? node.initialGain,
 				muted: savedStem?.muted ?? false,
 				soloed: savedStem?.soloed ?? false,
 			};
-			order.push(name);
 		});
-
-		order.sort((a, b) => a.localeCompare(b));
-
-		setStems(newStems);
-		setStemOrder(order);
-		stemsInitializedRef.current = true; // Mark as initialized
-	}, [stemNodes, metadataBaseUrl, loadedStems, stemConfigs]);
+		return newStems;
+	}, [stemNodes, loadedStems, stemConfigs]);
 
 	// 6. Apply stem state to audio nodes (reactive!)
 	useEffect(() => {
-		if (stemNodes.size === 0) return;
+		if (stemNodes.size === 0 || Object.keys(stems).length === 0) return;
 
 		const hasSolo = Object.values(stems).some((s) => s.soloed);
 
@@ -225,24 +195,6 @@ export function useStemPlayer({
 		});
 	}, [stems, stemNodes]);
 
-	// Persist stem configs when they change
-	useEffect(() => {
-		if (Object.keys(stems).length === 0) return; // Not initialized yet
-
-		// Extract just the user config portion (gain, muted, soloed)
-		const configs: Record<string, StemUserConfig> = {};
-		Object.entries(stems).forEach(([name, stem]) => {
-			configs[name] = {
-				gain: stem.gain,
-				muted: stem.muted,
-				soloed: stem.soloed,
-			};
-		});
-
-		setStemConfigsState(configs);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [stems]); // Intentionally omit setStemConfigsState to avoid infinite loop
-
 	// 7. Audio effects (each effect persists its own config independently)
 	const { eq, compressor, reverb, stereoExpander } = useAudioEffects({
 		audioContext,
@@ -260,6 +212,7 @@ export function useStemPlayer({
 			initialPosition: playbackPositionConfig.position,
 		});
 
+	const playbackPositionInitializedRef = useRef(false);
 	// Mark playback position as initialized after first render to avoid saving initial state
 	useEffect(() => {
 		// Wait one tick to ensure currentTime has been updated from initialPosition
@@ -285,36 +238,54 @@ export function useStemPlayer({
 			// If current position is beyond song length, reset to beginning
 			stop();
 		}
-	}, [duration, currentTime, seek]);
+	}, [duration, currentTime, stop]);
 
 	// Stem control actions
-	const setStemGain = useCallback((stemName: string, gain: number) => {
-		setStems((prev) => ({
-			...prev,
-			[stemName]: { ...prev[stemName], gain: Math.max(0, Math.min(gain, 2)) },
-		}));
-	}, []);
+	const setStemGain = useCallback(
+		(stemName: string, gain: number) => {
+			const newGain = Math.max(0, Math.min(gain, 2));
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], gain: newGain },
+			});
+		},
+		[stemConfigs, setStemConfigs],
+	);
 
-	const resetStemGain = useCallback((stemName: string) => {
-		setStems((prev) => ({
-			...prev,
-			[stemName]: { ...prev[stemName], gain: prev[stemName].initialGain },
-		}));
-	}, []);
+	const resetStemGain = useCallback(
+		(stemName: string) => {
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: {
+					...stemConfigs[stemName],
+					gain: stems[stemName]?.initialGain ?? 1,
+				},
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
 
-	const toggleMute = useCallback((stemName: string) => {
-		setStems((prev) => ({
-			...prev,
-			[stemName]: { ...prev[stemName], muted: !prev[stemName].muted },
-		}));
-	}, []);
+	const toggleMute = useCallback(
+		(stemName: string) => {
+			const currentMuted = stems[stemName]?.muted ?? false;
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], muted: !currentMuted },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
 
-	const toggleSolo = useCallback((stemName: string) => {
-		setStems((prev) => ({
-			...prev,
-			[stemName]: { ...prev[stemName], soloed: !prev[stemName].soloed },
-		}));
-	}, []);
+	const toggleSolo = useCallback(
+		(stemName: string) => {
+			const currentSoloed = stems[stemName]?.soloed ?? false;
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], soloed: !currentSoloed },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
 
 	return {
 		// Loading

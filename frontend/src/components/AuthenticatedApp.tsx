@@ -15,7 +15,7 @@ import "../styles/player.css";
 import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
-import type { StemFileWithDisplayName } from "../types";
+import type { FileWithStems } from "@/api/generated";
 import { InlineEdit } from "./InlineEdit";
 import { MetadataPage } from "./MetadataPage";
 import { ProfileSelector } from "./ProfileSelector";
@@ -35,6 +35,8 @@ interface AuthenticatedAppProps {
 	initialStateParam?: string;
 }
 
+const getDisplayName = (file: FileWithStems) => file.display_name || file.name;
+
 export function AuthenticatedApp({
 	user,
 	onLogout,
@@ -46,8 +48,7 @@ export function AuthenticatedApp({
 	const [selectedProfile, setSelectedProfile] = useState<string | null>(
 		initialProfile || null,
 	);
-	const [selectedFile, setSelectedFile] =
-		useState<StemFileWithDisplayName | null>(null);
+	const [selectedFile, setSelectedFile] = useState<FileWithStems | null>(null);
 	const [isLoadingStems, setIsLoadingStems] = useState(false);
 	const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
@@ -164,7 +165,7 @@ export function AuthenticatedApp({
 		navigate({ to: "/p/$profileName", params: { profileName } });
 	};
 
-	const handleFileSelect = (file: StemFileWithDisplayName) => {
+	const handleFileSelect = (file: FileWithStems) => {
 		setSelectedFile(file);
 		if (selectedProfile) {
 			console.log("handleFileSelect:", file);
@@ -192,7 +193,7 @@ export function AuthenticatedApp({
 		if (!selectedFile || !selectedProfile) return;
 
 		try {
-			await updateDisplayNameMutation.mutateAsync({
+			const updatedData = await updateDisplayNameMutation.mutateAsync({
 				path: {
 					profile_name: selectedProfile,
 					output_name: selectedFile.name,
@@ -200,6 +201,15 @@ export function AuthenticatedApp({
 				body: {
 					display_name: newDisplayName,
 				},
+			});
+
+			// Update the selectedFile state to trigger re-render of InlineEdit
+			setSelectedFile((prevFile) => {
+				if (!prevFile) return null;
+				return {
+					...prevFile,
+					display_name: updatedData.display_name,
+				};
 			});
 
 			toast.success("Display name updated");
@@ -339,7 +349,7 @@ export function AuthenticatedApp({
 										<span
 											className={`truncate ${selectedFile?.name === file.name ? "font-bold" : ""}`}
 										>
-											{file.displayName}
+											{getDisplayName(file)}
 										</span>
 										{selectedFile?.name === file.name && (
 											<Music className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
@@ -355,12 +365,14 @@ export function AuthenticatedApp({
 					className={`player-area ${isOnRecordingRoute ? "block" : "md:block hidden"}`}
 				>
 					{selectedFile && selectedProfile ? (
-						(selectedFile.status === "processing" ||
-							selectedFile.status === "error" ||
-							(wasInitiallyProcessing && selectedFile.status === "complete")) ? (
+						selectedFile.status === "processing" ||
+						selectedFile.status === "error" ||
+						(wasInitiallyProcessing && selectedFile.status === "complete") ? (
 							<MetadataPage
 								recording={selectedFile}
-								profileId={profiles?.find((p) => p.name === selectedProfile)?.id || ""}
+								profileId={
+									profiles?.find((p) => p.name === selectedProfile)?.id || ""
+								}
 								wasInitiallyProcessing={wasInitiallyProcessing}
 								onContinue={() => {
 									setWasInitiallyProcessing(false);
@@ -372,7 +384,7 @@ export function AuthenticatedApp({
 									<div className="recording-header">
 										<h2 className="recording-name">
 											<InlineEdit
-												value={selectedFile.displayName}
+												value={getDisplayName(selectedFile)}
 												onSave={handleSaveDisplayName}
 												placeholder={selectedFile.name}
 											/>

@@ -31,11 +31,6 @@ export function useProfileFiles(profileName: string | undefined) {
 		...options,
 		enabled: !!profileName,
 		staleTime: 30 * 1000, // 30 seconds
-		select: (data) =>
-			data.map((file) => ({
-				...file,
-				displayName: file.display_name || file.name,
-			})),
 	});
 }
 
@@ -65,12 +60,20 @@ export function useUpdateDisplayName() {
 
 	return useMutation({
 		...mutationOptions,
-		onSuccess: (_data, variables) => {
-			queryClient.invalidateQueries({
-				queryKey: apiProfilesProfileNameFilesGetProfileFilesQueryKey({
+		onSuccess: (data, variables) => {
+			queryClient.setQueryData(
+				apiProfilesProfileNameFilesGetProfileFilesQueryKey({
 					path: { profile_name: variables.path.profile_name },
 				}),
-			});
+				(oldData: any) => {
+					if (!oldData) return oldData;
+					return oldData.map((file: any) =>
+						file.name === variables.path.output_name
+							? { ...file, displayName: data.display_name, display_name: data.display_name }
+							: file
+					);
+				}
+			);
 		},
 	});
 }

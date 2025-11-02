@@ -47,20 +47,22 @@ export function WaveformVisualization({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const imageRef = useRef<HTMLImageElement | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
+	const [isImageLoaded, setIsImageLoaded] = useState(false);
 
 	// Load waveform image
 	useEffect(() => {
 		if (!waveformUrl) {
 			imageRef.current = null;
+			setIsImageLoaded(false);
 			return;
 		}
 
+		setIsImageLoaded(false);
 		const img = new Image();
 		img.crossOrigin = "anonymous"; // For CORS if needed
 		img.onload = () => {
 			imageRef.current = img;
-			// Defer rendering to next frame to ensure container is properly sized
-			requestAnimationFrame(() => renderWaveform());
+			setIsImageLoaded(true);
 		};
 		img.onerror = (e) => {
 			console.error(
@@ -69,9 +71,10 @@ export function WaveformVisualization({
 				e,
 			);
 			imageRef.current = null;
+			setIsImageLoaded(false);
 		};
 		img.src = waveformUrl;
-	}, [waveformUrl]);
+	}, [waveformUrl, stemName]);
 
 	// Render waveform with dual-tone coloring (greyscale left, vibrant right)
 	const renderWaveform = () => {
@@ -204,10 +207,13 @@ export function WaveformVisualization({
 		}
 	};
 
-	// Re-render on time change, preview time change, or duration change
+	// Re-render when data changes or image loads
 	useEffect(() => {
-		renderWaveform();
-	}, [currentTime, previewTime, duration]);
+		if (isImageLoaded) {
+			// Defer rendering to next frame to ensure container is properly sized
+			requestAnimationFrame(() => renderWaveform());
+		}
+	}, [isImageLoaded, currentTime, previewTime, duration]);
 
 	// Watch for container size changes using ResizeObserver
 	useEffect(() => {
@@ -215,7 +221,9 @@ export function WaveformVisualization({
 		if (!container) return;
 
 		const resizeObserver = new ResizeObserver(() => {
-			renderWaveform();
+			if (isImageLoaded) {
+				renderWaveform();
+			}
 		});
 
 		resizeObserver.observe(container);
@@ -223,7 +231,7 @@ export function WaveformVisualization({
 		return () => {
 			resizeObserver.disconnect();
 		};
-	}, []);
+	}, [isImageLoaded]);
 
 	// Real-time scrubbing handlers
 	const getSeekTime = (clientX: number) => {
