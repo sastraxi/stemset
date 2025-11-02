@@ -12,22 +12,23 @@ from uuid import UUID
 
 import httpx
 import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
-from litestar import post, get
-from litestar.params import Body
+from litestar import get, post
 from litestar.datastructures import UploadFile
-from litestar.exceptions import NotFoundException, ValidationException
 from litestar.enums import RequestEncodingType
+from litestar.exceptions import NotFoundException, ValidationException
+from litestar.params import Body
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
-from ..db.models import AudioFile, Profile, Recording, Stem, RecordingUserConfig as DBRecordingUserConfig, User
+from ..db.models import AudioFile, Profile, Recording, Stem, User
+from ..db.models import RecordingUserConfig as DBRecordingUserConfig
 from ..processor.core import process_audio_file
 from ..processor.models import ProcessingCallbackPayload, StemDataModel
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
-from .models import RecordingStatusResponse, RecordingConfigData
+from .models import RecordingConfigData, RecordingStatusResponse
 from .state import AppState
 from .types import AppRequest
 
@@ -172,7 +173,10 @@ async def upload_file(
             worker_url = f"{state.backend_url}/api/process"
 
         # Create callback URL
-        callback_url = f"{state.backend_url}/api/recordings/{recording.id}/complete/{verification_token}"
+        print("State backend URL is ", state.backend_url)
+        callback_url = (
+            f"{state.backend_url}/api/recordings/{recording.id}/complete/{verification_token}"
+        )
 
         # Create worker payload
         worker_payload = {
@@ -389,7 +393,11 @@ async def get_recording_status(
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
         # Fetch recording with stems
-        stmt = select(Recording).where(Recording.id == recording_id).options(selectinload(Recording.stems))  # pyright: ignore
+        stmt = (
+            select(Recording)
+            .where(Recording.id == recording_id)
+            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+        )
         result = await session.exec(stmt)
         recording = result.first()
 
@@ -415,16 +423,18 @@ async def get_recording_status(
                         profile.name, recording.output_name, stem.stem_type
                     )
 
-                    stems_list.append({
-                        "stem_type": stem.stem_type,
-                        "measured_lufs": stem.measured_lufs,
-                        "peak_amplitude": stem.peak_amplitude,
-                        "stem_gain_adjustment_db": stem.stem_gain_adjustment_db,
-                        "audio_url": audio_url,
-                        "waveform_url": waveform_url,
-                        "file_size_bytes": stem.file_size_bytes,
-                        "duration_seconds": stem.duration_seconds,
-                    })
+                    stems_list.append(
+                        {
+                            "stem_type": stem.stem_type,
+                            "measured_lufs": stem.measured_lufs,
+                            "peak_amplitude": stem.peak_amplitude,
+                            "stem_gain_adjustment_db": stem.stem_gain_adjustment_db,
+                            "audio_url": audio_url,
+                            "waveform_url": waveform_url,
+                            "file_size_bytes": stem.file_size_bytes,
+                            "duration_seconds": stem.duration_seconds,
+                        }
+                    )
 
         # Load user-specific config if user is authenticated
         config_data = RecordingConfigData()  # Default to empty config
