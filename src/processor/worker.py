@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
 
 import httpx
 import modal
@@ -78,9 +77,8 @@ r2_mount = modal.CloudBucketMount(
     timeout=240,
     volumes={"/r2": r2_mount},
 )
-@modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
-def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
-    """Process audio file using GPU and call back with stem data.
+def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
+    """Internal function that performs actual processing (spawned asynchronously).
 
     Workflow:
     1. Download input from R2
@@ -89,7 +87,7 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
     4. Call back to API with pointers to metadata
 
     Args:
-        job_data: Worker payload with recording_id, profile_name, strategy_name, etc.
+        job_data: Worker job payload dict (WorkerJobPayload.model_dump())
 
     Returns:
         Status dict
@@ -100,18 +98,18 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
 
     from src.config import get_config
     from src.processor.core import process_audio_file
-    from src.processor.models import ProcessingCallbackPayload, StemDataModel
+    from src.processor.models import ProcessingCallbackPayload, StemDataModel, WorkerJobPayload
     from src.storage import R2Storage
     from src.utils import compute_file_hash
 
-    # Parse job data (no Pydantic model - just dict)
-    recording_id = job_data["recording_id"]
-    verification_token = job_data["verification_token"]
-    profile_name = job_data["profile_name"]
-    strategy_name = job_data["strategy_name"]
-    input_filename = job_data["input_filename"]
-    output_name = job_data["output_name"]
-    callback_url = job_data["callback_url"]
+    # Parse and validate job data with Pydantic
+    payload = WorkerJobPayload(**job_data)
+    recording_id = payload.recording_id
+    profile_name = payload.profile_name
+    strategy_name = payload.strategy_name
+    input_filename = payload.input_filename
+    output_name = payload.output_name
+    callback_url = payload.callback_url
 
     try:
         # Load config
@@ -205,3 +203,32 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             print(f"Failed to send error callback: {callback_error}")
 
         return {"status": "error", "error": error_msg, "recording_id": recording_id}
+
+
+@app.function(image=image)  # pyright: ignore[reportUnknownMemberType]
+@modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
+def process(job_data: dict[str, str]) -> dict[str, str]:
+    """FastAPI endpoint that spawns processing job and returns immediately.
+
+    Args:
+        job_data: Worker job payload dict (from WorkerJobPayload.model_dump())
+
+    Returns:
+        WorkerAcceptedResponse as dict
+    """
+    import sys
+
+    sys.path.insert(0, "/root")
+
+    from src.processor.models import WorkerAcceptedResponse, WorkerJobPayload
+
+    # Validate payload with Pydantic
+    payload = WorkerJobPayload(**job_data)
+
+    # Spawn the processing job asynchronously (returns immediately)
+    _ = _process_internal.spawn(job_data)
+
+    print(f"Spawned processing job for recording {payload.recording_id}")
+
+    response = WorkerAcceptedResponse(status="accepted", recording_id=payload.recording_id)
+    return response.model_dump()

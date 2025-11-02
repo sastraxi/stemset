@@ -39,3 +39,35 @@ class ProcessingCallbackPayload(BaseModel):
     status: str  # "complete" or "error"
     stems: list[StemDataModel] | None = None  # Only present when status="complete"
     error: str | None = None  # Only present when status="error"
+
+
+class WorkerJobPayload(BaseModel):
+    """Payload sent to worker (Modal or local) to initiate processing.
+
+    Note: verification_token is embedded in callback_url path, not sent separately.
+    """
+
+    recording_id: str
+    profile_name: str
+    strategy_name: str
+    input_filename: str
+    output_name: str
+    callback_url: str  # Contains embedded verification_token in URL path
+
+
+class WorkerAcceptedResponse(BaseModel):
+    """Response from worker when job is accepted."""
+
+    status: str  # "accepted"
+    recording_id: str
+
+
+class UploadResponse(BaseModel):
+    """Response from upload endpoint."""
+
+    recording_id: str
+    profile_name: str
+    output_name: str
+    filename: str
+    status: str  # "processing" or "complete"
+    message: str | None = None  # Optional message for already-processed files

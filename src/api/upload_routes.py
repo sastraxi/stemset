@@ -27,7 +27,13 @@ from ..db.config import get_engine
 from ..db.models import AudioFile, Location, Profile, Recording, Song, Stem, User
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
 from ..processor.core import process_audio_file
-from ..processor.models import ProcessingCallbackPayload, StemDataModel
+from ..processor.models import (
+    ProcessingCallbackPayload,
+    StemDataModel,
+    UploadResponse,
+    WorkerAcceptedResponse,
+    WorkerJobPayload,
+)
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
 from .models import RecordingConfigData, RecordingStatusResponse
@@ -40,7 +46,7 @@ async def upload_file(
     profile_name: str,
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
     state: AppState,
-) -> dict[str, str]:
+) -> Response[UploadResponse]:
     """Upload an audio file and trigger processing (local or remote).
 
     Workflow:
@@ -142,14 +148,16 @@ async def upload_file(
 
             if existing_recording and existing_recording.status == "complete":
                 print(f"File already processed (recording {existing_recording.id}), skipping")
-                return {
-                    "recording_id": str(existing_recording.id),
-                    "profile_name": profile.name,
-                    "output_name": output_name,
-                    "filename": data.filename,
-                    "status": "complete",
-                    "message": "File already processed",
-                }
+                return Response(
+                    UploadResponse(
+                        recording_id=str(existing_recording.id),
+                        profile_name=profile.name,
+                        output_name=output_name,
+                        filename=data.filename,
+                        status="complete",
+                        message="File already processed",
+                    )
+                )
 
             # Create new Recording record
             verification_token = secrets.token_urlsafe(32)
@@ -164,49 +172,79 @@ async def upload_file(
             await session.commit()
             await session.refresh(recording)
 
-        # Determine worker URL (Modal or self-callback)
-        gpu_worker_url = config.gpu_worker_url or os.getenv("GPU_WORKER_URL")
-        if gpu_worker_url:
-            worker_url = gpu_worker_url.rstrip("/")
-        else:
-            # Self-callback for local processing
-            worker_url = f"{state.backend_url}/api/process"
-
         # Create callback URL
-        print("State backend URL is ", state.backend_url)
         callback_url = (
             f"{state.backend_url}/api/recordings/{recording.id}/complete/{verification_token}"
         )
 
-        # Create worker payload
-        worker_payload = {
-            "recording_id": str(recording.id),
-            "verification_token": verification_token,
-            "profile_name": profile_name,
-            "strategy_name": profile.strategy_name,
-            "input_filename": data.filename,
-            "output_name": output_name,
-            "callback_url": callback_url,
-        }
+        # Determine worker (Modal or local background task)
+        gpu_worker_url = config.gpu_worker_url or os.getenv("GPU_WORKER_URL")
 
-        # Trigger worker (fire-and-forget)
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(worker_url, json=worker_payload)
-                _ = response.raise_for_status()
-        except (httpx.TimeoutException, httpx.HTTPError) as e:
-            print(f"Warning: Failed to trigger worker: {e}")
-            # Recording is in database with status="processing" and can be retried
+        if gpu_worker_url:
+            # Remote Modal worker - trigger via HTTP
+            worker_payload = WorkerJobPayload(
+                recording_id=str(recording.id),
+                profile_name=profile_name,
+                strategy_name=profile.strategy_name,
+                input_filename=data.filename,
+                output_name=output_name,
+                callback_url=callback_url,
+            )
 
-        print(f"Recording {recording.id} created for {output_name}")
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.post(
+                        gpu_worker_url, json=worker_payload.model_dump()
+                    )
+                    _ = response.raise_for_status()
+                    print(f"Triggered Modal worker for recording {recording.id}")
+            except (httpx.TimeoutException, httpx.HTTPError) as e:
+                print(f"Error: Failed to trigger Modal worker: {e}")
+                # Clean up the recording on failure
+                async with AsyncSession(get_engine()) as session:
+                    stmt = select(Recording).where(Recording.id == recording.id)
+                    result = await session.exec(stmt)
+                    failed_recording = result.first()
+                    if failed_recording:
+                        failed_recording.status = "error"
+                        failed_recording.error_message = f"Failed to start processing: {e}"
+                        await session.commit()
+                raise ValidationException(f"Failed to start processing: {e}")
 
-        return {
-            "recording_id": str(recording.id),
-            "profile_name": profile.name,
-            "output_name": output_name,
-            "filename": data.filename,
-            "status": "processing",
-        }
+            return Response(
+                UploadResponse(
+                    recording_id=str(recording.id),
+                    profile_name=profile.name,
+                    output_name=output_name,
+                    filename=data.filename,
+                    status="processing",
+                )
+            )
+        else:
+            # Local processing - use background task directly (no self-HTTP-call!)
+            print(f"[Local Worker] Queueing recording {recording.id} for background processing")
+
+            task = BackgroundTask(
+                _process_and_callback,
+                str(recording.id),
+                profile_name,
+                profile.strategy_name,
+                data.filename,
+                output_name,
+                callback_url,
+                config,
+            )
+
+            return Response(
+                UploadResponse(
+                    recording_id=str(recording.id),
+                    profile_name=profile.name,
+                    output_name=output_name,
+                    filename=data.filename,
+                    status="processing",
+                ),
+                background=task,
+            )
 
     finally:
         temp_path.unlink(missing_ok=True)
@@ -282,43 +320,36 @@ async def _process_and_callback(
 
 @post("/api/process")
 async def process_local(
-    data: dict[str, str], state: AppState
-) -> Response[dict[str, str]]:
+    data: WorkerJobPayload, state: AppState
+) -> Response[WorkerAcceptedResponse]:
     """Local processing endpoint (acts as GPU worker for development).
 
     This endpoint receives the same payload as the Modal GPU worker,
     but processes the audio locally in a background task.
 
     Args:
-        data: Worker payload with recording_id, profile_name, etc.
+        data: Worker job payload
         state: Litestar application state
 
     Returns:
         Accepted status (processing happens in background)
     """
-    recording_id = data["recording_id"]
-    profile_name = data["profile_name"]
-    strategy_name = data["strategy_name"]
-    input_filename = data["input_filename"]
-    output_name = data["output_name"]
-    callback_url = data["callback_url"]
-
-    print(f"[Local Worker] Processing recording {recording_id}")
+    print(f"[Local Worker] Processing recording {data.recording_id}")
 
     # Create background task
     task = BackgroundTask(
         _process_and_callback,
-        recording_id,
-        profile_name,
-        strategy_name,
-        input_filename,
-        output_name,
-        callback_url,
+        data.recording_id,
+        data.profile_name,
+        data.strategy_name,
+        data.input_filename,
+        data.output_name,
+        data.callback_url,
         state.config,
     )
 
     return Response(
-        {"status": "accepted", "recording_id": recording_id},
+        WorkerAcceptedResponse(status="accepted", recording_id=data.recording_id),
         background=task,
     )
 
