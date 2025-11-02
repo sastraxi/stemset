@@ -456,7 +456,6 @@ docker build --target processing -t stemset-processing .
 ```bash
 docker run -p 8000:8000 \
   -e STEMSET_BYPASS_AUTH=true \
-  -e STEMSET_LOCAL_STORAGE=true \
   -v $(pwd)/media:/app/media \
   stemset-api
 ```

@@ -17,6 +17,7 @@ import "../styles/splash.css";
 import "../styles/waveform.css";
 import type { StemFileWithDisplayName } from "../types";
 import { InlineEdit } from "./InlineEdit";
+import { ProcessingState } from "./ProcessingState";
 import { ProfileSelector } from "./ProfileSelector";
 import { QRUploadOverlay } from "./QRUploadOverlay";
 import { Spinner } from "./Spinner";
@@ -341,35 +342,48 @@ export function AuthenticatedApp({
 					className={`player-area ${isOnRecordingRoute ? "block" : "md:block hidden"}`}
 				>
 					{selectedFile && selectedProfile ? (
-						<>
-							{!isLoadingStems && (
-								<div className="recording-header">
-									<h2 className="recording-name">
-										<InlineEdit
-											value={selectedFile.displayName}
-											onSave={handleSaveDisplayName}
-											placeholder={selectedFile.name}
-										/>
-									</h2>
-									<div className="flex-grow" />
-									<div
-										id="playback-controls-container"
-										className="playback-controls-header"
-									>
-										{/* Playback controls will be rendered here by StemPlayer */}
-									</div>
-								</div>
-							)}
-							<StemPlayer
-								key={`${selectedProfile}::${selectedFile.name}`}
-								ref={stemPlayerRef}
-								profileName={selectedProfile}
-								fileName={selectedFile.name}
-								stemsData={selectedFile.stems}
-								onLoadingChange={setIsLoadingStems}
-								recordingId={selectedFile.id}
+						selectedFile.status === "processing" ||
+						selectedFile.status === "error" ? (
+							<ProcessingState
+								displayName={selectedFile.displayName}
+								status={selectedFile.status}
+								errorMessage={
+									selectedFile.status === "error"
+										? "Processing failed. Please try again."
+										: undefined
+								}
 							/>
-						</>
+						) : (
+							<>
+								{!isLoadingStems && (
+									<div className="recording-header">
+										<h2 className="recording-name">
+											<InlineEdit
+												value={selectedFile.displayName}
+												onSave={handleSaveDisplayName}
+												placeholder={selectedFile.name}
+											/>
+										</h2>
+										<div className="flex-grow" />
+										<div
+											id="playback-controls-container"
+											className="playback-controls-header"
+										>
+											{/* Playback controls will be rendered here by StemPlayer */}
+										</div>
+									</div>
+								)}
+								<StemPlayer
+									key={`${selectedProfile}::${selectedFile.name}`}
+									ref={stemPlayerRef}
+									profileName={selectedProfile}
+									fileName={selectedFile.name}
+									stemsData={selectedFile.stems}
+									onLoadingChange={setIsLoadingStems}
+									recordingId={selectedFile.id}
+								/>
+							</>
+						)
 					) : (
 						<div className="empty-state">
 							<p>Select a recording to start playing</p>

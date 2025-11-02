@@ -18,6 +18,7 @@ export function useAudioSession(audioContext: AudioContext | null) {
 			if (
 				"audioSession" in navigator &&
 				navigator.audioSession &&
+				typeof navigator.audioSession === "object" &&
 				"type" in navigator.audioSession
 			) {
 				try {

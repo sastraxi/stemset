@@ -95,12 +95,11 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
     """
     import sys
 
-    import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
-
     sys.path.insert(0, "/root")
 
     from src.config import get_config
-    from src.modern_separator import StemSeparator
+    from src.processor.core import process_audio_file
+    from src.processor.models import ProcessingCallbackPayload, StemDataModel
     from src.storage import R2Storage
     from src.utils import compute_file_hash
 
@@ -142,24 +141,24 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
 
             # Create temp output directory
             output_dir = temp_path / "output"
-            output_dir.mkdir()
 
-            # Process the audio
+            # Process the audio using shared core logic
             print(f"Processing with strategy: {strategy_name}")
-            separator = StemSeparator(profile_name, strategy_name)
-
-            # Run separation (returns StemsMetadata with all stem info)
-            stems_metadata = separator.separate_and_normalize(input_path, output_dir)
+            stem_data_list = process_audio_file(
+                input_path=input_path,
+                output_dir=output_dir,
+                profile_name=profile_name,
+                strategy_name=strategy_name,
+            )
 
             # Upload stems and waveforms to R2
             r2_prefix = f"{profile_name}/{output_name}"
-            print(f"Uploading {len(stems_metadata.stems)} stems to R2: {r2_prefix}/")
+            print(f"Uploading {len(stem_data_list)} stems to R2: {r2_prefix}/")
 
-            stem_data_list = []
-            for stem_name, stem_meta in stems_metadata.stems.items():
+            for stem_dict in stem_data_list:
                 # Upload audio file
-                audio_path = output_dir / stem_meta.stem_url
-                r2_audio_key = f"{r2_prefix}/{stem_meta.stem_url}"
+                audio_path = output_dir / str(stem_dict["audio_url"])
+                r2_audio_key = f"{r2_prefix}/{stem_dict['audio_url']}"
                 storage.s3_client.upload_file(
                     str(audio_path),
                     storage.config.bucket_name,
@@ -167,43 +166,24 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
                 )
 
                 # Upload waveform
-                waveform_path = output_dir / stem_meta.waveform_url
-                r2_waveform_key = f"{r2_prefix}/{stem_meta.waveform_url}"
+                waveform_path = output_dir / str(stem_dict["waveform_url"])
+                r2_waveform_key = f"{r2_prefix}/{stem_dict['waveform_url']}"
                 storage.s3_client.upload_file(
                     str(waveform_path),
                     storage.config.bucket_name,
                     r2_waveform_key,
                 )
 
-                # Get file size and duration
-                file_size_bytes = audio_path.stat().st_size
-                info = sf.info(str(audio_path))  # pyright: ignore[reportUnknownMemberType]
-                duration_seconds = float(info.duration)  # pyright: ignore[reportAny]
-
-                # Add to callback payload
-                stem_data_list.append(
-                    {
-                        "stem_type": stem_name,
-                        "measured_lufs": stem_meta.measured_lufs,
-                        "peak_amplitude": stem_meta.peak_amplitude,
-                        "stem_gain_adjustment_db": stem_meta.stem_gain_adjustment_db,
-                        "audio_url": stem_meta.stem_url,  # Relative path
-                        "waveform_url": stem_meta.waveform_url,  # Relative path
-                        "file_size_bytes": file_size_bytes,
-                        "duration_seconds": duration_seconds,
-                    }
-                )
-
             # Call back to API with stem data
-            callback_payload = {
-                "status": "complete",
-                "stems": stem_data_list,
-            }
+            callback_payload = ProcessingCallbackPayload(
+                status="complete",
+                stems=[StemDataModel(**stem) for stem in stem_data_list],
+            )
 
             print(f"Calling back to: {callback_url}")
             with httpx.Client(timeout=30.0) as client:
-                response = client.post(callback_url, json=callback_payload)
-                response.raise_for_status()
+                response = client.post(callback_url, json=callback_payload.model_dump())
+                _ = response.raise_for_status()
 
             return {"status": "ok", "recording_id": recording_id}
 
@@ -213,13 +193,13 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
 
         # Try to call back with error
         try:
-            callback_payload = {
-                "status": "error",
-                "error": error_msg,
-            }
+            callback_payload = ProcessingCallbackPayload(
+                status="error",
+                error=error_msg,
+            )
             with httpx.Client(timeout=30.0) as client:
-                response = client.post(callback_url, json=callback_payload)
-                response.raise_for_status()
+                response = client.post(callback_url, json=callback_payload.model_dump())
+                _ = response.raise_for_status()
         except Exception as callback_error:
             print(f"Failed to send error callback: {callback_error}")
 

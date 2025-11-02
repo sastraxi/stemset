@@ -14,8 +14,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
 from ..db.models import Profile as DBProfile
-from ..db.models import Recording, RecordingUserConfig
-from ..storage import get_storage
+from ..db.models import Recording
+from ..db.operations import delete_recording
 from .models import FileWithStems, ProfileResponse, StemResponse
 
 
@@ -188,64 +188,14 @@ async def update_display_name(
 
 
 @delete("/api/recordings/{recording_id:uuid}")
-async def delete_recording(recording_id: UUID) -> None:
+async def delete_recording_endpoint(recording_id: UUID) -> None:
     """Delete a recording and all its associated files from storage."""
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        # Get recording with profile and stems
-        stmt = (
-            select(Recording)
-            .where(Recording.id == recording_id)
-            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
-        )
-        result = await session.exec(stmt)
-        recording = result.first()
+        try:
+            _ = await delete_recording(session, recording_id)
+        except ValueError as e:
+            raise NotFoundException(detail=str(e))
 
-        if recording is None:
-            raise NotFoundException(detail=f"Recording not found: {recording_id}")
-
-        # Get profile for storage operations
-        profile_result = await session.exec(
-            select(DBProfile).where(DBProfile.id == recording.profile_id)
-        )
-        profile = profile_result.first()
-        if not profile:
-            raise NotFoundException(detail="Profile not found for recording")
-
-        storage = get_storage()
-
-        # Delete all stem files from storage
-        if hasattr(storage, "delete_file"):
-            for stem in recording.stems:
-                # Delete audio file
-                try:
-                    storage.delete_file(
-                        profile.name, recording.output_name, stem.stem_type, ".opus"
-                    )
-                except Exception as e:
-                    print(f"Warning: Could not delete audio file for stem {stem.stem_type}: {e}")
-
-                # Delete waveform file
-                try:
-                    storage.delete_file(
-                        profile.name, recording.output_name, stem.stem_type, "_waveform.png"
-                    )
-                except Exception as e:
-                    print(f"Warning: Could not delete waveform file for stem {stem.stem_type}: {e}")
-
-        # Delete from database
-        for stem in recording.stems:
-            await session.delete(stem)
-
-        config_stmt = select(RecordingUserConfig).where(
-            RecordingUserConfig.recording_id == recording.id
-        )
-        config_result = await session.exec(config_stmt)
-        for config in config_result.all():
-            await session.delete(config)
-
-        await session.delete(recording)
-
-        await session.commit()
         return None

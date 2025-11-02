@@ -3,7 +3,7 @@ import {
 	apiProfilesGetProfilesOptions,
 	apiProfilesProfileNameFilesGetProfileFilesOptions,
 	apiProfilesProfileNameFilesGetProfileFilesQueryKey,
-	apiRecordingsRecordingIdGetRecordingOptions,
+	apiRecordingsRecordingIdGetRecordingStatusOptions,
 	apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameMutation,
 } from "../api/generated/@tanstack/react-query.gen";
 
@@ -33,7 +33,7 @@ export function useProfileFiles(profileName: string | undefined) {
 }
 
 export function useRecording(recordingId: string | undefined) {
-	const options = apiRecordingsRecordingIdGetRecordingOptions({
+	const options = apiRecordingsRecordingIdGetRecordingStatusOptions({
 		path: { recording_id: recordingId! },
 	});
 	return useQuery({
@@ -42,7 +42,7 @@ export function useRecording(recordingId: string | undefined) {
 		staleTime: 60 * 1000, // 1 minute
 		gcTime: 5 * 60 * 1000,
 		select: (data) =>
-			data ? { ...data, displayName: data.display_name || data.name } : null,
+			data ? { ...data, displayName: data.display_name || data.output_name } : null,
 	});
 }
 

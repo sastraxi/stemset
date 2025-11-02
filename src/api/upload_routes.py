@@ -5,13 +5,13 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
-import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 import tempfile
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 import httpx
+import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 from litestar import post, get
 from litestar.params import Body
 from litestar.datastructures import UploadFile
@@ -22,13 +22,14 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
-from ..db.models import AudioFile, Profile, Recording, Stem
-from ..models.metadata import StemMetadata, StemsMetadata
-from ..modern_separator import StemSeparator
+from ..db.models import AudioFile, Profile, Recording, Stem, RecordingUserConfig as DBRecordingUserConfig, User
+from ..processor.core import process_audio_file
+from ..processor.models import ProcessingCallbackPayload, StemDataModel
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
-from .models import StemData, RecordingStatusResponse
+from .models import RecordingStatusResponse, RecordingConfigData
 from .state import AppState
+from .types import AppRequest
 
 
 @post("/api/upload/{profile_name:str}")
@@ -208,25 +209,25 @@ async def upload_file(
 
 
 @post("/api/process")
-async def process_local(payload: dict[str, str], state: AppState) -> dict[str, str]:
+async def process_local(data: dict[str, str], state: AppState) -> dict[str, str]:
     """Local processing endpoint (acts as GPU worker for development).
 
     This endpoint receives the same payload as the Modal GPU worker,
     but processes the audio locally in a background task.
 
     Args:
-        payload: Worker payload with recording_id, profile_name, etc.
+        data: Worker payload with recording_id, profile_name, etc.
         state: Litestar application state
 
     Returns:
         Accepted status (processing happens in background)
     """
-    recording_id = payload["recording_id"]
-    profile_name = payload["profile_name"]
-    strategy_name = payload["strategy_name"]
-    input_filename = payload["input_filename"]
-    output_name = payload["output_name"]
-    callback_url = payload["callback_url"]
+    recording_id = data["recording_id"]
+    profile_name = data["profile_name"]
+    strategy_name = data["strategy_name"]
+    input_filename = data["input_filename"]
+    output_name = data["output_name"]
+    callback_url = data["callback_url"]
 
     print(f"[Local Worker] Processing recording {recording_id}")
 
@@ -239,32 +240,24 @@ async def process_local(payload: dict[str, str], state: AppState) -> dict[str, s
 
             # Create output directory
             output_dir = Path("media") / profile_name / output_name
-            output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Run separation
-            separator = StemSeparator(profile_name, strategy_name)
-            stems_metadata = separator.separate_and_normalize(input_path, output_dir)
-
-            # Convert to callback format
-            stem_data_list = [
-                {
-                    "stem_type": stem_name,
-                    "measured_lufs": stem_meta.measured_lufs,
-                    "peak_amplitude": stem_meta.peak_amplitude,
-                    "stem_gain_adjustment_db": stem_meta.stem_gain_adjustment_db,
-                    "audio_url": stem_meta.stem_url,
-                    "waveform_url": stem_meta.waveform_url,
-                    "file_size_bytes": (output_dir / stem_meta.stem_url).stat().st_size,
-                    "duration_seconds": sf.info(str(output_dir / stem_meta.stem_url)).duration,  # pyright: ignore
-                }
-                for stem_name, stem_meta in stems_metadata.stems.items()
-            ]
+            # Run separation using shared core logic
+            stem_data_list = process_audio_file(
+                input_path=input_path,
+                output_dir=output_dir,
+                profile_name=profile_name,
+                strategy_name=strategy_name,
+            )
 
             # Call callback endpoint
+            callback_payload = ProcessingCallbackPayload(
+                status="complete",
+                stems=[StemDataModel(**stem) for stem in stem_data_list],
+            )
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     callback_url,
-                    json={"status": "complete", "stems": stem_data_list},
+                    json=callback_payload.model_dump(),
                 )
                 _ = response.raise_for_status()
 
@@ -274,10 +267,14 @@ async def process_local(payload: dict[str, str], state: AppState) -> dict[str, s
             print(f"[Local Worker] Recording {recording_id} failed: {e}")
             # Call callback with error
             try:
+                callback_payload = ProcessingCallbackPayload(
+                    status="error",
+                    error=str(e),
+                )
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
                         callback_url,
-                        json={"status": "error", "error": str(e)},
+                        json=callback_payload.model_dump(),
                     )
                     _ = response.raise_for_status()
             except Exception as callback_error:
@@ -293,16 +290,14 @@ async def process_local(payload: dict[str, str], state: AppState) -> dict[str, s
 async def recording_complete(
     recording_id: UUID,
     verification_token: str,
-    result: dict[str, str | list[dict[str, str | float]]],
-    state: AppState,
+    data: ProcessingCallbackPayload,
 ) -> dict[str, str]:
     """Callback endpoint for worker to report completion.
 
     Args:
         recording_id: Recording identifier
         verification_token: Secret token for authentication
-        result: Processing result with status and stems data
-        state: Litestar application state
+        data: Processing result with status and stems data
 
     Returns:
         Success message
@@ -326,9 +321,9 @@ async def recording_complete(
             raise ValidationException("Invalid verification token")
 
         # Handle errors
-        if result["status"] == "error":
+        if data.status == "error":
             recording.status = "error"
-            recording.error_message = str(result.get("error", "Unknown error"))
+            recording.error_message = data.error or "Unknown error"
             await session.commit()
             print(f"Recording {recording_id} failed: {recording.error_message}")
             return {"status": "ok"}
@@ -341,31 +336,26 @@ async def recording_complete(
             raise ValueError(f"Profile not found for recording {recording_id}")
 
         # Get AudioFile for linking stems
-        stmt = select(AudioFile).where(
-            AudioFile.profile_id == recording.profile_id,
-            AudioFile.file_hash.in_(
-                select(AudioFile.file_hash).where(AudioFile.profile_id == recording.profile_id)
-            ),
-        )
+        stmt = select(AudioFile).where(AudioFile.profile_id == recording.profile_id)
         audio_result = await session.exec(stmt)
         audio_file = audio_result.first()
         if audio_file is None:
             raise ValueError(f"AudioFile not found for recording {recording_id}")
 
-        # Create Stem records from result data
-        stems_data = result.get("stems", [])
-        for stem_dict in stems_data:
+        # Create Stem records from data
+        stems_data = data.stems or []
+        for stem_model in stems_data:
             stem = Stem(
                 recording_id=recording.id,
                 audio_file_id=audio_file.id,
-                stem_type=str(stem_dict["stem_type"]),
-                measured_lufs=float(stem_dict["measured_lufs"]),
-                peak_amplitude=float(stem_dict["peak_amplitude"]),
-                stem_gain_adjustment_db=float(stem_dict["stem_gain_adjustment_db"]),
-                audio_url=str(stem_dict["audio_url"]),
-                waveform_url=str(stem_dict["waveform_url"]),
-                file_size_bytes=int(stem_dict["file_size_bytes"]),
-                duration_seconds=float(stem_dict["duration_seconds"]),
+                stem_type=stem_model.stem_type,
+                measured_lufs=stem_model.measured_lufs,
+                peak_amplitude=stem_model.peak_amplitude,
+                stem_gain_adjustment_db=stem_model.stem_gain_adjustment_db,
+                audio_url=stem_model.audio_url,
+                waveform_url=stem_model.waveform_url,
+                file_size_bytes=stem_model.file_size_bytes,
+                duration_seconds=stem_model.duration_seconds,
             )
             session.add(stem)
 
@@ -380,16 +370,17 @@ async def recording_complete(
 
 @get("/api/recordings/{recording_id:uuid}")
 async def get_recording_status(
-    recording_id: UUID, state: AppState
+    recording_id: UUID, state: AppState, request: AppRequest
 ) -> RecordingStatusResponse:
     """Get status of a recording (simple polling, no long-poll).
 
     Args:
         recording_id: Recording identifier
         state: Litestar application state
+        request: Request object with user context
 
     Returns:
-        Recording status with stems if complete
+        Recording status with stems and user-specific config if complete
 
     Raises:
         NotFoundException: If recording not found
@@ -435,6 +426,31 @@ async def get_recording_status(
                         "duration_seconds": stem.duration_seconds,
                     })
 
+        # Load user-specific config if user is authenticated
+        config_data = None
+        user = request.user
+        if user:
+            # Get user_id from email
+            user_result = await session.exec(select(User).where(User.email == user.email))
+            db_user = user_result.first()
+
+            if db_user:
+                # Load all config keys for this user+recording
+                config_stmt = select(DBRecordingUserConfig).where(
+                    DBRecordingUserConfig.user_id == db_user.id,
+                    DBRecordingUserConfig.recording_id == recording_id,
+                )
+                config_result = await session.exec(config_stmt)
+                config_records = config_result.all()
+
+                # Build config dict from individual keys
+                config_dict = {}
+                for record in config_records:
+                    config_dict[record.config_key] = record.config_value
+
+                if config_dict:
+                    config_data = RecordingConfigData(**config_dict)
+
         return RecordingStatusResponse(
             recording_id=str(recording.id),
             status=recording.status,
@@ -442,4 +458,5 @@ async def get_recording_status(
             output_name=recording.output_name,
             display_name=recording.display_name,
             stems=stems_list,
+            config=config_data,
         )

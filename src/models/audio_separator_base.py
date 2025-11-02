@@ -93,7 +93,6 @@ class AudioSeparator(ABC):
     def _get_separator(self) -> Separator:
         """Get or create audio separator instance with configured output format."""
         if self._separator is None:
-            import torch
             import os
 
             # Get model cache directory from env or use default
@@ -103,17 +102,7 @@ class AudioSeparator(ABC):
             else:
                 model_file_dir = Path.home() / ".stemset" / "models"
 
-            # Limit CPU threads to keep system responsive
-            thread_count: int | None = None
-            cpu_count = os.cpu_count() or 4
-            thread_override = os.getenv("PYTORCH_NUM_THREADS")
-            if thread_override:
-                thread_count = int(thread_override)
-
-            if thread_count is not None:
-                torch.set_num_threads(thread_count)
-                torch.set_num_interop_threads(thread_count)
-                print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
+            # Note: PyTorch thread limits are set in processor/core.py before this is called
 
             # Configure output format
             output_format = self.output_config.format.value.upper()

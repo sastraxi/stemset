@@ -20,7 +20,7 @@ from ..db.config import get_engine
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .config_routes import update_recording_config
 from .profile_routes import (
-    delete_recording,
+    delete_recording_endpoint,
     get_profile,
     get_profile_files,
     get_profiles,
@@ -99,11 +99,18 @@ app_state.config = config
 app_state.backend_url = backend_url
 app_state.frontend_url = frontend_url
 
-# Authentication configuration - exclude /auth/* routes from auth requirement
+# Authentication configuration - exclude certain routes from auth requirement
 auth_middleware = DefineMiddleware(
     JWTAuthenticationMiddleware,
-    exclude=["/auth", "/schema"],  # Exclude auth routes and OpenAPI schema
+    exclude=[
+        "/auth",  # Auth routes (login, callback, etc.)
+        "/schema",  # OpenAPI schema
+        "/api/process",  # Internal worker endpoint (local processing)
+        r"/api/recordings/.*/complete/.*",  # Worker callback endpoint (regex pattern)
+    ],
 )
+
+worker_routes = [process_local] if not config.gpu_worker_url else []
 
 app = Litestar(
     route_handlers=[
@@ -115,12 +122,12 @@ app = Litestar(
         get_profile,
         get_profile_files,
         update_display_name,
-        delete_recording,
+        delete_recording_endpoint,
         update_recording_config,
         upload_file,
-        process_local,
         recording_complete,
         get_recording_status,
+        *worker_routes,
         *static_handlers,
     ],
     middleware=[auth_middleware],

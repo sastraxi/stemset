@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
 import { Upload as UploadIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import "./Upload.css";
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
@@ -22,7 +22,6 @@ async function pollRecordingStatus(
 	filename: string,
 	onComplete: () => void,
 	onNavigate?: (profileName: string, fileName: string) => void,
-	shouldAutoNavigate?: () => boolean,
 ): Promise<void> {
 	while (true) {
 		// Poll every 15 seconds
@@ -30,9 +29,12 @@ async function pollRecordingStatus(
 
 		try {
 			// Check recording status (simple polling, no long-poll)
-			const response = await fetch(`${API_BASE}/api/recordings/${recordingId}`, {
-				credentials: "include",
-			});
+			const response = await fetch(
+				`${API_BASE}/api/recordings/${recordingId}`,
+				{
+					credentials: "include",
+				},
+			);
 
 			if (!response.ok) {
 				throw new Error("Failed to check recording status");
@@ -50,6 +52,7 @@ async function pollRecordingStatus(
 						<strong>{filename} ready!</strong>
 						{onNavigate && (
 							<button
+								type="button"
 								onClick={() => {
 									onNavigate(profileName, outputName);
 									toast.dismiss(toastId);
@@ -101,7 +104,6 @@ export function Upload({
 	profileName,
 	onUploadComplete,
 	onNavigateToRecording,
-	shouldAutoNavigate,
 }: UploadProps) {
 	const [isDragging, setIsDragging] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -234,7 +236,6 @@ export function Upload({
 				filename,
 				onUploadComplete,
 				onNavigateToRecording,
-				shouldAutoNavigate,
 			);
 
 			// Reset file input

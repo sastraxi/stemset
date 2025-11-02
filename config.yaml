@@ -30,7 +30,7 @@ r2:
 # GPU Worker URL (required for remote GPU processing)
 # Modal endpoint format: https://<workspace>--stemset-gpu-process.modal.run
 # Set GPU_WORKER_URL environment variable or use --local flag for local processing
-gpu_worker_url: ${GPU_WORKER_URL}
+# gpu_worker_url: ${GPU_WORKER_URL}  # Commented out for local processing
 
 strategies:
 #################################

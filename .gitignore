@@ -21,11 +21,12 @@ wheels/
 .installed.cfg
 *.egg
 
+# Audio processor
+inputs/
+.models/
+
 # Generated media files
 media/
-
-# Test files
-input/
 
 # IDE
 .vscode/
@@ -47,6 +48,7 @@ yarn-error.log*
 # Frontend build
 frontend/dist/
 frontend/build/
+
 
 # Database
 *.db

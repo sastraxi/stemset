@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -40,15 +42,20 @@ class StemResponse(BaseModel):
 
 
 class RecordingConfigData(BaseModel):
-    """User-specific recording configuration (nested in FileWithStems)."""
+    """User-specific recording configuration (nested in FileWithStems).
 
-    playbackPosition: dict[str, float] | None = None
-    stems: dict[str, bool] | None = None
-    effects: dict[str, float] | None = None
-    eq: dict[str, float] | None = None
-    compressor: dict[str, float] | None = None
-    reverb: dict[str, float] | None = None
-    stereoExpander: dict[str, float] | None = None
+    Config values are stored flexibly - can be primitives or complex nested structures.
+    """
+
+    model_config = {"extra": "allow"}  # Allow any additional fields
+
+    playbackPosition: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    stems: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    effects: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    eq: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    compressor: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    reverb: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
+    stereoExpander: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
 
 
 class FileWithStems(BaseModel):
@@ -93,3 +100,4 @@ class RecordingStatusResponse(BaseModel):
     output_name: str
     display_name: str
     stems: list[dict[str, str | float | int]]
+    config: RecordingConfigData | None = None

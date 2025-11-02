@@ -10,7 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import type { StemResponse } from "@/api/generated";
-import { apiRecordingsRecordingIdDeleteRecording } from "@/api/generated";
+import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useStemPlayer } from "../hooks/useStemPlayer";
@@ -86,7 +86,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			try {
 				setIsDeleting(true);
 
-				await apiRecordingsRecordingIdDeleteRecording({
+				await apiRecordingsRecordingIdDeleteRecordingEndpoint({
 					path: {
 						recording_id: recordingId,
 					},
