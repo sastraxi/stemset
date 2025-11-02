@@ -7,7 +7,8 @@ export const Route = createFileRoute("/p/$profileName/$recordingName")({
 		return {
 			t: typeof search.t === "number" ? search.t : undefined,
 			source: typeof search.source === "string" ? search.source : undefined,
-		} as { t?: number; source?: string };
+			initialState: typeof search.initialState === "string" ? search.initialState : undefined,
+		} as { t?: number; source?: string; initialState?: string };
 	},
 	// Note: Playback position from URL parameter (t) is now handled by the component
 	// directly via the recording config API, not localStorage

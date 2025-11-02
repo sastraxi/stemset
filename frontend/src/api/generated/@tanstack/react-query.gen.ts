@@ -6,6 +6,10 @@ import { client } from "../client.gen";
 import {
   apiProcessProcessLocal,
   apiProfilesGetProfiles,
+  apiProfilesProfileIdLocationsCreateLocation,
+  apiProfilesProfileIdLocationsGetProfileLocations,
+  apiProfilesProfileIdSongsCreateSong,
+  apiProfilesProfileIdSongsGetProfileSongs,
   apiProfilesProfileNameFilesGetProfileFiles,
   apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName,
   apiProfilesProfileNameGetProfile,
@@ -13,6 +17,7 @@ import {
   apiRecordingsRecordingIdConfigUpdateRecordingConfig,
   apiRecordingsRecordingIdDeleteRecordingEndpoint,
   apiRecordingsRecordingIdGetRecordingStatus,
+  apiRecordingsRecordingIdMetadataUpdateRecordingMetadata,
   apiUploadProfileNameUploadFile,
   authCallbackAuthCallback,
   authLoginAuthLogin,
@@ -25,6 +30,14 @@ import type {
   ApiProcessProcessLocalError,
   ApiProcessProcessLocalResponse,
   ApiProfilesGetProfilesData,
+  ApiProfilesProfileIdLocationsCreateLocationData,
+  ApiProfilesProfileIdLocationsCreateLocationError,
+  ApiProfilesProfileIdLocationsCreateLocationResponse,
+  ApiProfilesProfileIdLocationsGetProfileLocationsData,
+  ApiProfilesProfileIdSongsCreateSongData,
+  ApiProfilesProfileIdSongsCreateSongError,
+  ApiProfilesProfileIdSongsCreateSongResponse,
+  ApiProfilesProfileIdSongsGetProfileSongsData,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameError,
@@ -40,6 +53,9 @@ import type {
   ApiRecordingsRecordingIdDeleteRecordingEndpointError,
   ApiRecordingsRecordingIdDeleteRecordingEndpointResponse,
   ApiRecordingsRecordingIdGetRecordingStatusData,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataError,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse,
   ApiUploadProfileNameUploadFileData,
   ApiUploadProfileNameUploadFileError,
   ApiUploadProfileNameUploadFileResponse,
@@ -373,6 +389,109 @@ export const apiRecordingsRecordingIdConfigUpdateRecordingConfigMutation = (
   return mutationOptions;
 };
 
+export const apiProfilesProfileIdSongsGetProfileSongsQueryKey = (
+  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData>,
+) => createQueryKey("apiProfilesProfileIdSongsGetProfileSongs", options);
+
+/**
+ * GetProfileSongs
+ */
+export const apiProfilesProfileIdSongsGetProfileSongsOptions = (
+  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiProfilesProfileIdSongsGetProfileSongs({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiProfilesProfileIdSongsGetProfileSongsQueryKey(options),
+  });
+};
+
+/**
+ * CreateSong
+ */
+export const apiProfilesProfileIdSongsCreateSongMutation = (
+  options?: Partial<Options<ApiProfilesProfileIdSongsCreateSongData>>,
+): UseMutationOptions<
+  ApiProfilesProfileIdSongsCreateSongResponse,
+  ApiProfilesProfileIdSongsCreateSongError,
+  Options<ApiProfilesProfileIdSongsCreateSongData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiProfilesProfileIdSongsCreateSongResponse,
+    ApiProfilesProfileIdSongsCreateSongError,
+    Options<ApiProfilesProfileIdSongsCreateSongData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiProfilesProfileIdSongsCreateSong({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const apiProfilesProfileIdLocationsGetProfileLocationsQueryKey = (
+  options: Options<ApiProfilesProfileIdLocationsGetProfileLocationsData>,
+) =>
+  createQueryKey("apiProfilesProfileIdLocationsGetProfileLocations", options);
+
+/**
+ * GetProfileLocations
+ */
+export const apiProfilesProfileIdLocationsGetProfileLocationsOptions = (
+  options: Options<ApiProfilesProfileIdLocationsGetProfileLocationsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiProfilesProfileIdLocationsGetProfileLocations({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiProfilesProfileIdLocationsGetProfileLocationsQueryKey(options),
+  });
+};
+
+/**
+ * CreateLocation
+ */
+export const apiProfilesProfileIdLocationsCreateLocationMutation = (
+  options?: Partial<Options<ApiProfilesProfileIdLocationsCreateLocationData>>,
+): UseMutationOptions<
+  ApiProfilesProfileIdLocationsCreateLocationResponse,
+  ApiProfilesProfileIdLocationsCreateLocationError,
+  Options<ApiProfilesProfileIdLocationsCreateLocationData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiProfilesProfileIdLocationsCreateLocationResponse,
+    ApiProfilesProfileIdLocationsCreateLocationError,
+    Options<ApiProfilesProfileIdLocationsCreateLocationData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiProfilesProfileIdLocationsCreateLocation({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
 /**
  * UploadFile
  */
@@ -390,33 +509,6 @@ export const apiUploadProfileNameUploadFileMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await apiUploadProfileNameUploadFile({
-        ...options,
-        ...fnOptions,
-        throwOnError: true,
-      });
-      return data;
-    },
-  };
-  return mutationOptions;
-};
-
-/**
- * ProcessLocal
- */
-export const apiProcessProcessLocalMutation = (
-  options?: Partial<Options<ApiProcessProcessLocalData>>,
-): UseMutationOptions<
-  ApiProcessProcessLocalResponse,
-  ApiProcessProcessLocalError,
-  Options<ApiProcessProcessLocalData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    ApiProcessProcessLocalResponse,
-    ApiProcessProcessLocalError,
-    Options<ApiProcessProcessLocalData>
-  > = {
-    mutationFn: async (fnOptions) => {
-      const { data } = await apiProcessProcessLocal({
         ...options,
         ...fnOptions,
         throwOnError: true,
@@ -459,3 +551,60 @@ export const apiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteM
     };
     return mutationOptions;
   };
+
+/**
+ * UpdateRecordingMetadata
+ */
+export const apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation = (
+  options?: Partial<
+    Options<ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData>
+  >,
+): UseMutationOptions<
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataError,
+  Options<ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse,
+    ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataError,
+    Options<ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } =
+        await apiRecordingsRecordingIdMetadataUpdateRecordingMetadata({
+          ...options,
+          ...fnOptions,
+          throwOnError: true,
+        });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * ProcessLocal
+ */
+export const apiProcessProcessLocalMutation = (
+  options?: Partial<Options<ApiProcessProcessLocalData>>,
+): UseMutationOptions<
+  ApiProcessProcessLocalResponse,
+  ApiProcessProcessLocalError,
+  Options<ApiProcessProcessLocalData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiProcessProcessLocalResponse,
+    ApiProcessProcessLocalError,
+    Options<ApiProcessProcessLocalData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiProcessProcessLocal({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};

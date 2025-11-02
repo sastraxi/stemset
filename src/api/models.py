@@ -24,6 +24,7 @@ class LoginCallbackResponse(BaseModel):
 class ProfileResponse(BaseModel):
     """Profile information response."""
 
+    id: str
     name: str
     source_folder: str
 
@@ -57,6 +58,20 @@ class RecordingConfigData(BaseModel):
     stereoExpander: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
 
 
+class SongMetadata(BaseModel):
+    """Song metadata."""
+
+    id: str
+    name: str
+
+
+class LocationMetadata(BaseModel):
+    """Location metadata."""
+
+    id: str
+    name: str
+
+
 class FileWithStems(BaseModel):
     """File with stems information from database."""
 
@@ -69,6 +84,9 @@ class FileWithStems(BaseModel):
     config: RecordingConfigData | None = (
         None  # User-specific config (only populated when fetching single recording)
     )
+    song: SongMetadata | None = None
+    location: LocationMetadata | None = None
+    date_recorded: str | None = None  # ISO format date string
 
 
 class LogoutResponse(BaseModel):

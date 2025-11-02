@@ -18,21 +18,21 @@ class AudioFormat(str, Enum):
 
     WAV = "wav"
     OPUS = "opus"
-    AAC = "aac"
+    M4A = "m4a"
 
 
 class OutputConfig(BaseModel):
     """Output format configuration."""
 
-    format: AudioFormat = AudioFormat.OPUS
+    format: AudioFormat = AudioFormat.M4A
     bitrate: int = 192
 
     @field_validator("bitrate")
     @classmethod
     def validate_bitrate(cls, v: int) -> int:
         """Validate bitrate is within acceptable range."""
-        if not 32 <= v <= 256:
-            raise ValueError(f"Bitrate must be between 32 and 256 kbps, got {v}")
+        if not 32 <= v <= 320:
+            raise ValueError(f"Bitrate must be between 32 and 320 kbps, got {v}")
         return v
 
 

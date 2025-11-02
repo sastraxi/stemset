@@ -2,7 +2,6 @@
 """Database models for Stemset using SQLModel."""
 
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
@@ -81,6 +80,12 @@ class Profile(SQLModel, table=True):
     recordings: list["Recording"] = Relationship(
         back_populates="profile", sa_relationship_kwargs={"lazy": "noload"}
     )
+    songs: list["Song"] = Relationship(
+        back_populates="profile", sa_relationship_kwargs={"lazy": "noload"}
+    )
+    locations: list["Location"] = Relationship(
+        back_populates="profile", sa_relationship_kwargs={"lazy": "noload"}
+    )
 
     # TODO: Set output configuration in the database?
     @property
@@ -121,6 +126,50 @@ class AudioFile(SQLModel, table=True):
     )
 
 
+class Song(SQLModel, table=True):
+    """Song metadata owned by profile."""
+
+    __tablename__: ClassVar[Any] = "songs"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    profile_id: UUID = Field(foreign_key="profiles.id", index=True)
+    name: str
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+
+    # Relationships
+    profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    recordings: list["Recording"] = Relationship(
+        back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
+    )
+
+    # Unique constraint on (profile_id, name)
+    __table_args__ = (sa.UniqueConstraint("profile_id", "name", name="uq_profile_song_name"),)
+
+
+class Location(SQLModel, table=True):
+    """Location metadata owned by profile."""
+
+    __tablename__: ClassVar[Any] = "locations"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    profile_id: UUID = Field(foreign_key="profiles.id", index=True)
+    name: str
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+
+    # Relationships
+    profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    recordings: list["Recording"] = Relationship(
+        back_populates="location", sa_relationship_kwargs={"lazy": "noload"}
+    )
+
+    # Unique constraint on (profile_id, name)
+    __table_args__ = (sa.UniqueConstraint("profile_id", "name", name="uq_profile_location_name"),)
+
+
 class Recording(SQLModel, table=True):
     """Processed output with separated stems (replaces 'Song')."""
 
@@ -130,6 +179,13 @@ class Recording(SQLModel, table=True):
     profile_id: UUID = Field(foreign_key="profiles.id", index=True)
     output_name: str  # Folder name in media/ (e.g., "080805-001")
     display_name: str  # User-editable, defaults to filename
+
+    # Metadata fields
+    song_id: UUID | None = Field(default=None, foreign_key="songs.id", index=True)
+    location_id: UUID | None = Field(default=None, foreign_key="locations.id", index=True)
+    date_recorded: datetime | None = Field(
+        default=None, sa_column=Column(sa.DateTime(timezone=False), nullable=True)
+    )
 
     # Status tracking (replaces Job table)
     status: str = Field(default="processing")  # "processing", "complete", "error"
@@ -149,6 +205,12 @@ class Recording(SQLModel, table=True):
     )
     stems: list["Stem"] = Relationship(
         back_populates="recording", sa_relationship_kwargs={"lazy": "noload"}
+    )
+    song: Song | None = Relationship(
+        back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
+    )
+    location: Location | None = Relationship(
+        back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
     )
 
 

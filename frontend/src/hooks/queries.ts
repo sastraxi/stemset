@@ -5,6 +5,13 @@ import {
 	apiProfilesProfileNameFilesGetProfileFilesQueryKey,
 	apiRecordingsRecordingIdGetRecordingStatusOptions,
 	apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameMutation,
+	apiProfilesProfileIdSongsGetProfileSongsOptions,
+	apiProfilesProfileIdSongsGetProfileSongsQueryKey,
+	apiProfilesProfileIdSongsCreateSongMutation,
+	apiProfilesProfileIdLocationsGetProfileLocationsOptions,
+	apiProfilesProfileIdLocationsGetProfileLocationsQueryKey,
+	apiProfilesProfileIdLocationsCreateLocationMutation,
+	apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation,
 } from "../api/generated/@tanstack/react-query.gen";
 
 export function useProfiles() {
@@ -39,8 +46,13 @@ export function useRecording(recordingId: string | undefined) {
 	return useQuery({
 		...options,
 		enabled: !!recordingId,
-		staleTime: 60 * 1000, // 1 minute
+		staleTime: 5 * 1000, // 5 seconds (allow frequent updates during processing)
 		gcTime: 5 * 60 * 1000,
+		refetchInterval: (query) => {
+			// Poll every 5 seconds if processing, otherwise don't poll
+			const data = query.state.data;
+			return data && data.status === "processing" ? 5000 : false;
+		},
 		select: (data) =>
 			data ? { ...data, displayName: data.display_name || data.output_name } : null,
 	});
@@ -58,6 +70,78 @@ export function useUpdateDisplayName() {
 				queryKey: apiProfilesProfileNameFilesGetProfileFilesQueryKey({
 					path: { profile_name: variables.path.profile_name },
 				}),
+			});
+		},
+	});
+}
+
+export function useProfileSongs(profileId: string | undefined) {
+	const options = apiProfilesProfileIdSongsGetProfileSongsOptions({
+		path: { profile_id: profileId! },
+	});
+	return useQuery({
+		...options,
+		enabled: !!profileId,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+	});
+}
+
+export function useCreateSong() {
+	const queryClient = useQueryClient();
+	const mutationOptions = apiProfilesProfileIdSongsCreateSongMutation();
+
+	return useMutation({
+		...mutationOptions,
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: apiProfilesProfileIdSongsGetProfileSongsQueryKey({
+					path: { profile_id: variables.path.profile_id },
+				}),
+			});
+		},
+	});
+}
+
+export function useProfileLocations(profileId: string | undefined) {
+	const options = apiProfilesProfileIdLocationsGetProfileLocationsOptions({
+		path: { profile_id: profileId! },
+	});
+	return useQuery({
+		...options,
+		enabled: !!profileId,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+	});
+}
+
+export function useCreateLocation() {
+	const queryClient = useQueryClient();
+	const mutationOptions = apiProfilesProfileIdLocationsCreateLocationMutation();
+
+	return useMutation({
+		...mutationOptions,
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: apiProfilesProfileIdLocationsGetProfileLocationsQueryKey({
+					path: { profile_id: variables.path.profile_id },
+				}),
+			});
+		},
+	});
+}
+
+export function useUpdateRecordingMetadata() {
+	const queryClient = useQueryClient();
+	const mutationOptions = apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation();
+
+	return useMutation({
+		...mutationOptions,
+		onSuccess: () => {
+			// Invalidate all recordings queries to refresh the metadata
+			queryClient.invalidateQueries({
+				queryKey: ["api", "recordings"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["api", "profiles"],
 			});
 		},
 	});

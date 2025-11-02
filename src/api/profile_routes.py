@@ -13,10 +13,9 @@ from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
-from ..db.models import Profile as DBProfile
-from ..db.models import Recording
+from ..db.models import Location, Profile as DBProfile, Recording, Song
 from ..db.operations import delete_recording
-from .models import FileWithStems, ProfileResponse, StemResponse
+from .models import FileWithStems, LocationMetadata, ProfileResponse, SongMetadata, StemResponse
 
 
 @get("/api/profiles")
@@ -28,7 +27,7 @@ async def get_profiles() -> list[ProfileResponse]:
         result = await session.exec(select(DBProfile))
         profiles = result.all()
 
-        return [ProfileResponse(name=p.name, source_folder=p.source_folder) for p in profiles]
+        return [ProfileResponse(id=str(p.id), name=p.name, source_folder=p.source_folder) for p in profiles]
 
 
 @get("/api/profiles/{profile_name:str}")
@@ -43,7 +42,7 @@ async def get_profile(profile_name: str) -> ProfileResponse:
         if profile is None:
             raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-        return ProfileResponse(name=profile.name, source_folder=profile.source_folder)
+        return ProfileResponse(id=str(profile.id), name=profile.name, source_folder=profile.source_folder)
 
 
 @get("/api/profiles/{profile_name:str}/files")
@@ -61,11 +60,15 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
         if profile is None:
             raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-        # Query recordings with stems (use selectinload to avoid N+1)
+        # Query recordings with stems, song, and location (use selectinload to avoid N+1)
         stmt = (
             select(Recording)
             .where(Recording.profile_id == profile.id)
-            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+            .options(
+                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
+            )
             .order_by(desc(Recording.created_at))
         )
         result = await session.exec(stmt)
@@ -108,6 +111,21 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
                     stems=stems,
                     created_at=recording.created_at.isoformat(),
                     status=status,
+                    song=(
+                        SongMetadata(id=str(recording.song.id), name=recording.song.name)
+                        if recording.song
+                        else None
+                    ),
+                    location=(
+                        LocationMetadata(
+                            id=str(recording.location.id), name=recording.location.name
+                        )
+                        if recording.location
+                        else None
+                    ),
+                    date_recorded=(
+                        recording.date_recorded.isoformat() if recording.date_recorded else None
+                    ),
                     # config omitted - client should fetch via GET /api/recordings/{id}
                 )
             )

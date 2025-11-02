@@ -11,12 +11,19 @@ from pathlib import Path
 
 from .models import StemData
 
+global has_set_limits
+has_set_limits = False
+
 
 def _set_pytorch_thread_limits() -> None:
     """Set PyTorch thread limits before any torch operations.
 
     Must be called before importing or using torch to avoid runtime errors.
     """
+    global has_set_limits
+    if has_set_limits:
+        return
+
     thread_override = os.getenv("PYTORCH_NUM_THREADS")
     if thread_override:
         # Import torch only after checking env var
@@ -29,17 +36,52 @@ def _set_pytorch_thread_limits() -> None:
         torch.set_num_interop_threads(thread_count)
         print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
+        has_set_limits = True
+
 
 def _convert_to_wav_if_needed(input_path: Path) -> Path:
-    """Convert audio file to WAV format using ffmpeg if it's not already WAV."""
+    """Convert audio file to WAV format using ffmpeg if it's not already WAV.
+
+    Also ensures the audio is resampled to 44.1kHz as most separation models
+    expect this sample rate.
+    """
     import subprocess
 
-    if input_path.suffix.lower() == ".wav":
+    # Check if file is already a properly formatted WAV
+    needs_conversion = input_path.suffix.lower() != ".wav"
+
+    # Even if it's a WAV, we need to check if it needs resampling
+    if not needs_conversion:
+        # Quick check of sample rate
+        probe_cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=sample_rate",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(input_path),
+        ]
+        try:
+            result = subprocess.run(probe_cmd, check=True, capture_output=True, text=True)
+            sample_rate = int(result.stdout.strip())
+            needs_conversion = sample_rate != 44100
+            print("No conversion needed." if not needs_conversion else "Resampling needed.")
+
+        except (subprocess.CalledProcessError, ValueError):
+            # If we can't determine, assume conversion needed
+            needs_conversion = True
+
+    if not needs_conversion:
         return input_path
 
-    wav_path = input_path.with_suffix(".wav")
+    wav_path = input_path.with_suffix(".converted.wav")
 
-    print(f"Converting {input_path} to WAV format...")
+    action = "Converting" if input_path.suffix.lower() != ".wav" else "Resampling"
+    print(f"{action} {input_path.name} to 44.1kHz WAV format...")
     command = [
         "ffmpeg",
         "-y",  # Overwrite output file if it exists
@@ -48,15 +90,16 @@ def _convert_to_wav_if_needed(input_path: Path) -> Path:
         "error",
         "-i",
         str(input_path),
+        "-ar",
+        "44100",  # Resample to 44.1kHz
         str(wav_path),
     ]
     try:
-        # Using subprocess.run with capture_output=True to hide ffmpeg output unless there's an error
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        _ = subprocess.run(command, check=True, capture_output=True, text=True)
         print(f"Successfully converted to {wav_path}")
         return wav_path
     except subprocess.CalledProcessError as e:
-        print(f"Error converting to WAV: {e.stderr}")
+        print(f"Error converting to WAV: {e.stderr}")  # pyright: ignore[reportAny]
         raise
 
 
@@ -99,6 +142,7 @@ def process_audio_file(
 
     # Ensure input is in WAV format for processing
     converted_input_path = _convert_to_wav_if_needed(input_path)
+    print(f"Using input file for separation: {converted_input_path}")
 
     # Create output directory if needed
     output_dir.mkdir(parents=True, exist_ok=True)

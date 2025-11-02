@@ -15,6 +15,20 @@ export type AuthStatusResponse = {
 };
 
 /**
+ * CreateLocationRequest
+ */
+export type CreateLocationRequest = {
+  name: string;
+};
+
+/**
+ * CreateSongRequest
+ */
+export type CreateSongRequest = {
+  name: string;
+};
+
+/**
  * FileWithStems
  */
 export type FileWithStems = {
@@ -25,6 +39,26 @@ export type FileWithStems = {
   created_at: string;
   status?: string | null;
   config?: RecordingConfigData | null;
+  song?: SongMetadata | null;
+  location?: LocationMetadata | null;
+  date_recorded?: string | null;
+};
+
+/**
+ * LocationMetadata
+ */
+export type LocationMetadata = {
+  id: string;
+  name: string;
+};
+
+/**
+ * LocationResponse
+ */
+export type LocationResponse = {
+  id: string;
+  name: string;
+  created_at: string;
 };
 
 /**
@@ -47,6 +81,7 @@ export type ProcessingCallbackPayload = {
  * ProfileResponse
  */
 export type ProfileResponse = {
+  id: string;
   name: string;
   source_folder: string;
 };
@@ -56,25 +91,22 @@ export type ProfileResponse = {
  */
 export type RecordingConfigData = {
   playbackPosition?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
   stems?: {
-    [key: string]: boolean;
-  } | null;
-  effects?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
   eq?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
   compressor?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
   reverb?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
   stereoExpander?: {
-    [key: string]: number;
+    [key: string]: unknown;
   } | null;
 };
 
@@ -91,6 +123,23 @@ export type RecordingStatusResponse = {
     [key: string]: string | number | number;
   }>;
   config?: RecordingConfigData | null;
+};
+
+/**
+ * SongMetadata
+ */
+export type SongMetadata = {
+  id: string;
+  name: string;
+};
+
+/**
+ * SongResponse
+ */
+export type SongResponse = {
+  id: string;
+  name: string;
+  created_at: string;
 };
 
 /**
@@ -136,6 +185,15 @@ export type UpdateConfigRequest = {
  */
 export type UpdateDisplayNameRequest = {
   display_name: string;
+};
+
+/**
+ * UpdateRecordingMetadataRequest
+ */
+export type UpdateRecordingMetadataRequest = {
+  song_id?: string | null;
+  location_id?: string | null;
+  date_recorded?: string | null;
 };
 
 export type AuthStatusAuthStatusData = {
@@ -471,6 +529,158 @@ export type ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses = {
 export type ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponse =
   ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses[keyof ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses];
 
+export type ApiProfilesProfileIdSongsGetProfileSongsData = {
+  body?: never;
+  path: {
+    profile_id: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_id}/songs";
+};
+
+export type ApiProfilesProfileIdSongsGetProfileSongsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileIdSongsGetProfileSongsError =
+  ApiProfilesProfileIdSongsGetProfileSongsErrors[keyof ApiProfilesProfileIdSongsGetProfileSongsErrors];
+
+export type ApiProfilesProfileIdSongsGetProfileSongsResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<SongResponse>;
+};
+
+export type ApiProfilesProfileIdSongsGetProfileSongsResponse =
+  ApiProfilesProfileIdSongsGetProfileSongsResponses[keyof ApiProfilesProfileIdSongsGetProfileSongsResponses];
+
+export type ApiProfilesProfileIdSongsCreateSongData = {
+  body: CreateSongRequest;
+  path: {
+    profile_id: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_id}/songs";
+};
+
+export type ApiProfilesProfileIdSongsCreateSongErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileIdSongsCreateSongError =
+  ApiProfilesProfileIdSongsCreateSongErrors[keyof ApiProfilesProfileIdSongsCreateSongErrors];
+
+export type ApiProfilesProfileIdSongsCreateSongResponses = {
+  /**
+   * Document created, URL follows
+   */
+  201: SongResponse;
+};
+
+export type ApiProfilesProfileIdSongsCreateSongResponse =
+  ApiProfilesProfileIdSongsCreateSongResponses[keyof ApiProfilesProfileIdSongsCreateSongResponses];
+
+export type ApiProfilesProfileIdLocationsGetProfileLocationsData = {
+  body?: never;
+  path: {
+    profile_id: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_id}/locations";
+};
+
+export type ApiProfilesProfileIdLocationsGetProfileLocationsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileIdLocationsGetProfileLocationsError =
+  ApiProfilesProfileIdLocationsGetProfileLocationsErrors[keyof ApiProfilesProfileIdLocationsGetProfileLocationsErrors];
+
+export type ApiProfilesProfileIdLocationsGetProfileLocationsResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<LocationResponse>;
+};
+
+export type ApiProfilesProfileIdLocationsGetProfileLocationsResponse =
+  ApiProfilesProfileIdLocationsGetProfileLocationsResponses[keyof ApiProfilesProfileIdLocationsGetProfileLocationsResponses];
+
+export type ApiProfilesProfileIdLocationsCreateLocationData = {
+  body: CreateLocationRequest;
+  path: {
+    profile_id: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_id}/locations";
+};
+
+export type ApiProfilesProfileIdLocationsCreateLocationErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileIdLocationsCreateLocationError =
+  ApiProfilesProfileIdLocationsCreateLocationErrors[keyof ApiProfilesProfileIdLocationsCreateLocationErrors];
+
+export type ApiProfilesProfileIdLocationsCreateLocationResponses = {
+  /**
+   * Document created, URL follows
+   */
+  201: LocationResponse;
+};
+
+export type ApiProfilesProfileIdLocationsCreateLocationResponse =
+  ApiProfilesProfileIdLocationsCreateLocationResponses[keyof ApiProfilesProfileIdLocationsCreateLocationResponses];
+
 export type ApiUploadProfileNameUploadFileData = {
   body: {
     file?: Blob | File;
@@ -513,58 +723,14 @@ export type ApiUploadProfileNameUploadFileResponses = {
 export type ApiUploadProfileNameUploadFileResponse =
   ApiUploadProfileNameUploadFileResponses[keyof ApiUploadProfileNameUploadFileResponses];
 
-export type ApiProcessProcessLocalData = {
-  body?: never;
-  path?: never;
-  query: {
-    payload: {
-      [key: string]: string;
-    };
-  };
-  url: "/api/process";
-};
-
-export type ApiProcessProcessLocalErrors = {
-  /**
-   * Validation Exception
-   */
-  400: {
-    status_code: number;
-    detail: string;
-    extra?:
-      | null
-      | {
-          [key: string]: unknown;
-        }
-      | Array<unknown>;
-  };
-};
-
-export type ApiProcessProcessLocalError =
-  ApiProcessProcessLocalErrors[keyof ApiProcessProcessLocalErrors];
-
-export type ApiProcessProcessLocalResponses = {
-  /**
-   * Document created, URL follows
-   */
-  201: {
-    [key: string]: string;
-  };
-};
-
-export type ApiProcessProcessLocalResponse =
-  ApiProcessProcessLocalResponses[keyof ApiProcessProcessLocalResponses];
-
 export type ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteData =
   {
-    body?: never;
+    body: ProcessingCallbackPayload;
     path: {
       recording_id: string;
       verification_token: string;
     };
-    query: {
-      result: ProcessingCallbackPayload;
-    };
+    query?: never;
     url: "/api/recordings/{recording_id}/complete/{verification_token}";
   };
 
@@ -600,3 +766,81 @@ export type ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteRe
 
 export type ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteResponse =
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteResponses[keyof ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteResponses];
+
+export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData = {
+  body: UpdateRecordingMetadataRequest;
+  path: {
+    recording_id: string;
+  };
+  query?: never;
+  url: "/api/recordings/{recording_id}/metadata";
+};
+
+export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataError =
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors[keyof ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors];
+
+export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: RecordingStatusResponse;
+};
+
+export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse =
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses[keyof ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses];
+
+export type ApiProcessProcessLocalData = {
+  body: {
+    [key: string]: string;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/process";
+};
+
+export type ApiProcessProcessLocalErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProcessProcessLocalError =
+  ApiProcessProcessLocalErrors[keyof ApiProcessProcessLocalErrors];
+
+export type ApiProcessProcessLocalResponses = {
+  /**
+   * Document created, URL follows
+   */
+  201: {
+    [key: string]: string;
+  };
+};
+
+export type ApiProcessProcessLocalResponse =
+  ApiProcessProcessLocalResponses[keyof ApiProcessProcessLocalResponses];

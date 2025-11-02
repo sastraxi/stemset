@@ -2,26 +2,29 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 import secrets
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 import httpx
-from litestar import get, post
+from litestar import Response, get, patch, post
+from litestar.background_tasks import BackgroundTask
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import NotFoundException, ValidationException
 from litestar.params import Body
+from pydantic import BaseModel
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from ..config import Config
 from ..db.config import get_engine
-from ..db.models import AudioFile, Profile, Recording, Stem, User
+from ..db.models import AudioFile, Location, Profile, Recording, Song, Stem, User
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
 from ..processor.core import process_audio_file
 from ..processor.models import ProcessingCallbackPayload, StemDataModel
@@ -209,8 +212,78 @@ async def upload_file(
         temp_path.unlink(missing_ok=True)
 
 
+async def _process_and_callback(
+    recording_id: str,
+    profile_name: str,
+    strategy_name: str,
+    input_filename: str,
+    output_name: str,
+    callback_url: str,
+    config: Config,
+) -> None:
+    """Background task to process audio and call back with results.
+
+    Args:
+        recording_id: Recording identifier
+        profile_name: Profile name
+        strategy_name: Strategy name
+        input_filename: Input filename
+        output_name: Output name
+        callback_url: URL to call back with results
+        config: Application config
+    """
+    try:
+        # Get input file path
+        storage = get_storage(config)
+        input_path = Path(storage.get_input_url(profile_name, input_filename))
+
+        # Create output directory
+        output_dir = Path("media") / profile_name / output_name
+
+        # Run separation using shared core logic
+        stem_data_list = process_audio_file(
+            input_path=input_path,
+            output_dir=output_dir,
+            profile_name=profile_name,
+            strategy_name=strategy_name,
+        )
+
+        # Call callback endpoint
+        callback_payload = ProcessingCallbackPayload(
+            status="complete",
+            stems=[StemDataModel(**stem) for stem in stem_data_list],
+        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                callback_url,
+                json=callback_payload.model_dump(),
+            )
+            _ = response.raise_for_status()
+
+        print(f"[Local Worker] Recording {recording_id} complete")
+
+    except Exception as e:
+        print(f"[Local Worker] Recording {recording_id} failed: {e}")
+        # Call callback with error
+        try:
+            callback_payload = ProcessingCallbackPayload(
+                status="error",
+                error=str(e),
+            )
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    callback_url,
+                    json=callback_payload.model_dump(),
+                )
+                _ = response.raise_for_status()
+        except Exception as callback_error:
+            print(f"[Local Worker] Failed to report error: {callback_error}")
+
+
 @post("/api/process")
-async def process_local(data: dict[str, str], state: AppState) -> dict[str, str]:
+async def process_local(
+    data: dict[str, str], state: AppState
+) -> Response[dict[str, str]]:
     """Local processing endpoint (acts as GPU worker for development).
 
     This endpoint receives the same payload as the Modal GPU worker,
@@ -232,59 +305,22 @@ async def process_local(data: dict[str, str], state: AppState) -> dict[str, str]
 
     print(f"[Local Worker] Processing recording {recording_id}")
 
-    # Trigger background task
-    async def process_and_callback() -> None:
-        try:
-            # Get input file path
-            storage = get_storage(state.config)
-            input_path = Path(storage.get_input_url(profile_name, input_filename))
+    # Create background task
+    task = BackgroundTask(
+        _process_and_callback,
+        recording_id,
+        profile_name,
+        strategy_name,
+        input_filename,
+        output_name,
+        callback_url,
+        state.config,
+    )
 
-            # Create output directory
-            output_dir = Path("media") / profile_name / output_name
-
-            # Run separation using shared core logic
-            stem_data_list = process_audio_file(
-                input_path=input_path,
-                output_dir=output_dir,
-                profile_name=profile_name,
-                strategy_name=strategy_name,
-            )
-
-            # Call callback endpoint
-            callback_payload = ProcessingCallbackPayload(
-                status="complete",
-                stems=[StemDataModel(**stem) for stem in stem_data_list],
-            )
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    callback_url,
-                    json=callback_payload.model_dump(),
-                )
-                _ = response.raise_for_status()
-
-            print(f"[Local Worker] Recording {recording_id} complete")
-
-        except Exception as e:
-            print(f"[Local Worker] Recording {recording_id} failed: {e}")
-            # Call callback with error
-            try:
-                callback_payload = ProcessingCallbackPayload(
-                    status="error",
-                    error=str(e),
-                )
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.post(
-                        callback_url,
-                        json=callback_payload.model_dump(),
-                    )
-                    _ = response.raise_for_status()
-            except Exception as callback_error:
-                print(f"[Local Worker] Failed to report error: {callback_error}")
-
-    # Fire task in background
-    asyncio.create_task(process_and_callback())
-
-    return {"status": "accepted", "recording_id": recording_id}
+    return Response(
+        {"status": "accepted", "recording_id": recording_id},
+        background=task,
+    )
 
 
 @post("/api/recordings/{recording_id:uuid}/complete/{verification_token:str}")
@@ -476,4 +512,121 @@ async def get_recording_status(
             display_name=recording.display_name,
             stems=stems_list,
             config=config_data,
+        )
+
+
+class UpdateRecordingMetadataRequest(BaseModel):
+    """Request to update recording metadata."""
+
+    song_id: UUID | None = None
+    location_id: UUID | None = None
+    date_recorded: str | None = None  # ISO format date string (YYYY-MM-DD)
+
+
+@patch("/api/recordings/{recording_id:uuid}/metadata")
+async def update_recording_metadata(
+    recording_id: UUID, data: UpdateRecordingMetadataRequest
+) -> RecordingStatusResponse:
+    """Update metadata (song, location, date_recorded) for a recording.
+
+    Args:
+        recording_id: Recording identifier
+        data: Metadata updates
+
+    Returns:
+        Updated recording status
+
+    Raises:
+        NotFoundException: If recording, song, or location not found
+    """
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Fetch recording
+        stmt = (
+            select(Recording)
+            .where(Recording.id == recording_id)
+            .options(
+                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
+            )
+        )
+        result = await session.exec(stmt)
+        recording = result.first()
+
+        if recording is None:
+            raise NotFoundException(f"Recording {recording_id} not found")
+
+        # Validate and update song_id if provided
+        if data.song_id is not None:
+            song_result = await session.exec(select(Song).where(Song.id == data.song_id))
+            song = song_result.first()
+            if song is None:
+                raise NotFoundException(f"Song {data.song_id} not found")
+            recording.song_id = data.song_id
+
+        # Validate and update location_id if provided
+        if data.location_id is not None:
+            location_result = await session.exec(
+                select(Location).where(Location.id == data.location_id)
+            )
+            location = location_result.first()
+            if location is None:
+                raise NotFoundException(f"Location {data.location_id} not found")
+            recording.location_id = data.location_id
+
+        # Update date_recorded if provided
+        if data.date_recorded is not None:
+            # Parse ISO date string to datetime object (date only, no timezone)
+            recording.date_recorded = datetime.fromisoformat(data.date_recorded)
+
+        # Update timestamp
+        recording.updated_at = datetime.now(timezone.utc)
+
+        await session.commit()
+        await session.refresh(recording)
+
+        # Build response (reuse logic from get_recording_status)
+        stems_list = []
+        if recording.status == "complete" and recording.stems:
+            stmt = select(Profile).where(Profile.id == recording.profile_id)
+            profile_result = await session.exec(stmt)
+            profile = profile_result.first()
+
+            if profile:
+                from ..storage import get_storage
+
+                storage = get_storage()
+
+                for stem in recording.stems:
+                    file_ext = Path(stem.audio_url).suffix
+                    audio_url = storage.get_file_url(
+                        profile.name, recording.output_name, stem.stem_type, file_ext
+                    )
+                    waveform_url = storage.get_waveform_url(
+                        profile.name, recording.output_name, stem.stem_type
+                    )
+
+                    stems_list.append(
+                        {
+                            "stem_type": stem.stem_type,
+                            "measured_lufs": stem.measured_lufs,
+                            "peak_amplitude": stem.peak_amplitude,
+                            "stem_gain_adjustment_db": stem.stem_gain_adjustment_db,
+                            "audio_url": audio_url,
+                            "waveform_url": waveform_url,
+                            "file_size_bytes": stem.file_size_bytes,
+                            "duration_seconds": stem.duration_seconds,
+                        }
+                    )
+
+        return RecordingStatusResponse(
+            recording_id=str(recording.id),
+            status=recording.status,
+            error_message=recording.error_message,
+            output_name=recording.output_name,
+            display_name=recording.display_name,
+            stems=stems_list,
+            config=RecordingConfigData(),  # Empty config for metadata update
         )

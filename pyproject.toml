@@ -74,4 +74,4 @@ default-groups = ["shared"]
 
 [tool.basedpyright]
 include = ["src/"]
-exclude = ["**/migrations/**"]
+exclude = ["**/alembic/versions/**"]

@@ -8,7 +8,7 @@ export function RecordingPage() {
 	const { profileName, recordingName } = useParams({
 		from: "/p/$profileName/$recordingName",
 	});
-	const { source } = useSearch({ from: "/p/$profileName/$recordingName" });
+	const { source, initialState } = useSearch({ from: "/p/$profileName/$recordingName" });
 	const { authStatus, loading: authLoading, logout } = useAuth();
 
 	// Show login page if not authenticated
@@ -29,6 +29,7 @@ export function RecordingPage() {
 				initialProfile={profileName}
 				initialRecording={recordingName}
 				sourceParam={source}
+				initialStateParam={initialState}
 			/>
 		</>
 	);

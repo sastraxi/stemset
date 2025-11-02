@@ -17,7 +17,7 @@ import "../styles/splash.css";
 import "../styles/waveform.css";
 import type { StemFileWithDisplayName } from "../types";
 import { InlineEdit } from "./InlineEdit";
-import { ProcessingState } from "./ProcessingState";
+import { MetadataPage } from "./MetadataPage";
 import { ProfileSelector } from "./ProfileSelector";
 import { QRUploadOverlay } from "./QRUploadOverlay";
 import { Spinner } from "./Spinner";
@@ -32,6 +32,7 @@ interface AuthenticatedAppProps {
 	initialProfile?: string;
 	initialRecording?: string;
 	sourceParam?: string;
+	initialStateParam?: string;
 }
 
 export function AuthenticatedApp({
@@ -40,6 +41,7 @@ export function AuthenticatedApp({
 	initialProfile,
 	initialRecording,
 	sourceParam,
+	initialStateParam,
 }: AuthenticatedAppProps) {
 	const [selectedProfile, setSelectedProfile] = useState<string | null>(
 		initialProfile || null,
@@ -47,6 +49,7 @@ export function AuthenticatedApp({
 	const [selectedFile, setSelectedFile] =
 		useState<StemFileWithDisplayName | null>(null);
 	const [isLoadingStems, setIsLoadingStems] = useState(false);
+	const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
 	const navigate = useNavigate();
 
@@ -99,6 +102,10 @@ export function AuthenticatedApp({
 			const targetFile = files.find((f) => f.name === initialRecording);
 			if (targetFile && selectedFile?.name !== targetFile.name) {
 				setSelectedFile(targetFile);
+				// Track if this recording was initially processing
+				if (initialStateParam === "processing") {
+					setWasInitiallyProcessing(true);
+				}
 				setTimeout(() => stemPlayerRef.current?.focus(), 100);
 			} else if (!targetFile && initialRecording) {
 				// Initial recording doesn't exist - clear selection
@@ -109,7 +116,14 @@ export function AuthenticatedApp({
 				setSelectedFile(null);
 			}
 		}
-	}, [files, initialRecording, selectedProfile, initialProfile, selectedFile]);
+	}, [
+		files,
+		initialRecording,
+		selectedProfile,
+		initialProfile,
+		selectedFile,
+		initialStateParam,
+	]);
 
 	// Persist selected profile to localStorage
 	useEffect(() => {
@@ -136,10 +150,11 @@ export function AuthenticatedApp({
 
 		console.log("Navigating to recording:", profileName, fileName);
 
-		// Navigate to the recording URL
+		// Navigate to the recording URL with initialState=processing query param
 		navigate({
 			to: "/p/$profileName/$recordingName",
 			params: { profileName, recordingName: fileName },
+			search: { initialState: "processing" },
 		});
 	};
 
@@ -276,7 +291,6 @@ export function AuthenticatedApp({
 							profileName={selectedProfile}
 							onUploadComplete={handleRefresh}
 							onNavigateToRecording={handleNavigateToRecording}
-							shouldAutoNavigate={() => !selectedFile}
 						/>
 					)}
 
@@ -341,16 +355,16 @@ export function AuthenticatedApp({
 					className={`player-area ${isOnRecordingRoute ? "block" : "md:block hidden"}`}
 				>
 					{selectedFile && selectedProfile ? (
-						selectedFile.status === "processing" ||
-						selectedFile.status === "error" ? (
-							<ProcessingState
-								displayName={selectedFile.displayName}
-								status={selectedFile.status}
-								errorMessage={
-									selectedFile.status === "error"
-										? "Processing failed. Please try again."
-										: undefined
-								}
+						(selectedFile.status === "processing" ||
+							selectedFile.status === "error" ||
+							(wasInitiallyProcessing && selectedFile.status === "complete")) ? (
+							<MetadataPage
+								recording={selectedFile}
+								profileId={profiles?.find((p) => p.name === selectedProfile)?.id || ""}
+								wasInitiallyProcessing={wasInitiallyProcessing}
+								onContinue={() => {
+									setWasInitiallyProcessing(false);
+								}}
 							/>
 						) : (
 							<>

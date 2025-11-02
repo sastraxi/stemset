@@ -1,13 +1,14 @@
 """Strategy tree execution engine for successive separation workflows."""
 
 from __future__ import annotations
-from pathlib import Path
-import tempfile
-import shutil
 
-from ..config import AudioFormat, Strategy, StrategyNode, OutputConfig
-from .registry import get_model_class
+import shutil
+import tempfile
+from pathlib import Path
+
+from ..config import AudioFormat, OutputConfig, Strategy, StrategyNode
 from .audio_separator_base import AudioSeparator
+from .registry import get_model_class
 
 
 class StrategyExecutor:
@@ -118,8 +119,6 @@ class StrategyExecutor:
 
         # Always use WAV format for all intermediate processing to maintain quality
         # Format conversion to the configured format (e.g., opus) happens at the very end
-        from ..config import OutputConfig
-
         temp_output_config = OutputConfig(
             format=AudioFormat.WAV, bitrate=self.output_config.bitrate
         )
@@ -193,8 +192,8 @@ class StrategyExecutor:
                 bitrate_str,
                 str(dest_path),
             ]
-        elif self.output_config.format == AudioFormat.AAC:
-            # Convert to AAC using ffmpeg
+        elif self.output_config.format == AudioFormat.M4A:
+            # Convert to AAC / MP4 using ffmpeg
             bitrate_str = f"{self.output_config.bitrate}k"
             cmd = [
                 "ffmpeg",
@@ -205,6 +204,8 @@ class StrategyExecutor:
                 "aac",
                 "-b:a",
                 bitrate_str,
+                "-f",
+                "mp4",
                 str(dest_path),
             ]
         else:

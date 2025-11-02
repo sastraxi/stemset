@@ -13,6 +13,18 @@ import type {
   ApiProcessProcessLocalResponses,
   ApiProfilesGetProfilesData,
   ApiProfilesGetProfilesResponses,
+  ApiProfilesProfileIdLocationsCreateLocationData,
+  ApiProfilesProfileIdLocationsCreateLocationErrors,
+  ApiProfilesProfileIdLocationsCreateLocationResponses,
+  ApiProfilesProfileIdLocationsGetProfileLocationsData,
+  ApiProfilesProfileIdLocationsGetProfileLocationsErrors,
+  ApiProfilesProfileIdLocationsGetProfileLocationsResponses,
+  ApiProfilesProfileIdSongsCreateSongData,
+  ApiProfilesProfileIdSongsCreateSongErrors,
+  ApiProfilesProfileIdSongsCreateSongResponses,
+  ApiProfilesProfileIdSongsGetProfileSongsData,
+  ApiProfilesProfileIdSongsGetProfileSongsErrors,
+  ApiProfilesProfileIdSongsGetProfileSongsResponses,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesGetProfileFilesErrors,
   ApiProfilesProfileNameFilesGetProfileFilesResponses,
@@ -34,6 +46,9 @@ import type {
   ApiRecordingsRecordingIdGetRecordingStatusData,
   ApiRecordingsRecordingIdGetRecordingStatusErrors,
   ApiRecordingsRecordingIdGetRecordingStatusResponses,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors,
+  ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses,
   ApiUploadProfileNameUploadFileData,
   ApiUploadProfileNameUploadFileErrors,
   ApiUploadProfileNameUploadFileResponses,
@@ -276,6 +291,92 @@ export const apiRecordingsRecordingIdConfigUpdateRecordingConfig = <
 };
 
 /**
+ * GetProfileSongs
+ */
+export const apiProfilesProfileIdSongsGetProfileSongs = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    ApiProfilesProfileIdSongsGetProfileSongsResponses,
+    ApiProfilesProfileIdSongsGetProfileSongsErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_id}/songs",
+    ...options,
+  });
+};
+
+/**
+ * CreateSong
+ */
+export const apiProfilesProfileIdSongsCreateSong = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiProfilesProfileIdSongsCreateSongData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    ApiProfilesProfileIdSongsCreateSongResponses,
+    ApiProfilesProfileIdSongsCreateSongErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_id}/songs",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * GetProfileLocations
+ */
+export const apiProfilesProfileIdLocationsGetProfileLocations = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileIdLocationsGetProfileLocationsData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ApiProfilesProfileIdLocationsGetProfileLocationsResponses,
+    ApiProfilesProfileIdLocationsGetProfileLocationsErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_id}/locations",
+    ...options,
+  });
+};
+
+/**
+ * CreateLocation
+ */
+export const apiProfilesProfileIdLocationsCreateLocation = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileIdLocationsCreateLocationData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApiProfilesProfileIdLocationsCreateLocationResponses,
+    ApiProfilesProfileIdLocationsCreateLocationErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_id}/locations",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * UploadFile
  */
 export const apiUploadProfileNameUploadFile = <
@@ -299,31 +400,6 @@ export const apiUploadProfileNameUploadFile = <
 };
 
 /**
- * ProcessLocal
- */
-export const apiProcessProcessLocal = <ThrowOnError extends boolean = false>(
-  options: Options<ApiProcessProcessLocalData, ThrowOnError>,
-) => {
-  return (options.client ?? client).post<
-    ApiProcessProcessLocalResponses,
-    ApiProcessProcessLocalErrors,
-    ThrowOnError
-  >({
-    querySerializer: {
-      parameters: {
-        payload: {
-          object: {
-            style: "form",
-          },
-        },
-      },
-    },
-    url: "/api/process",
-    ...options,
-  });
-};
-
-/**
  * RecordingComplete
  */
 export const apiRecordingsRecordingIdCompleteVerificationTokenRecordingComplete =
@@ -340,5 +416,54 @@ export const apiRecordingsRecordingIdCompleteVerificationTokenRecordingComplete 
     >({
       url: "/api/recordings/{recording_id}/complete/{verification_token}",
       ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
     });
   };
+
+/**
+ * UpdateRecordingMetadata
+ */
+export const apiRecordingsRecordingIdMetadataUpdateRecordingMetadata = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses,
+    ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors,
+    ThrowOnError
+  >({
+    url: "/api/recordings/{recording_id}/metadata",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * ProcessLocal
+ */
+export const apiProcessProcessLocal = <ThrowOnError extends boolean = false>(
+  options: Options<ApiProcessProcessLocalData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    ApiProcessProcessLocalResponses,
+    ApiProcessProcessLocalErrors,
+    ThrowOnError
+  >({
+    url: "/api/process",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
