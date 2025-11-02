@@ -9,9 +9,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
-
-from ..modern_separator import StemSeparator
 from .models import StemData
 
 
@@ -63,6 +60,10 @@ def process_audio_file(
     Raises:
         Any exception from StemSeparator.separate_and_normalize
     """
+    import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
+
+    from ..modern_separator import StemSeparator
+
     # Set PyTorch thread limits BEFORE any torch operations
     _set_pytorch_thread_limits()
 

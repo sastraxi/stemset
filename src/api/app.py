@@ -94,10 +94,13 @@ config = get_config()
 backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # Create type-safe state (State subclass with dict-based attributes)
-app_state = AppState()
-app_state.config = config
-app_state.backend_url = backend_url
-app_state.frontend_url = frontend_url
+app_state = AppState(
+    {
+        "config": config,
+        "backend_url": backend_url,
+        "frontend_url": frontend_url,
+    }
+)
 
 # Authentication configuration - exclude certain routes from auth requirement
 auth_middleware = DefineMiddleware(
