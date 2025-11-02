@@ -30,6 +30,36 @@ def _set_pytorch_thread_limits() -> None:
         print(f"Limited PyTorch to {thread_count} threads (of {cpu_count} available)")
 
 
+def _convert_to_wav_if_needed(input_path: Path) -> Path:
+    """Convert audio file to WAV format using ffmpeg if it's not already WAV."""
+    import subprocess
+
+    if input_path.suffix.lower() == ".wav":
+        return input_path
+
+    wav_path = input_path.with_suffix(".wav")
+
+    print(f"Converting {input_path} to WAV format...")
+    command = [
+        "ffmpeg",
+        "-y",  # Overwrite output file if it exists
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(input_path),
+        str(wav_path),
+    ]
+    try:
+        # Using subprocess.run with capture_output=True to hide ffmpeg output unless there's an error
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        print(f"Successfully converted to {wav_path}")
+        return wav_path
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting to WAV: {e.stderr}")
+        raise
+
+
 def process_audio_file(
     input_path: Path,
     output_dir: Path,
@@ -67,12 +97,15 @@ def process_audio_file(
     # Set PyTorch thread limits BEFORE any torch operations
     _set_pytorch_thread_limits()
 
+    # Ensure input is in WAV format for processing
+    converted_input_path = _convert_to_wav_if_needed(input_path)
+
     # Create output directory if needed
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Run separation
     separator = StemSeparator(profile_name, strategy_name)
-    stems_metadata = separator.separate_and_normalize(input_path, output_dir)
+    stems_metadata = separator.separate_and_normalize(converted_input_path, output_dir)
 
     # Convert to callback format
     stem_data_list: list[StemData] = []

@@ -60,7 +60,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
 - **Python 3.13+** with [uv](https://docs.astral.sh/uv/)
 - **Node.js** with [bun](https://bun.sh/)
-- **ffmpeg** for Opus encoding (`brew install ffmpeg` on macOS)
+- **ffmpeg** for audio format conversion (`brew install ffmpeg` on macOS)
 
 ### Setup
 
