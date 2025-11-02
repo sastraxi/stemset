@@ -2,6 +2,7 @@ import { Upload as UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import "./Upload.css";
+import { Button } from "./ui/button";
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -49,37 +50,17 @@ async function pollRecordingStatus(
 				// Show persistent toast with button to navigate
 				toast.success(
 					<div>
-						<strong>{filename} ready!</strong>
+						<p>{filename} has finished processing.</p>
 						{onNavigate && (
-							<button
-								type="button"
+							<Button
+								size="sm"
 								onClick={() => {
 									onNavigate(profileName, outputName);
 									toast.dismiss(toastId);
 								}}
-								style={{
-									marginTop: "0.5rem",
-									padding: "0.375rem 0.75rem",
-									backgroundColor: "rgba(255, 255, 255, 0.2)",
-									border: "1px solid rgba(255, 255, 255, 0.3)",
-									borderRadius: "0.375rem",
-									color: "white",
-									fontSize: "0.875rem",
-									fontWeight: 500,
-									cursor: "pointer",
-									width: "100%",
-								}}
-								onMouseEnter={(e) => {
-									e.currentTarget.style.backgroundColor =
-										"rgba(255, 255, 255, 0.3)";
-								}}
-								onMouseLeave={(e) => {
-									e.currentTarget.style.backgroundColor =
-										"rgba(255, 255, 255, 0.2)";
-								}}
 							>
-								Play Now
-							</button>
+								Go to recording
+							</Button>
 						)}
 					</div>,
 					{ id: toastId, duration: Infinity },
@@ -264,6 +245,8 @@ export function Upload({
 			/>
 
 			{/* Simple upload button in sidebar */}
+			{/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
+			{/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
 			<div className="upload-sidebar-button" onClick={handleClick}>
 				<UploadIcon className="h-4 w-4" />
 				<span>Upload Audio</span>
