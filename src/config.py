@@ -35,6 +35,38 @@ class OutputConfig(BaseModel):
             raise ValueError(f"Bitrate must be between 32 and 320 kbps, got {v}")
         return v
 
+    def extension(self) -> str:
+        """Get file extension for the audio format."""
+        return self.format.value
+
+    def codec(self) -> str:
+        """Get codec name for the audio format."""
+        match self.format:
+            case AudioFormat.WAV:
+                return "pcm_s16le"
+            case AudioFormat.OPUS:
+                return "libopus"
+            case AudioFormat.M4A:
+                return "aac"
+
+    def ffmpeg_bitrate_arg(self) -> str | None:
+        """Get ffmpeg bitrate argument string."""
+        return f"{self.bitrate}k" if self.format != AudioFormat.WAV else None
+
+    def convert(self, from_path: Path, to_path: Path):
+        """
+        Convert audio file from one format to another.
+        Uses ffmpeg under the hood and maintains sample rate and channels.
+        """
+        from .processor.audio_utils import convert_audio
+
+        return convert_audio(
+            from_path,
+            to_path,
+            codec=self.codec(),
+            bitrate=self.ffmpeg_bitrate_arg(),
+        )
+
 
 class StrategyNode(BaseModel):
     """A node in the separation strategy tree."""

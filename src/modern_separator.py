@@ -1,20 +1,24 @@
 """Modern separation interface using strategy-based architecture."""
 
 from __future__ import annotations
+
 from pathlib import Path
 
-from .config import get_config, OutputConfig
+from .config import AudioFormat, OutputConfig, get_config
+from .models.metadata import StemsMetadata
 from .models.strategy_executor import StrategyExecutor
-from .models.metadata import StemMetadata, StemsMetadata
 from .processor.audio_metadata_analyzer import get_metadata_analyzer
+
+LOSSLESS_OUTPUT_CONFIG = OutputConfig(format=AudioFormat.WAV)
 
 
 class StemSeparator:
     """High-level interface for audio stem separation using strategies."""
 
     executor: StrategyExecutor
+    output_config: OutputConfig
 
-    def __init__(self, profile_name: str, strategy_name: str):
+    def __init__(self, profile_name: str, strategy_name: str, output_config: OutputConfig):
         """Initialize separator for a specific profile.
 
         Args:
@@ -28,11 +32,13 @@ class StemSeparator:
                 f"Profile '{profile_name}' references unknown strategy '{strategy_name}'"
             )
 
-        # Create executor with strategy and output config
-        self.executor = StrategyExecutor(strategy, OutputConfig())
+        # StrategyExecutor uses an intermediate WAV format for separation so that we can
+        # analyze LUFS and generate waveforms with soundfile no matter the output format
+        self.executor = StrategyExecutor(strategy, LOSSLESS_OUTPUT_CONFIG)
+        self.output_config = output_config
 
     def separate_and_normalize(
-        self, input_file: Path, output_folder: Path
+        self, input_file: Path, output_folder: Path, delete_intermediates: bool = True
     ) -> StemsMetadata:
         """Separate audio into stems with metadata.
 
@@ -56,5 +62,21 @@ class StemSeparator:
         stems_metadata: StemsMetadata = analyzer.create_stems_metadata(stem_paths, output_folder)
 
         print(f"  ✓ Metadata analysis complete ({len(stems_metadata.stems)} stems)")
+
+        # Now convert to the desired output format if needed
+        if self.output_config.format != LOSSLESS_OUTPUT_CONFIG.format:
+            print(f"Converting stems to {self.output_config.format.value} format...")
+            for stem_name, stem_meta in stems_metadata.stems.items():
+                source_path = output_folder / stem_meta.stem_url
+                dest_path = output_folder / f"{stem_name}.{self.output_config.format.value.lower()}"
+
+                _ = self.output_config.convert(source_path, dest_path)
+
+                # Update metadata to point to new file
+                stem_meta.stem_url = dest_path.name
+                if delete_intermediates:
+                    source_path.unlink(missing_ok=True)
+
+            print("  ✓ Format conversion complete.")
 
         return stems_metadata

@@ -23,14 +23,18 @@ class AudioMetadataAnalyzer:
         """Analyze the loudness (LUFS) and peak amplitude of an audio file.
 
         Args:
-            audio_file: Path to the audio file to analyze
+            audio_file: Path to the audio file to analyze (must be in wav format)
 
         Returns:
             Tuple of (loudness_lufs, peak_amplitude)
         """
         import math
+
         import numpy as np
         import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
+
+        if not audio_file.is_file() or audio_file.suffix.lower() != ".wav":
+            raise ValueError("Audio path must point to an existing WAV file")
 
         audio_data, _rate = sf.read(str(audio_file))
         loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)

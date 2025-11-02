@@ -21,7 +21,7 @@ class WaveformGenerator:
         """Compute min/max envelope for waveform visualization.
 
         Args:
-            audio_path: Path to audio file
+            audio_path: Path to audio file (must be in wav format)
             target_width: Number of horizontal pixels (samples per pixel computed automatically)
             max_peak: Maximum peak amplitude across all stems for normalization
 
@@ -30,6 +30,9 @@ class WaveformGenerator:
         """
         import numpy as np
         import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
+
+        if not audio_path.is_file() or audio_path.suffix.lower() != ".wav":
+            raise ValueError("Audio path must point to an existing WAV file")
 
         audio, _sr = sf.read(str(audio_path))
 

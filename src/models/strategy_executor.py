@@ -67,7 +67,7 @@ class StrategyExecutor:
                     _ = shutil.move(str(temp_path), str(dest_path))
                 else:
                     # Convert from WAV to target format using audio-separator
-                    self._convert_audio_format(temp_path, dest_path)
+                    _ = self.output_config.convert(temp_path, dest_path)
                     temp_path.unlink()  # Clean up temp WAV file
 
                 final_paths[stem_name] = dest_path
@@ -168,52 +168,3 @@ class StrategyExecutor:
         """Create a new model instance with given output config."""
         model_class = get_model_class(model_name)
         return model_class(output_config)
-
-    def _convert_audio_format(self, source_path: Path, dest_path: Path) -> None:
-        """Convert audio from source format to target format using ffmpeg.
-
-        Args:
-            source_path: Source audio file (typically WAV)
-            dest_path: Destination path with target format extension
-        """
-        import subprocess
-
-        if self.output_config.format == AudioFormat.OPUS:
-            # Convert to Opus using ffmpeg
-            bitrate_str = f"{self.output_config.bitrate}k"
-            cmd = [
-                "ffmpeg",
-                "-y",  # -y to overwrite output file
-                "-i",
-                str(source_path),
-                "-c:a",
-                "libopus",
-                "-b:a",
-                bitrate_str,
-                str(dest_path),
-            ]
-        elif self.output_config.format == AudioFormat.M4A:
-            # Convert to AAC / MP4 using ffmpeg
-            bitrate_str = f"{self.output_config.bitrate}k"
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(source_path),
-                "-c:a",
-                "aac",
-                "-b:a",
-                bitrate_str,
-                "-f",
-                "mp4",
-                str(dest_path),
-            ]
-        else:
-            # For WAV and other formats, just copy (should not happen in practice)
-            _ = shutil.copy2(str(source_path), str(dest_path))
-            return
-
-        # Run ffmpeg conversion
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"FFmpeg conversion failed: {result.stderr}")
