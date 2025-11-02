@@ -28,11 +28,17 @@ class AudioMetadataAnalyzer:
         Returns:
             Tuple of (loudness_lufs, peak_amplitude)
         """
+        import math
         import numpy as np
         import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 
         audio_data, _rate = sf.read(str(audio_file))
         loudness_lufs = self.loudness_meter.integrated_loudness(audio_data)
+
+        # Clamp -inf to a very low but valid value for JSON serialization
+        # Silent/near-silent audio returns -inf from pyloudnorm
+        if math.isinf(loudness_lufs) or math.isnan(loudness_lufs):
+            loudness_lufs = -120.0  # Effectively silent
 
         # Calculate peak amplitude (absolute max value)
         if len(audio_data.shape) > 1:
