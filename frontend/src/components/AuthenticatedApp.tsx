@@ -151,6 +151,9 @@ export function AuthenticatedApp({
 
 		console.log("Navigating to recording:", profileName, fileName);
 
+		// Refresh the file list to ensure the new recording appears
+		await refetchFiles();
+
 		// Navigate to the recording URL with initialState=processing query param
 		navigate({
 			to: "/p/$profileName/$recordingName",
