@@ -138,4 +138,5 @@ app = Litestar(
     state=app_state,  # Pass the State subclass directly
     request_max_body_size=1024 * 1024 * 150,  # 150MB max upload size
     lifespan=[database_lifespan],
+    debug=True,
 )
