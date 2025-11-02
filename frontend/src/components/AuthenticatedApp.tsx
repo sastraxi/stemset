@@ -167,7 +167,6 @@ export function AuthenticatedApp({
 	const handleRefresh = async () => {
 		try {
 			await refetchFiles();
-			toast.success("Refreshed file list");
 		} catch (error) {
 			console.error("Error refreshing files:", error);
 			toast.error("Error refreshing file list");
