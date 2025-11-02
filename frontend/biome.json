@@ -6,7 +6,7 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"includes": ["**", "!**/dist", "!**/*.gen.ts"]
+		"includes": ["**", "!**/dist", "!**/*.gen.ts", "!**/api/generated/**/*.ts"]
 	},
 	"formatter": {
 		"enabled": true,

@@ -49,7 +49,6 @@ yarn-error.log*
 frontend/dist/
 frontend/build/
 
-
 # Database
 *.db
 *.sqlite
@@ -62,6 +61,3 @@ frontend/build/
 .env
 .env.local
 .env.production
-
-# Generated API client
-frontend/src/api/generated/
