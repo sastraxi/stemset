@@ -1,7 +1,15 @@
-"""Storage abstraction for media files (local or Cloudflare R2)."""
+"""Storage abstraction for media files (local or Cloudflare R2).
+
+Storage backend is determined by environment variables:
+- GPU_WORKER_URL set → R2Storage (production, remote GPU processing)
+- GPU_WORKER_URL unset → LocalStorage (development, local processing)
+
+R2Config in config.yaml is required only if GPU_WORKER_URL is set.
+"""
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import Protocol
@@ -22,10 +30,6 @@ class StorageBackend(Protocol):
         """Get URL for accessing a waveform PNG."""
         ...
 
-    def get_metadata_url(self, profile_name: str, file_name: str) -> str:
-        """Get URL for accessing metadata JSON."""
-        ...
-
     def list_files(self, profile_name: str) -> list[str]:
         """List all processed files for a profile."""
         ...
@@ -36,18 +40,6 @@ class StorageBackend(Protocol):
 
     def get_input_url(self, profile_name: str, filename: str) -> str:
         """Get URL for accessing an input file."""
-        ...
-
-    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
-        """Download an input file to local destination."""
-        ...
-
-    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
-        """Update metadata.json file."""
-        ...
-
-    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
-        """Download metadata.json for a recording."""
         ...
 
     def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
@@ -65,10 +57,6 @@ class LocalStorage:
     def get_waveform_url(self, profile_name: str, file_name: str, stem_name: str) -> str:
         """Get URL for accessing a waveform PNG."""
         return f"/media/{profile_name}/{file_name}/{stem_name}_waveform.png"
-
-    def get_metadata_url(self, profile_name: str, file_name: str) -> str:
-        """Get URL for accessing metadata JSON."""
-        return f"/media/{profile_name}/{file_name}/metadata.json"
 
     def list_files(self, profile_name: str) -> list[str]:
         """List all processed files for a profile."""
@@ -96,31 +84,11 @@ class LocalStorage:
         """Get path for accessing an input file (local filesystem)."""
         return str(Path("inputs") / profile_name / filename)
 
-    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
-        """Copy input file from inputs directory to destination."""
-        source_path = Path("inputs") / profile_name / filename
-        _ = shutil.copy2(source_path, dest_path)
-
-    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
-        """Update metadata.json file."""
-        metadata_path = Path("media") / profile_name / file_name / "metadata.json"
-        metadata_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(metadata_path, "w") as f:
-            _ = f.write(metadata_content)
-
-    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
-        """Download metadata.json for a recording (copy from local)."""
-        source_path = Path("media") / profile_name / output_name / "metadata.json"
-        _ = shutil.copy2(source_path, dest_path)
-
     def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
         """Delete a file from local storage."""
         if stem_name and ext:
             # Regular stem file
             file_path = Path("media") / profile_name / file_name / f"{stem_name}{ext}"
-        elif ext:
-            # Special case for metadata.json
-            file_path = Path("media") / profile_name / file_name / ext
         else:
             # Directory
             file_path = Path("media") / profile_name / file_name
@@ -164,19 +132,6 @@ class R2Storage:
     def get_waveform_url(self, profile_name: str, file_name: str, stem_name: str) -> str:
         """Get presigned URL for accessing a waveform PNG."""
         key = f"{profile_name}/{file_name}/{stem_name}_waveform.png"
-
-        if self.config.public_url:
-            return f"{self.config.public_url}/{key}"
-
-        return self.s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": self.config.bucket_name, "Key": key},
-            ExpiresIn=3600,
-        )
-
-    def get_metadata_url(self, profile_name: str, file_name: str) -> str:
-        """Get presigned URL for accessing metadata JSON."""
-        key = f"{profile_name}/{file_name}/metadata.json"
 
         if self.config.public_url:
             return f"{self.config.public_url}/{key}"
@@ -267,43 +222,11 @@ class R2Storage:
             ExpiresIn=3600,
         )
 
-    def download_input_file(self, profile_name: str, filename: str, dest_path: Path) -> None:
-        """Download an input file from R2 to local destination."""
-        key = f"inputs/{profile_name}/{filename}"
-        self.s3_client.download_file(
-            self.config.bucket_name,
-            key,
-            str(dest_path),
-        )
-
-    def update_metadata(self, profile_name: str, file_name: str, metadata_content: str) -> None:
-        """Update metadata.json file in R2."""
-        key = f"{profile_name}/{file_name}/metadata.json"
-        _ = self.s3_client.put_object(
-            Bucket=self.config.bucket_name,
-            Key=key,
-            Body=metadata_content.encode("utf-8"),
-            ContentType="application/json",
-        )
-
-    def download_metadata(self, profile_name: str, output_name: str, dest_path: Path) -> None:
-        """Download metadata.json for a recording from R2."""
-        key = f"{profile_name}/{output_name}/metadata.json"
-        self.s3_client.download_file(
-            self.config.bucket_name,
-            key,
-            str(dest_path),
-        )
-
     def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
         """Delete a file from R2 storage."""
         if stem_name and ext:
             # Regular stem file
             key = f"{profile_name}/{file_name}/{stem_name}{ext}"
-            _ = self.s3_client.delete_object(Bucket=self.config.bucket_name, Key=key)
-        elif ext:
-            # Special case for metadata.json
-            key = f"{profile_name}/{file_name}/{ext}"
             _ = self.s3_client.delete_object(Bucket=self.config.bucket_name, Key=key)
         else:
             # Directory - delete all objects with this prefix one by one
@@ -325,8 +248,11 @@ _storage: StorageBackend | None = None
 def get_storage(config: Config | None = None) -> StorageBackend:
     """Get the configured storage backend.
 
-    For API routes: Always uses R2 if configured, otherwise LocalStorage.
-    For CLI: Not used directly - CLI manages local files and syncs with R2.
+    Determined by GPU_WORKER_URL environment variable:
+    - If set: Use R2Storage (production, remote GPU processing)
+    - If unset: Use LocalStorage (development, local processing)
+
+    R2Config must be present in config.yaml if GPU_WORKER_URL is set.
     """
     global _storage
 
@@ -339,10 +265,17 @@ def get_storage(config: Config | None = None) -> StorageBackend:
 
         config = get_config()
 
-    # Use R2 if configured, otherwise local storage
-    if config.r2 is not None:
+    # Determine storage backend based on GPU_WORKER_URL
+    gpu_worker_url = os.getenv("GPU_WORKER_URL")
+
+    if gpu_worker_url:
+        # Production: Remote GPU processing requires R2
+        if config.r2 is None:
+            msg = "GPU_WORKER_URL is set but R2 config is missing in config.yaml"
+            raise ValueError(msg)
         _storage = R2Storage(config.r2)
     else:
+        # Development: Local processing uses local filesystem
         _storage = LocalStorage()
 
     return _storage

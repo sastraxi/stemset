@@ -74,7 +74,7 @@ class AudioMetadataAnalyzer:
             f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB"
         )
 
-        # Use relative paths (metadata.json sits next to the audio files)
+        # Use relative paths for database storage
         stem_url = audio_file.name  # e.g., "vocals.opus"
         waveform_url = f"{stem_name}_waveform.png"
 
@@ -167,7 +167,7 @@ class AudioMetadataAnalyzer:
                 f"  {stem_name}: {loudness_lufs:.1f} LUFS, peak: {peak_amplitude:.3f}, gain: {stem_gain_adjustment_db:+.1f} dB"
             )
 
-            # Use relative paths (metadata.json sits next to the audio files)
+            # Use relative paths for database storage
             stem_url = audio_file.name  # e.g., "vocals.opus"
             waveform_url = f"{stem_name}_waveform.png"
 

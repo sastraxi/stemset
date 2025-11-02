@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import tempfile
-import httpx
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
-from dotenv import load_dotenv
 
+import httpx
 import modal
+from dotenv import load_dotenv
 
 # Load .env file for build-time configuration
 _ = load_dotenv()
@@ -79,30 +79,39 @@ r2_mount = modal.CloudBucketMount(
 )
 @modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
 def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
-    """Process audio file using GPU and return results.
+    """Process audio file using GPU and call back with stem data.
 
-    This endpoint accepts a POST request with ProcessingJob JSON payload.
-    Files are read from and written to the mounted R2 bucket.
+    Workflow:
+    1. Download input from R2
+    2. Run separation with StemSeparator
+    3. Upload stems and waveforms to R2
+    4. Call back to API with pointers to metadata
 
     Args:
-        job_data: ProcessingJob dict with input_key, strategy, output config, etc.
+        job_data: Worker payload with recording_id, profile_name, strategy_name, etc.
 
     Returns:
-        ProcessingResult dict with status, stems list, or error message
+        Status dict
     """
     import sys
-    from botocore.client import ClientError
+
+    import soundfile as sf  # pyright: ignore[reportMissingTypeStubs]
 
     sys.path.insert(0, "/root")
 
-    from src.gpu_worker.models import ProcessingJob, ProcessingResult
     from src.config import get_config
-    from src.storage import R2Storage
     from src.modern_separator import StemSeparator
+    from src.storage import R2Storage
     from src.utils import compute_file_hash
 
-    # Parse job data
-    job = ProcessingJob.model_validate(job_data)
+    # Parse job data (no Pydantic model - just dict)
+    recording_id = job_data["recording_id"]
+    verification_token = job_data["verification_token"]
+    profile_name = job_data["profile_name"]
+    strategy_name = job_data["strategy_name"]
+    input_filename = job_data["input_filename"]
+    output_name = job_data["output_name"]
+    callback_url = job_data["callback_url"]
 
     try:
         # Load config
@@ -119,122 +128,99 @@ def process(job_data: dict[str, Any]) -> dict[str, Any]:  # pyright: ignore[repo
             temp_path = Path(temp_dir)
 
             # Download input file from R2
-            input_filename = Path(job.input_key).name
             input_path = temp_path / input_filename
-            print(f"Downloading input: {job.input_key}")
-            storage.download_input_file(job.profile_name, input_filename, input_path)
+            print(f"Downloading input from R2: inputs/{profile_name}/{input_filename}")
+            storage.s3_client.download_file(
+                storage.config.bucket_name,
+                f"inputs/{profile_name}/{input_filename}",
+                str(input_path),
+            )
 
-            # Compute hash to check for duplicates
+            # Compute hash for logging
             file_hash = compute_file_hash(input_path)
             print(f"File hash: {file_hash[:8]}...")
-
-            # Get strategy from config
-            strategy = config.get_strategy(job.strategy_name)
-            if strategy is None:
-                raise ValueError(f"Strategy '{job.strategy_name}' not found")
 
             # Create temp output directory
             output_dir = temp_path / "output"
             output_dir.mkdir()
 
             # Process the audio
-            print(f"Processing with strategy: {job.strategy_name}")
-            separator = StemSeparator(job.profile_name, job.strategy_name)
+            print(f"Processing with strategy: {strategy_name}")
+            separator = StemSeparator(profile_name, strategy_name)
 
-            # Run separation (this creates stems, metadata.json, and waveforms)
-            stem_paths, _metadata = separator.separate_and_normalize(input_path, output_dir)
+            # Run separation (returns StemsMetadata with all stem info)
+            stems_metadata = separator.separate_and_normalize(input_path, output_dir)
 
-            # Check if output already exists in R2 and compare sizes
-            # Get size of first generated stem for comparison
-            first_stem_path = next(iter(stem_paths.values()))
-            new_stem_size = first_stem_path.stat().st_size
+            # Upload stems and waveforms to R2
+            r2_prefix = f"{profile_name}/{output_name}"
+            print(f"Uploading {len(stems_metadata.stems)} stems to R2: {r2_prefix}/")
 
-            try:
-                # Try to get existing stem from R2
-                stem_ext = f".{job.output_config.format.value}"
-                first_stem_name = next(iter(stem_paths.keys()))
-                existing_key = f"{job.profile_name}/{job.output_name}/{first_stem_name}{stem_ext}"
-
-                head_response = storage.s3_client.head_object(
-                    Bucket=storage.config.bucket_name, Key=existing_key
+            stem_data_list = []
+            for stem_name, stem_meta in stems_metadata.stems.items():
+                # Upload audio file
+                audio_path = output_dir / stem_meta.stem_url
+                r2_audio_key = f"{r2_prefix}/{stem_meta.stem_url}"
+                storage.s3_client.upload_file(
+                    str(audio_path),
+                    storage.config.bucket_name,
+                    r2_audio_key,
                 )
 
-                existing_size = head_response.get("ContentLength", 0)
-
-                # Compare sizes - allow overwrite if within 10x
-                if existing_size > 0:
-                    size_ratio = max(new_stem_size, existing_size) / min(
-                        new_stem_size, existing_size
-                    )
-                    if size_ratio > 10:
-                        raise ValueError(
-                            f"Output size mismatch: new={new_stem_size} bytes, "
-                            + f"existing={existing_size} bytes (ratio: {size_ratio:.1f}x). "
-                            + "Refusing to overwrite - something may be wrong."
-                        )
-                    else:
-                        print(f"Overwriting existing output (size ratio: {size_ratio:.1f}x)")
-
-            except ClientError as e:
-                if e.response.get("Error", {}).get("Code") == "404":
-                    # No existing output, proceed normally
-                    print("No existing output found")
-                else:
-                    # Some other S3 error
-                    raise
-
-            # Upload all outputs to R2
-            print(f"Uploading {len(stem_paths)} stems to R2")
-            for stem_name, stem_path in stem_paths.items():
-                storage.upload_file(stem_path, job.profile_name, job.output_name, stem_path.name)
-
-                # Upload waveform if it exists
-                waveform_path = stem_path.parent / f"{stem_name}_waveform.png"
-                if waveform_path.exists():
-                    storage.upload_file(
-                        waveform_path,
-                        job.profile_name,
-                        job.output_name,
-                        waveform_path.name,
-                    )
-
-            # Upload metadata.json with source file hash
-            metadata_path = output_dir / "metadata.json"
-            if metadata_path.exists():
-                storage.upload_file(
-                    metadata_path,
-                    job.profile_name,
-                    job.output_name,
-                    "metadata.json",
-                    extra_metadata={"source-sha256": file_hash},
+                # Upload waveform
+                waveform_path = output_dir / stem_meta.waveform_url
+                r2_waveform_key = f"{r2_prefix}/{stem_meta.waveform_url}"
+                storage.s3_client.upload_file(
+                    str(waveform_path),
+                    storage.config.bucket_name,
+                    r2_waveform_key,
                 )
 
-            result = ProcessingResult(
-                job_id=job.job_id, status="complete", stems=list(stem_paths.keys())
-            )
+                # Get file size and duration
+                file_size_bytes = audio_path.stat().st_size
+                info = sf.info(str(audio_path))  # pyright: ignore[reportUnknownMemberType]
+                duration_seconds = float(info.duration)  # pyright: ignore[reportAny]
 
-            # Call back to API if callback URL provided
-            if not job.callback_url:
-                print("No callback URL provided, skipping callback")
-            else:
-                print(f"Calling back to: {job.callback_url}")
-                with httpx.Client() as client:
-                    _ = client.post(job.callback_url, json=result.model_dump())
+                # Add to callback payload
+                stem_data_list.append(
+                    {
+                        "stem_type": stem_name,
+                        "measured_lufs": stem_meta.measured_lufs,
+                        "peak_amplitude": stem_meta.peak_amplitude,
+                        "stem_gain_adjustment_db": stem_meta.stem_gain_adjustment_db,
+                        "audio_url": stem_meta.stem_url,  # Relative path
+                        "waveform_url": stem_meta.waveform_url,  # Relative path
+                        "file_size_bytes": file_size_bytes,
+                        "duration_seconds": duration_seconds,
+                    }
+                )
 
-            return result.model_dump()
+            # Call back to API with stem data
+            callback_payload = {
+                "status": "complete",
+                "stems": stem_data_list,
+            }
+
+            print(f"Calling back to: {callback_url}")
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(callback_url, json=callback_payload)
+                response.raise_for_status()
+
+            return {"status": "ok", "recording_id": recording_id}
 
     except Exception as e:
         error_msg = str(e)
-        print(f"Error processing job {job.job_id}: {error_msg}")
-
-        result = ProcessingResult(job_id=job.job_id, status="error", error=error_msg)
+        print(f"Error processing recording {recording_id}: {error_msg}")
 
         # Try to call back with error
-        if job.callback_url:
-            try:
-                with httpx.Client() as client:
-                    _ = client.post(job.callback_url, json=result.model_dump())
-            except Exception:
-                pass  # Best effort callback
+        try:
+            callback_payload = {
+                "status": "error",
+                "error": error_msg,
+            }
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(callback_url, json=callback_payload)
+                response.raise_for_status()
+        except Exception as callback_error:
+            print(f"Failed to send error callback: {callback_error}")
 
-        return result.model_dump()
+        return {"status": "error", "error": error_msg, "recording_id": recording_id}

@@ -39,8 +39,7 @@ media/
 │       ├── drums.opus
 │       ├── bass.opus
 │       ├── other.opus
-│       ├── {stem}_waveform.png
-│       └── metadata.json      # Track manifest
+│       └── {stem}_waveform.png
 ```
 
 ## Frontend Audio Implementation

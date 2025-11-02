@@ -13,9 +13,9 @@ interface UploadProps {
 	shouldAutoNavigate?: () => boolean;
 }
 
-// Helper to poll job status (used both in component and for resuming jobs)
-async function pollJobStatus(
-	jobId: string,
+// Helper to poll recording status (used both in component and for resuming)
+async function pollRecordingStatus(
+	recordingId: string,
 	toastId: string | number,
 	profileName: string,
 	outputName: string,
@@ -24,62 +24,63 @@ async function pollJobStatus(
 	onNavigate?: (profileName: string, fileName: string) => void,
 	shouldAutoNavigate?: () => boolean,
 ): Promise<void> {
-	let lastPollTime = 0;
-
 	while (true) {
-		// Throttle: max once per 5s on frontend
-		const now = Date.now();
-		const timeSinceLastPoll = now - lastPollTime;
-		if (timeSinceLastPoll < 5000) {
-			await new Promise((resolve) =>
-				setTimeout(resolve, 5000 - timeSinceLastPoll),
-			);
-		}
-		lastPollTime = Date.now();
+		// Poll every 15 seconds
+		await new Promise((resolve) => setTimeout(resolve, 15000));
 
 		try {
-			// Long-poll backend (60s timeout in production, immediate in local dev)
-			const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
+			// Check recording status (simple polling, no long-poll)
+			const response = await fetch(`${API_BASE}/api/recordings/${recordingId}`, {
 				credentials: "include",
 			});
 
 			if (!response.ok) {
-				throw new Error("Failed to check job status");
+				throw new Error("Failed to check recording status");
 			}
 
 			const status = await response.json();
 
 			if (status.status === "complete") {
+				// Refresh file list first
 				onComplete();
 
-				// Auto-navigate if nothing is currently playing
-				if (shouldAutoNavigate?.() && onNavigate) {
-					onNavigate(profileName, outputName);
-					toast.success(`${filename} ready! Now playing.`, {
-						id: toastId,
-						duration: 5000,
-					});
-				} else {
-					// Show clickable toast with navigation
-					toast.success(
-						<div
-							style={{ cursor: "pointer" }}
-							onClick={() => onNavigate?.(profileName, outputName)}
-						>
-							<strong>{filename} ready!</strong>
-							<div
+				// Show persistent toast with button to navigate
+				toast.success(
+					<div>
+						<strong>{filename} ready!</strong>
+						{onNavigate && (
+							<button
+								onClick={() => {
+									onNavigate(profileName, outputName);
+									toast.dismiss(toastId);
+								}}
 								style={{
+									marginTop: "0.5rem",
+									padding: "0.375rem 0.75rem",
+									backgroundColor: "rgba(255, 255, 255, 0.2)",
+									border: "1px solid rgba(255, 255, 255, 0.3)",
+									borderRadius: "0.375rem",
+									color: "white",
 									fontSize: "0.875rem",
-									marginTop: "0.25rem",
-									opacity: 0.9,
+									fontWeight: 500,
+									cursor: "pointer",
+									width: "100%",
+								}}
+								onMouseEnter={(e) => {
+									e.currentTarget.style.backgroundColor =
+										"rgba(255, 255, 255, 0.3)";
+								}}
+								onMouseLeave={(e) => {
+									e.currentTarget.style.backgroundColor =
+										"rgba(255, 255, 255, 0.2)";
 								}}
 							>
-								Click to play
-							</div>
-						</div>,
-						{ id: toastId, duration: 10000 },
-					);
-				}
+								Play Now
+							</button>
+						)}
+					</div>,
+					{ id: toastId, duration: Infinity },
+				);
 				break;
 			} else if (status.status === "error") {
 				toast.error(status.error || "Processing failed", { id: toastId });
@@ -216,7 +217,7 @@ export function Upload({
 			}
 
 			const result = await response.json();
-			const { job_id, profile_name, output_name, filename } = result;
+			const { recording_id, profile_name, output_name, filename } = result;
 
 			// Update toast to show processing (persistent)
 			toast.loading(`Processing ${filename}...`, {
@@ -224,9 +225,9 @@ export function Upload({
 				duration: Infinity,
 			});
 
-			// Start polling (throttled to max once per 5s)
-			pollJobStatus(
-				job_id,
+			// Start polling (every 15 seconds)
+			pollRecordingStatus(
+				recording_id,
 				toastId,
 				profile_name,
 				output_name,

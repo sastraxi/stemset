@@ -130,6 +130,12 @@ class Recording(SQLModel, table=True):
     profile_id: UUID = Field(foreign_key="profiles.id", index=True)
     output_name: str  # Folder name in media/ (e.g., "080805-001")
     display_name: str  # User-editable, defaults to filename
+
+    # Status tracking (replaces Job table)
+    status: str = Field(default="processing")  # "processing", "complete", "error"
+    error_message: str | None = None
+    verification_token: str | None = None  # For callback authentication
+
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
@@ -175,41 +181,6 @@ class Stem(SQLModel, table=True):
     audio_file: "AudioFile" = Relationship(
         back_populates="stems", sa_relationship_kwargs={"lazy": "noload"}
     )
-
-
-class Job(SQLModel, table=True):
-    """Processing job for tracking async GPU worker tasks."""
-
-    __tablename__: ClassVar[Any] = "jobs"
-
-    id: UUID = Field(default_factory=new_uuid, primary_key=True)
-    job_id: str = Field(unique=True, index=True)  # UUID string for external reference
-    verification_token: str = Field(index=True)  # Random secret for callback authentication
-    profile_id: UUID = Field(foreign_key="profiles.id", index=True)
-    recording_id: UUID = Field(foreign_key="recordings.id", index=True)
-    audio_file_id: UUID = Field(foreign_key="audio_files.id", index=True)
-
-    # Job details
-    filename: str
-    file_hash: str
-    output_name: str
-
-    # Status tracking
-    status: str  # "processing", "complete", "error"
-    error_message: str | None = None
-
-    # Timestamps
-    created_at: datetime = Field(
-        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
-    )
-    completed_at: datetime | None = Field(
-        default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
-    )
-
-    # Relationships
-    profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
-    recording: "Recording" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
-    audio_file: "AudioFile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
 
 
 class RecordingUserConfig(SQLModel, table=True):

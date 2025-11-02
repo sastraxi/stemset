@@ -11,14 +11,11 @@ class AppState(State):
     """Type-safe application state.
 
     Subclassing State allows proper type checking when injected into handlers.
+
+    Note: Attributes are set directly on the State dict, not as class attributes.
+    This avoids deserialization issues with Litestar's signature model.
     """
 
     config: Config
     backend_url: str
     frontend_url: str
-
-    def __init__(self, config: Config, backend_url: str, frontend_url: str) -> None:
-        super().__init__()
-        self.config = config
-        self.backend_url = backend_url
-        self.frontend_url = frontend_url

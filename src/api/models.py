@@ -69,3 +69,27 @@ class LogoutResponse(BaseModel):
     """Logout response."""
 
     success: bool
+
+
+class StemData(BaseModel):
+    """Stem data for worker callback."""
+
+    stem_type: str
+    measured_lufs: float
+    peak_amplitude: float
+    stem_gain_adjustment_db: float
+    audio_url: str
+    waveform_url: str
+    file_size_bytes: int
+    duration_seconds: float
+
+
+class RecordingStatusResponse(BaseModel):
+    """Recording status response."""
+
+    recording_id: str
+    status: str  # "processing", "complete", "error"
+    error_message: str | None = None
+    output_name: str
+    display_name: str
+    stems: list[dict[str, str | float | int]]

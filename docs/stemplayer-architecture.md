@@ -164,7 +164,7 @@ export interface StemViewModel {
 │ 1. LOADING PHASE                                                    │
 └─────────────────────────────────────────────────────────────────────┘
 
-API (metadata.json)
+API
     ↓
 useAudioLoader
     ↓ Map<string, StemAudioData>

@@ -185,9 +185,6 @@ export DATABASE_URL="<your-production-database-url>"
 
 # Run migrations
 alembic upgrade head
-
-# If you have existing metadata.json files, migrate them:
-uv run stemset migrate
 ```
 
 4. Test: Visit `https://stemset-api.koyeb.app/api/profiles`

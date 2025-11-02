@@ -1,13 +1,11 @@
 """Utilities for audio metadata analysis and stem metadata creation.
 
-This module is split into two parts:
-1. Pydantic models (StemMetadata, StemsMetadata) - lightweight, no processing deps
-2. Processing utilities (imported lazily) - require numpy, pyloudnorm, etc.
+This module provides Pydantic models for stem metadata that are used during
+audio separation. All metadata is stored in the database - no JSON files!
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from pydantic import BaseModel
 
 
@@ -23,18 +21,11 @@ class StemMetadata(BaseModel):
 
 
 class StemsMetadata(BaseModel):
-    """Metadata for all stems in a separation."""
+    """Metadata for all stems in a separation.
+
+    This is returned by the separation engine and then stored in the database.
+    No JSON files are written - database is the source of truth!
+    """
 
     stems: dict[str, StemMetadata]
     display_name: str = ""  # Empty string means use the folder name as default
-
-    def to_file(self, file_path: Path) -> None:
-        """Write metadata to a JSON file."""
-        with open(file_path, "w") as f:
-            _ = f.write(self.model_dump_json(indent=2))
-
-    @classmethod
-    def from_file(cls, file_path: Path) -> "StemsMetadata":
-        """Load metadata from a JSON file."""
-        with open(file_path, "r") as f:
-            return cls.model_validate_json(f.read())

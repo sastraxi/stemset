@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import os
 import re
-import yaml
 from enum import Enum
 from pathlib import Path
-from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Any, cast
+
+import yaml
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class AudioFormat(str, Enum):
@@ -132,6 +133,24 @@ class Config(BaseModel):
     gpu_worker_url: str | None = Field(
         default=None, description="URL of GPU worker service for remote processing (optional)"
     )
+
+    @model_validator(mode="after")
+    def validate_gpu_worker_requires_r2(self) -> Config:
+        """Validate that R2 config is present if GPU worker URL is set."""
+        # Check both config.yaml value and environment variable
+        gpu_worker_url = self.gpu_worker_url or os.getenv("GPU_WORKER_URL")
+
+        if gpu_worker_url and self.r2 is None:
+            msg = (
+                "GPU_WORKER_URL is set but R2 configuration is missing.\n"
+                "Remote GPU processing requires R2 storage for file transfer.\n"
+                "Either:\n"
+                "  1. Add 'r2:' section to config.yaml with R2 credentials, or\n"
+                "  2. Unset GPU_WORKER_URL to use local processing with local storage"
+            )
+            raise ValueError(msg)
+
+        return self
 
     @classmethod
     def _collect_required_env_vars(cls, data: Any, collected: set[str] | None = None) -> set[str]:

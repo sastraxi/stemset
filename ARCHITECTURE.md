@@ -104,7 +104,6 @@ bucket/
       drums_waveform.png
       bass_waveform.png
       other_waveform.png
-      metadata.json
 ```
 
 **Access Modes**:

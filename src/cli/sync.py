@@ -1,19 +1,14 @@
 """Bidirectional sync between local media and R2 storage."""
 
 import logging
-import os
 from pathlib import Path
 
 from src.db.models import Profile
+
 from ..config import Config
 from ..storage import R2Storage
 
 logger = logging.getLogger(__name__)
-
-
-def should_sync() -> bool:
-    """Check if sync is enabled via environment variable."""
-    return os.getenv("STEMSET_SYNC", "true").lower() == "true"
 
 
 def sync_profile_from_r2(config: Config, profile: Profile) -> None:
@@ -27,9 +22,6 @@ def sync_profile_from_r2(config: Config, profile: Profile) -> None:
         config: Global configuration
         profile: Profile to sync
     """
-    if not should_sync():
-        return
-
     if config.r2 is None:
         return  # No R2 configured, nothing to sync
 
@@ -126,9 +118,6 @@ def sync_profile_to_r2(config: Config, profile: Profile) -> None:
         config: Global configuration
         profile: Profile to sync
     """
-    if not should_sync():
-        return
-
     if config.r2 is None:
         return  # No R2 configured, nothing to sync
 

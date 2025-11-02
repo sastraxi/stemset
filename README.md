@@ -191,9 +191,6 @@ docker compose up -d
 
 # Run database migrations
 alembic upgrade head
-
-# Import existing metadata.json files (if you have any)
-uv run stemset migrate
 ```
 
 Then run the servers separately for hot reload:
@@ -301,13 +298,8 @@ stemset/
 ├── media/                     # Generated stems (gitignored, upload to Render)
 │   └── {profile}/
 │       └── {track}/
-│           ├── vocals.opus
-│           ├── drums.opus
-│           ├── bass.opus
-│           ├── other.opus
-│           ├── {stem}_waveform.png
-│           └── metadata.json
-├── render.yaml                # Render.com deployment config
+│           ├── {stem}.opus
+│           └── {stem}_waveform.png
 └── config.yaml                # Strategy and profile configuration
 ```
 

@@ -33,7 +33,7 @@ class StemSeparator:
 
     def separate_and_normalize(
         self, input_file: Path, output_folder: Path
-    ) -> tuple[dict[str, Path], dict[str, StemMetadata]]:
+    ) -> StemsMetadata:
         """Separate audio into stems with metadata.
 
         Args:
@@ -41,9 +41,8 @@ class StemSeparator:
             output_folder: Path to output folder for stems
 
         Returns:
-            Tuple of (stem_paths, metadata) where:
-            - stem_paths: Dict mapping stem name to output file path
-            - metadata: Dict mapping stem name to metadata dict with LUFS info
+            StemsMetadata object containing all stem information (LUFS, paths, etc.)
+            Caller is responsible for saving to database - no JSON files written.
 
         Raises:
             RuntimeError: If separation fails
@@ -56,9 +55,6 @@ class StemSeparator:
         analyzer = get_metadata_analyzer()
         stems_metadata: StemsMetadata = analyzer.create_stems_metadata(stem_paths, output_folder)
 
-        # Write metadata to JSON file using Pydantic
-        metadata_file = output_folder / "metadata.json"
-        _ = stems_metadata.to_file(metadata_file)
-        print(f"  ✓ Metadata saved to {metadata_file.name}")
+        print(f"  ✓ Metadata analysis complete ({len(stems_metadata.stems)} stems)")
 
-        return stem_paths, stems_metadata.stems
+        return stems_metadata

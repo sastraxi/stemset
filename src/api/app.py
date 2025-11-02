@@ -19,16 +19,20 @@ from ..config import get_config
 from ..db.config import get_engine
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .config_routes import update_recording_config
-from .job_routes import job_complete, job_status, upload_file
 from .profile_routes import (
     delete_recording,
     get_profile,
     get_profile_files,
     get_profiles,
-    get_recording,
     update_display_name,
 )
 from .state import AppState
+from .upload_routes import (
+    get_recording_status,
+    process_local,
+    recording_complete,
+    upload_file,
+)
 
 
 @asynccontextmanager
@@ -89,12 +93,11 @@ config = get_config()
 # Get backend URL for callbacks (defaults to localhost:8000 if not set)
 backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-# Create type-safe state (now a proper State subclass)
-app_state = AppState(
-    config=config,
-    backend_url=backend_url,
-    frontend_url=frontend_url,
-)
+# Create type-safe state (State subclass with dict-based attributes)
+app_state = AppState()
+app_state.config = config
+app_state.backend_url = backend_url
+app_state.frontend_url = frontend_url
 
 # Authentication configuration - exclude /auth/* routes from auth requirement
 auth_middleware = DefineMiddleware(
@@ -111,13 +114,13 @@ app = Litestar(
         get_profiles,
         get_profile,
         get_profile_files,
-        get_recording,
         update_display_name,
         delete_recording,
         update_recording_config,
-        job_complete,
-        job_status,
         upload_file,
+        process_local,
+        recording_complete,
+        get_recording_status,
         *static_handlers,
     ],
     middleware=[auth_middleware],
