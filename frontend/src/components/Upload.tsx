@@ -239,9 +239,10 @@ export function Upload({
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept=".wav,.flac,.mp3,.m4a,.aac,.opus,.ogg"
+				accept="audio/*"
 				onChange={handleFileSelect}
 				style={{ display: "none" }}
+				capture
 			/>
 
 			{/* Simple upload button in sidebar */}
