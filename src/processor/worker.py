@@ -77,7 +77,7 @@ r2_mount = modal.CloudBucketMount(
     timeout=240,
     volumes={"/r2": r2_mount},
 )
-def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
+async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     """Internal function that performs actual processing (spawned asynchronously).
 
     Workflow:
@@ -143,7 +143,7 @@ def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
 
             # Process the audio using shared core logic
             print(f"Processing with strategy: {strategy_name}")
-            stem_data_list = process_audio_file(
+            stem_data_list = await process_audio_file(
                 input_path=input_path,
                 output_dir=output_dir,
                 profile_name=profile_name,
