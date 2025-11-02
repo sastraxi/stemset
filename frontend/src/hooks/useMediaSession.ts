@@ -28,7 +28,6 @@ export function useMediaSession({
 			title,
 			artist,
 			album,
-			artwork: [{ src: "/logo.png", sizes: "512x512", type: "image/png" }],
 		});
 
 		navigator.mediaSession.setActionHandler("play", onPlay);
