@@ -200,10 +200,12 @@ export function WaveformVisualization({
 			// Vertical line with consistent white color
 			ctx.strokeStyle = cursorColor;
 			ctx.lineWidth = 2 * dpr;
+			ctx.setLineDash([3 * dpr, 3 * dpr]); // Make the cursor dashed
 			ctx.beginPath();
 			ctx.moveTo(cursorX, 0);
 			ctx.lineTo(cursorX, canvas.height);
 			ctx.stroke();
+			ctx.setLineDash([]); // Reset line dash after drawing the cursor
 		}
 	};
 
