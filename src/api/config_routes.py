@@ -55,7 +55,6 @@ async def update_recording_config(
     valid_keys = (
         "playbackPosition",
         "stems",
-        "effects",
         "eq",
         "compressor",
         "reverb",

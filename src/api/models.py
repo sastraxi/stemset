@@ -51,7 +51,6 @@ class RecordingConfigData(BaseModel):
 
     playbackPosition: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     stems: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
-    effects: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     eq: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     compressor: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     reverb: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]

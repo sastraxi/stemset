@@ -427,7 +427,7 @@ async def get_recording_status(
                     })
 
         # Load user-specific config if user is authenticated
-        config_data = None
+        config_data = RecordingConfigData()  # Default to empty config
         user = request.user
         if user:
             # Get user_id from email
@@ -443,13 +443,13 @@ async def get_recording_status(
                 config_result = await session.exec(config_stmt)
                 config_records = config_result.all()
 
-                # Build config dict from individual keys
+                # Build config dict from individual keys, filtering out legacy keys
                 config_dict = {}
                 for record in config_records:
-                    config_dict[record.config_key] = record.config_value
+                    if record.config_key != "effects":
+                        config_dict[record.config_key] = record.config_value
 
-                if config_dict:
-                    config_data = RecordingConfigData(**config_dict)
+                config_data = RecordingConfigData(**config_dict)
 
         return RecordingStatusResponse(
             recording_id=str(recording.id),
