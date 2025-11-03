@@ -108,7 +108,6 @@ r2:
   access_key_id: ${R2_ACCESS_KEY_ID}
   secret_access_key: ${R2_SECRET_ACCESS_KEY}
   bucket_name: stemset-media
-  public_url: ${R2_PUBLIC_URL}  # Optional
 ```
 
 ## Usage

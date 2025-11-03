@@ -25,7 +25,6 @@ r2:
   access_key_id: ${R2_ACCESS_KEY_ID}
   secret_access_key: ${R2_SECRET_ACCESS_KEY}
   bucket_name: ${R2_BUCKET_NAME}
-  public_url: ${R2_PUBLIC_URL}  # Optional: if bucket has public access
 
 # GPU Worker URL (required for remote GPU processing)
 # Modal endpoint format: https://<workspace>--stemset-gpu-process.modal.run

@@ -115,14 +115,8 @@ class R2Storage:
         )
 
     def get_file_url(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> str:
-        """Get presigned URL for accessing a stem file."""
+        """Get presigned URL for accessing a stem file (valid for 24 hours)."""
         key = f"{profile_name}/{file_name}/{stem_name}{ext}"
-
-        # If public URL is configured, use it directly
-        if self.config.public_url:
-            return f"{self.config.public_url}/{key}"
-
-        # Otherwise generate presigned URL (valid for 24 hours)
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},
@@ -130,12 +124,8 @@ class R2Storage:
         )
 
     def get_waveform_url(self, profile_name: str, file_name: str, stem_name: str) -> str:
-        """Get presigned URL for accessing a waveform PNG."""
+        """Get presigned URL for accessing a waveform PNG (valid for 24 hours)."""
         key = f"{profile_name}/{file_name}/{stem_name}_waveform.png"
-
-        if self.config.public_url:
-            return f"{self.config.public_url}/{key}"
-
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},
@@ -208,14 +198,8 @@ class R2Storage:
         return key
 
     def get_input_url(self, profile_name: str, filename: str) -> str:
-        """Get presigned URL or public URL for accessing an input file."""
+        """Get presigned URL for accessing an input file (valid for 24 hours)."""
         key = f"inputs/{profile_name}/{filename}"
-
-        # If public URL is configured, use it directly
-        if self.config.public_url:
-            return f"{self.config.public_url}/{key}"
-
-        # Otherwise generate presigned URL (valid for 24 hours)
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},

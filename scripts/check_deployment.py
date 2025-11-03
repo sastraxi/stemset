@@ -15,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 
@@ -52,6 +53,7 @@ def main() -> None:
     print("📦 Dependencies:")
     try:
         import boto3
+
         print("  ✅ boto3 installed")
     except ImportError:
         print("  ❌ boto3 NOT installed - run: uv sync")
@@ -59,6 +61,7 @@ def main() -> None:
 
     try:
         import litestar
+
         print("  ✅ litestar installed")
     except ImportError:
         print("  ❌ litestar NOT installed - run: uv sync")
@@ -86,7 +89,6 @@ def main() -> None:
     r2_configured &= check_env_var("R2_ACCESS_KEY_ID", required=False)
     r2_configured &= check_env_var("R2_SECRET_ACCESS_KEY", required=False)
     r2_configured &= check_env_var("R2_BUCKET_NAME", required=False)
-    check_env_var("R2_PUBLIC_URL", required=False)
 
     if not r2_configured:
         print("\n  ℹ️  R2 not configured - will use local storage")
@@ -96,28 +98,30 @@ def main() -> None:
     print("\n📁 Media Directory:")
     media_path = Path("media")
     if media_path.exists():
-        profiles = [d.name for d in media_path.iterdir() if d.is_dir() and not d.name.startswith(".")]
+        profiles = [
+            d.name for d in media_path.iterdir() if d.is_dir() and not d.name.startswith(".")
+        ]
         if profiles:
             print(f"  ✅ Media directory exists with profiles: {', '.join(profiles)}")
-            print(f"     Files ready to upload to R2")
+            print("     Files ready to upload to R2")
         else:
-            print(f"  ⚠️  Media directory exists but is empty")
-            print(f"     Run 'uv run stemset process <profile>' to generate stems")
+            print("  ⚠️  Media directory exists but is empty")
+            print("     Run 'uv run stemset process <profile>' to generate stems")
     else:
-        print(f"  ⚠️  Media directory not found")
-        print(f"     Will be created when you process audio")
+        print("  ⚠️  Media directory not found")
+        print("     Will be created when you process audio")
 
     # Check frontend
     print("\n🎨 Frontend:")
     frontend_dist = Path("frontend/dist")
     if frontend_dist.exists():
-        print(f"  ✅ Frontend built (dist/ exists)")
+        print("  ✅ Frontend built (dist/ exists)")
     else:
-        print(f"  ⚠️  Frontend not built")
-        print(f"     Run: cd frontend && bun run build")
+        print("  ⚠️  Frontend not built")
+        print("     Run: cd frontend && bun run build")
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     if all_good:
         print("✅ All critical checks passed!")
         print("\n📝 Next steps:")

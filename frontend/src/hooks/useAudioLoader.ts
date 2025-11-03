@@ -97,19 +97,23 @@ export function useAudioLoader({
 				const newMap = new Map<string, StemAudioData>();
 				const timingAccumulator: StemTiming[] = [];
 
-				// Get auth token for media requests
-				const token = getToken();
-				const headers: HeadersInit = {};
-				if (token) {
-					headers.Authorization = `Bearer ${token}`;
-				}
-
 				await Promise.all(
 					stemsData.map(async (stemResponse) => {
 						if (signal.aborted) return;
 
 						const fetchStart = performance.now();
 						try {
+							// Only add auth headers for local /media URLs
+							// Presigned R2 URLs have auth in the URL itself
+							const isLocalMedia = stemResponse.audio_url.startsWith("/media");
+							const headers: HeadersInit = {};
+							if (isLocalMedia) {
+								const token = getToken();
+								if (token) {
+									headers.Authorization = `Bearer ${token}`;
+								}
+							}
+
 							const resp = await fetch(stemResponse.audio_url, {
 								signal,
 								cache: "default", // Allow browser caching

@@ -60,8 +60,6 @@ app:
           scope: secret
         - key: R2_BUCKET_NAME
           scope: secret
-        - key: R2_PUBLIC_URL
-          scope: secret  # Optional: public R2 bucket URL
 
       build:
         type: buildpack

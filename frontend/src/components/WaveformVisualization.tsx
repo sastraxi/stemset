@@ -63,11 +63,15 @@ export function WaveformVisualization({
 
 		const loadImage = async () => {
 			try {
-				// Fetch image with auth headers
-				const token = getToken();
+				// Only add auth headers for local /media URLs
+				// Presigned R2 URLs have auth in the URL itself
+				const isLocalMedia = waveformUrl.startsWith("/media");
 				const headers: HeadersInit = {};
-				if (token) {
-					headers.Authorization = `Bearer ${token}`;
+				if (isLocalMedia) {
+					const token = getToken();
+					if (token) {
+						headers.Authorization = `Bearer ${token}`;
+					}
 				}
 
 				const response = await fetch(waveformUrl, {

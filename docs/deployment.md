@@ -168,7 +168,6 @@ R2_ACCOUNT_ID=<from-step-2.2>
 R2_ACCESS_KEY_ID=<from-step-2.2>
 R2_SECRET_ACCESS_KEY=<from-step-2.2>
 R2_BUCKET_NAME=stemset-media
-R2_PUBLIC_URL=<from-step-2.3-if-configured>  # Optional
 ```
 
 ### 3.4 Deploy and Migrate Database
@@ -319,7 +318,6 @@ r2:
   access_key_id: ${R2_ACCESS_KEY_ID}
   secret_access_key: ${R2_SECRET_ACCESS_KEY}
   bucket_name: ${R2_BUCKET_NAME}
-  public_url: ${R2_PUBLIC_URL}  # Optional
 ```
 
 ### 7.2 Commit and Deploy

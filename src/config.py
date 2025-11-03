@@ -139,15 +139,16 @@ class AuthConfig(BaseModel):
 
 
 class R2Config(BaseModel):
-    """Cloudflare R2 storage configuration."""
+    """Cloudflare R2 storage configuration for Production.
+
+    Uses presigned URLs for secure, time-limited access to private buckets.
+    Requires CORS to be enabled on the bucket for frontend access.
+    """
 
     account_id: str = Field(..., description="Cloudflare account ID")
     access_key_id: str = Field(..., description="R2 access key ID")
     secret_access_key: str = Field(..., description="R2 secret access key")
     bucket_name: str = Field(..., description="R2 bucket name for media files")
-    public_url: str | None = Field(
-        default=None, description="Public R2 bucket URL (if configured for public access)"
-    )
 
 
 class Config(BaseModel):
