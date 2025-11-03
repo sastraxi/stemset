@@ -125,6 +125,25 @@ export function useAudioContext({
 		}
 	}, [masterVolume]);
 
+	// Monitor AudioContext state changes and auto-resume if interrupted
+	useEffect(() => {
+		const ctx = audioCtxRef.current;
+		if (!ctx) return;
+
+		const handleStateChange = () => {
+			console.log("[useAudioContext] State changed to:", ctx.state);
+			if (ctx.state === "interrupted") {
+				// iOS may interrupt audio, try to resume
+				ctx.resume().catch((e) =>
+					console.warn("[useAudioContext] Failed to resume after interruption:", e),
+				);
+			}
+		};
+
+		ctx.addEventListener("statechange", handleStateChange);
+		return () => ctx.removeEventListener("statechange", handleStateChange);
+	}, []);
+
 	const isReady = useCallback((): boolean => {
 		return (
 			audioCtxRef.current !== null &&

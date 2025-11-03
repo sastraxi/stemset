@@ -137,37 +137,48 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			audioContext,
 		} = useStemPlayer({ profileName, fileName, stemsData, recordingId });
 
-		const { initializeAudioSession, syncSilentAudio } = useAudioSession(audioContext);
+		const { initializeAudioSession } = useAudioSession(audioContext);
 
-		const handlePlay = useCallback(() => {
-			initializeAudioSession();
-			play();
-		}, [initializeAudioSession, play]);
+	const handlePlay = useCallback(() => {
+		initializeAudioSession();
+		play();
+		// Immediately update MediaSession state
+		if ("mediaSession" in navigator) {
+			navigator.mediaSession.playbackState = "playing";
+		}
+	}, [initializeAudioSession, play]);
 
-		const handleNextTrack = useCallback(() => {
-			console.log("Next track not implemented");
-		}, []);
+	const handlePause = useCallback(() => {
+		pause();
+		// Immediately update MediaSession state
+		if ("mediaSession" in navigator) {
+			navigator.mediaSession.playbackState = "paused";
+		}
+	}, [pause]);
 
-		const handlePreviousTrack = useCallback(() => {
-			console.log("Previous track not implemented");
-		}, []);
+	const handleNextTrack = useCallback(() => {
+		console.log("Next track not implemented");
+	}, []);
 
-		useMediaSession({
-			title: fileName,
-			artist: profileName,
-			album: profileName,
-			onPlay: handlePlay,
-			onPause: pause,
-			onNextTrack: handleNextTrack,
-			onPreviousTrack: handlePreviousTrack,
-		});
+	const handlePreviousTrack = useCallback(() => {
+		console.log("Previous track not implemented");
+	}, []);
 
-		useEffect(() => {
-			if ("mediaSession" in navigator) {
-				navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-			}
-			syncSilentAudio(isPlaying);
-		}, [isPlaying, syncSilentAudio]);
+	useMediaSession({
+		title: fileName,
+		artist: profileName,
+		album: profileName,
+		duration: duration,
+		currentTime: currentTime,
+		onPlay: handlePlay,
+		onPause: handlePause,
+		onSeek: seek,
+		onNextTrack: handleNextTrack,
+		onPreviousTrack: handlePreviousTrack,
+	});
+
+	// Remove the useEffect that updates playbackState - it's now handled in the callbacks
+
 
 		// Master volume mute toggle (like desktop MasterVolumeControl)
 		const isMasterMuted = masterVolume === 0;
