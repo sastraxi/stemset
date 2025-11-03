@@ -1,7 +1,8 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import type { FileWithStems } from "@/api/generated/types.gen";
 import {
 	Dialog,
@@ -15,7 +16,6 @@ import {
 	useUpdateDisplayName,
 	useUpdateRecordingMetadata,
 } from "@/hooks/queries";
-import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import { MetadataEditor } from "./MetadataEditor";
 import "../styles/metadata-editor.css";
 
@@ -42,9 +42,9 @@ export function MetadataEditorModal({
 		recording.song ? recording.song.id : null,
 	);
 	// For OSM, we'll store the location name as a string
-	const [selectedLocationName, setSelectedLocationName] = useState<string | null>(
-		recording.location ? recording.location.name : null,
-	);
+	const [selectedLocationName, setSelectedLocationName] = useState<
+		string | null
+	>(recording.location ? recording.location.name : null);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
 		recording.date_recorded ? new Date(recording.date_recorded) : new Date(),
 	);
@@ -70,7 +70,7 @@ export function MetadataEditorModal({
 			}
 
 			// Handle location: find or create from LocationIQ name
-			let locationId: string | undefined = undefined;
+			let locationId: string | undefined;
 			if (selectedLocationName) {
 				// Check if location already exists
 				const existingLocation = locations.find(
@@ -89,7 +89,8 @@ export function MetadataEditorModal({
 			}
 
 			// Update metadata
-			const updatedRecording = await updateMetadata.mutateAsync({
+			// FIXME: return song and location in response
+			await updateMetadata.mutateAsync({
 				path: { recording_id: recording.id },
 				body: {
 					song_id: selectedSongId || undefined,
@@ -104,13 +105,16 @@ export function MetadataEditorModal({
 			const updatedRecordingData: FileWithStems = {
 				...recording,
 				display_name: displayName,
-				song: updatedRecording.song,
-				location: updatedRecording.location,
+				// song: updatedRecording.song,
+				// location: updatedRecording.location,
 				date_recorded: selectedDate ? format(selectedDate, "yyyy-MM-dd") : null,
 			};
 
 			// Update React Query cache with new data
-			queryClient.setQueryData(["recording", recording.id], updatedRecordingData);
+			queryClient.setQueryData(
+				["recording", recording.id],
+				updatedRecordingData,
+			);
 
 			// Also invalidate the profile files query to refresh the list
 			queryClient.invalidateQueries({
@@ -134,7 +138,9 @@ export function MetadataEditorModal({
 		// Reset to original values
 		setDisplayName(recording.display_name);
 		setSelectedSongId(recording.song ? recording.song.id : null);
-		setSelectedLocationName(recording.location ? recording.location.name : null);
+		setSelectedLocationName(
+			recording.location ? recording.location.name : null,
+		);
 		setSelectedDate(
 			recording.date_recorded ? new Date(recording.date_recorded) : new Date(),
 		);
