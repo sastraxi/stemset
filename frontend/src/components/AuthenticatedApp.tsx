@@ -379,6 +379,15 @@ export function AuthenticatedApp({
 								wasInitiallyProcessing={wasInitiallyProcessing}
 								onContinue={() => {
 									setWasInitiallyProcessing(false);
+									// Clear the initialState query param to show the player
+									navigate({
+										to: "/p/$profileName/$recordingName",
+										params: {
+											profileName: selectedProfile,
+											recordingName: selectedFile.name,
+										},
+										search: {},
+									});
 								}}
 							/>
 						) : (
