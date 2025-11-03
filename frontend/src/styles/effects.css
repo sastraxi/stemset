@@ -129,9 +129,8 @@
 }
 
 .eq-slider-vertical {
-	writing-mode: bt-lr;
-	-webkit-appearance: slider-vertical;
-	appearance: slider-vertical;
+	writing-mode: vertical-lr;
+	direction: rtl;
 	width: 6px;
 	height: 110px;
 	padding: 0;
@@ -142,15 +141,6 @@
 
 .eq-slider-vertical:hover {
 	opacity: 1;
-}
-
-@supports not (-webkit-appearance: slider-vertical) {
-	.eq-slider-vertical {
-		transform: rotate(-90deg);
-		width: 110px;
-		height: 6px;
-		margin-top: 50px;
-	}
 }
 
 .eq-band-value {
@@ -299,13 +289,6 @@
 	/* ensure vertical dimension */
 }
 
-@supports not (-webkit-appearance: slider-vertical) {
-	.eq-slider-vertical {
-		height: 10px !important;
-		/* rotated variant height */
-	}
-}
-
 /* Stereo Expander Styles */
 .stereo-expander-section {
 	background: rgba(0, 0, 0, 0.3);
@@ -380,9 +363,8 @@
 }
 
 .crossover-slider-vertical {
-	writing-mode: bt-lr;
-	-webkit-appearance: slider-vertical;
-	appearance: slider-vertical;
+	writing-mode: vertical-lr;
+	direction: rtl;
 	width: 6px;
 	height: 120px;
 	padding: 0;
@@ -394,20 +376,6 @@
 
 .crossover-slider-vertical:hover {
 	opacity: 1;
-}
-
-@supports not (-webkit-appearance: slider-vertical) {
-	.crossover-slider-vertical {
-		transform: rotate(-90deg);
-		width: 120px;
-		height: 6px;
-		margin: 55px 0;
-	}
-
-	.crossover-vertical {
-		margin-top: -55px;
-		margin-bottom: -55px;
-	}
 }
 
 /* Reverb Styles */

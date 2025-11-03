@@ -57,6 +57,7 @@ export function EqPanel({
 							onChange={(e) =>
 								onUpdateBand(b.id, { gain: parseFloat(e.target.value) })
 							}
+							onDoubleClick={() => onUpdateBand(b.id, { gain: 0 })}
 							className="eq-slider-vertical"
 						/>
 						<span className="eq-band-value">{b.gain.toFixed(1)}dB</span>
