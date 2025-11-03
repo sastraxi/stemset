@@ -7,3 +7,4 @@ compatibility_date = "2025-01-01"
 
 [vars]
 VITE_API_URL = "https://stemset-api.koyeb.app"
+PK_LOCATIONIQ_ACCESS_TOKEN = "pk.f80260c21346c6c4623ac0284b245be2"

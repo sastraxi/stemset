@@ -26,9 +26,6 @@ r2:
   secret_access_key: ${R2_SECRET_ACCESS_KEY}
   bucket_name: ${R2_BUCKET_NAME}
 
-locationiq:
-  access_token: ${VITE_LOCATIONIQ_ACCESS_TOKEN}
-
 # GPU Worker URL (required for remote GPU processing)
 # Modal endpoint format: https://<workspace>--stemset-gpu-process.modal.run
 # Set GPU_WORKER_URL environment variable or use --local flag for local processing
