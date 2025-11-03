@@ -1,10 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export function useAudioSession(audioContext: AudioContext | null) {
 	const [isSessionInitialized, setIsSessionInitialized] = useState(false);
+	const isSessionInitializedRef = useRef(false);
+	const silentAudioRef = useRef<HTMLAudioElement | null>(null);
 
 	const initializeAudioSession = useCallback(async () => {
-		if (isSessionInitialized || !audioContext) {
+		if (isSessionInitializedRef.current || !audioContext) {
 			return;
 		}
 
@@ -28,20 +30,44 @@ export function useAudioSession(audioContext: AudioContext | null) {
 				}
 			}
 
-			// iOS silent switch workaround
-			const silentAudio = document.createElement("audio");
-			silentAudio.setAttribute("x-webkit-airplay", "deny");
-			silentAudio.src = "/silence.wav";
-			silentAudio.loop = true;
+			// iOS silent switch workaround - only needed on iOS
+			// On desktop, having an audio element interferes with Media Session API
+			const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+			if (isIOS) {
+				const silentAudio = document.createElement("audio");
+				silentAudio.setAttribute("x-webkit-airplay", "deny");
+				silentAudio.setAttribute("preload", "auto");
+				silentAudio.volume = 0.01; // Very quiet but not muted
+				silentAudio.src = "/silence.wav";
+				silentAudio.loop = true;
 
-			await silentAudio.play();
+				await silentAudio.play();
+				silentAudioRef.current = silentAudio;
+			}
 
+			isSessionInitializedRef.current = true;
 			setIsSessionInitialized(true);
 			console.log("Audio session initialized.");
 		} catch (error) {
 			console.error("Failed to initialize audio session:", error);
 		}
-	}, [audioContext, isSessionInitialized]);
+	}, [audioContext]);
 
-	return { initializeAudioSession, isSessionInitialized };
+	const syncSilentAudio = useCallback((isPlaying: boolean) => {
+		if (!silentAudioRef.current) return;
+
+		if (isPlaying) {
+			if (silentAudioRef.current.paused) {
+				silentAudioRef.current.play().catch((e) => {
+					console.warn("Failed to play silent audio:", e);
+				});
+			}
+		} else {
+			if (!silentAudioRef.current.paused) {
+				silentAudioRef.current.pause();
+			}
+		}
+	}, []);
+
+	return { initializeAudioSession, isSessionInitialized, syncSilentAudio };
 }

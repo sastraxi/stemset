@@ -137,12 +137,20 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			audioContext,
 		} = useStemPlayer({ profileName, fileName, stemsData, recordingId });
 
-		const { initializeAudioSession } = useAudioSession(audioContext);
+		const { initializeAudioSession, syncSilentAudio } = useAudioSession(audioContext);
 
 		const handlePlay = useCallback(() => {
 			initializeAudioSession();
 			play();
 		}, [initializeAudioSession, play]);
+
+		const handleNextTrack = useCallback(() => {
+			console.log("Next track not implemented");
+		}, []);
+
+		const handlePreviousTrack = useCallback(() => {
+			console.log("Previous track not implemented");
+		}, []);
 
 		useMediaSession({
 			title: fileName,
@@ -150,19 +158,16 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			album: profileName,
 			onPlay: handlePlay,
 			onPause: pause,
-			onNextTrack: () => {
-				console.log("Next track not implemented");
-			},
-			onPreviousTrack: () => {
-				console.log("Previous track not implemented");
-			},
+			onNextTrack: handleNextTrack,
+			onPreviousTrack: handlePreviousTrack,
 		});
 
 		useEffect(() => {
 			if ("mediaSession" in navigator) {
 				navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
 			}
-		}, [isPlaying]);
+			syncSilentAudio(isPlaying);
+		}, [isPlaying, syncSilentAudio]);
 
 		// Master volume mute toggle (like desktop MasterVolumeControl)
 		const isMasterMuted = masterVolume === 0;

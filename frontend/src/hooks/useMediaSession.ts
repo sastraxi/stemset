@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface MediaSessionProps {
 	title: string;
@@ -19,6 +19,21 @@ export function useMediaSession({
 	onNextTrack,
 	onPreviousTrack,
 }: MediaSessionProps) {
+	// Store callbacks in refs so they don't cause effect re-runs
+	const onPlayRef = useRef(onPlay);
+	const onPauseRef = useRef(onPause);
+	const onNextTrackRef = useRef(onNextTrack);
+	const onPreviousTrackRef = useRef(onPreviousTrack);
+
+	// Keep refs updated
+	useEffect(() => {
+		onPlayRef.current = onPlay;
+		onPauseRef.current = onPause;
+		onNextTrackRef.current = onNextTrack;
+		onPreviousTrackRef.current = onPreviousTrack;
+	}, [onPlay, onPause, onNextTrack, onPreviousTrack]);
+
+	// Register handlers only when metadata changes
 	useEffect(() => {
 		if (!("mediaSession" in navigator)) {
 			return;
@@ -30,10 +45,10 @@ export function useMediaSession({
 			album,
 		});
 
-		navigator.mediaSession.setActionHandler("play", onPlay);
-		navigator.mediaSession.setActionHandler("pause", onPause);
-		navigator.mediaSession.setActionHandler("nexttrack", onNextTrack);
-		navigator.mediaSession.setActionHandler("previoustrack", onPreviousTrack);
+		navigator.mediaSession.setActionHandler("play", () => onPlayRef.current());
+		navigator.mediaSession.setActionHandler("pause", () => onPauseRef.current());
+		navigator.mediaSession.setActionHandler("nexttrack", () => onNextTrackRef.current());
+		navigator.mediaSession.setActionHandler("previoustrack", () => onPreviousTrackRef.current());
 
 		return () => {
 			navigator.mediaSession.metadata = null;
@@ -42,5 +57,5 @@ export function useMediaSession({
 			navigator.mediaSession.setActionHandler("nexttrack", null);
 			navigator.mediaSession.setActionHandler("previoustrack", null);
 		};
-	}, [title, artist, album, onPlay, onPause, onNextTrack, onPreviousTrack]);
+	}, [title, artist, album]);
 }

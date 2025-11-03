@@ -166,9 +166,8 @@ export function usePlaybackController({
 	);
 
 	const play = useCallback(() => {
-		if (isPlaying) return;
+		if (isPlayingRef.current) return;
 		if (!audioContext) return;
-
 		if (stemNodes.size === 0) return;
 
 		// Resume context if suspended
@@ -179,10 +178,10 @@ export function usePlaybackController({
 		setIsPlaying(true);
 		isPlayingRef.current = true;
 		startSources(pausedAtRef.current);
-	}, [isPlaying, audioContext, stemNodes.size, startSources]);
+	}, [audioContext, stemNodes.size, startSources]);
 
 	const pause = useCallback(() => {
-		if (!isPlaying) return;
+		if (!isPlayingRef.current) return;
 		if (!audioContext) return;
 
 		pausedAtRef.current = audioContext.currentTime - startTimeRef.current;
@@ -198,7 +197,7 @@ export function usePlaybackController({
 
 		// Invalidate current playback generation
 		playbackGenRef.current += 1;
-	}, [isPlaying, audioContext, stopAllSources]);
+	}, [audioContext, stopAllSources]);
 
 	const stop = useCallback(() => {
 		if (!audioContext) return;
@@ -224,11 +223,11 @@ export function usePlaybackController({
 			pausedAtRef.current = clamped;
 			setCurrentTime(clamped);
 
-			if (isPlaying) {
+			if (isPlayingRef.current) {
 				startSources(clamped);
 			}
 		},
-		[duration, isPlaying, startSources],
+		[duration, startSources],
 	);
 
 	const formatTime = useCallback((seconds: number) => {
