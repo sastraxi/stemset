@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getToken } from "../lib/storage";
 
 interface WaveformVisualizationProps {
 	waveformUrl: string | null;
@@ -49,7 +50,7 @@ export function WaveformVisualization({
 	const [isDragging, setIsDragging] = useState(false);
 	const [isImageLoaded, setIsImageLoaded] = useState(false);
 
-	// Load waveform image
+	// Load waveform image with authentication
 	useEffect(() => {
 		if (!waveformUrl) {
 			imageRef.current = null;
@@ -58,22 +59,63 @@ export function WaveformVisualization({
 		}
 
 		setIsImageLoaded(false);
-		const img = new Image();
-		img.crossOrigin = "anonymous"; // For CORS if needed
-		img.onload = () => {
-			imageRef.current = img;
-			setIsImageLoaded(true);
+		let objectUrl: string | null = null;
+
+		const loadImage = async () => {
+			try {
+				// Fetch image with auth headers
+				const token = getToken();
+				const headers: HeadersInit = {};
+				if (token) {
+					headers.Authorization = `Bearer ${token}`;
+				}
+
+				const response = await fetch(waveformUrl, {
+					headers,
+					cache: "default", // Allow browser caching
+				});
+				if (!response.ok) {
+					throw new Error(`Failed to fetch waveform: ${response.status}`);
+				}
+
+				const blob = await response.blob();
+				objectUrl = URL.createObjectURL(blob);
+
+				// Load into Image element
+				const img = new Image();
+				img.onload = () => {
+					imageRef.current = img;
+					setIsImageLoaded(true);
+				};
+				img.onerror = (e) => {
+					console.error(
+						`[WaveformVisualization:${stemName}] Failed to load waveform image`,
+						waveformUrl,
+						e,
+					);
+					imageRef.current = null;
+					setIsImageLoaded(false);
+				};
+				img.src = objectUrl;
+			} catch (error) {
+				console.error(
+					`[WaveformVisualization:${stemName}] Failed to fetch waveform`,
+					waveformUrl,
+					error,
+				);
+				imageRef.current = null;
+				setIsImageLoaded(false);
+			}
 		};
-		img.onerror = (e) => {
-			console.error(
-				`[WaveformVisualization:${stemName}] Failed to load waveform image`,
-				waveformUrl,
-				e,
-			);
-			imageRef.current = null;
-			setIsImageLoaded(false);
+
+		loadImage();
+
+		// Cleanup blob URL when component unmounts or URL changes
+		return () => {
+			if (objectUrl) {
+				URL.revokeObjectURL(objectUrl);
+			}
 		};
-		img.src = waveformUrl;
 	}, [waveformUrl, stemName]);
 
 	// Render waveform with dual-tone coloring (greyscale left, vibrant right)

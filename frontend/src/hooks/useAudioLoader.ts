@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { StemAudioData } from "../types";
 import type { StemResponse } from "../api/generated/types.gen";
+import { getToken } from "../lib/storage";
 
 export interface StemTiming {
 	name: string;
@@ -96,6 +97,13 @@ export function useAudioLoader({
 				const newMap = new Map<string, StemAudioData>();
 				const timingAccumulator: StemTiming[] = [];
 
+				// Get auth token for media requests
+				const token = getToken();
+				const headers: HeadersInit = {};
+				if (token) {
+					headers.Authorization = `Bearer ${token}`;
+				}
+
 				await Promise.all(
 					stemsData.map(async (stemResponse) => {
 						if (signal.aborted) return;
@@ -105,6 +113,7 @@ export function useAudioLoader({
 							const resp = await fetch(stemResponse.audio_url, {
 								signal,
 								cache: "default", // Allow browser caching
+								headers,
 							});
 							const blob = await resp.blob();
 							const fetchEnd = performance.now();

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -9,6 +10,7 @@ from pathlib import Path
 
 from litestar import Litestar
 from litestar.config.cors import CORSConfig
+from litestar.datastructures import CacheControlHeader
 from litestar.middleware import DefineMiddleware
 from litestar.static_files import (
     create_static_files_router,  # pyright: ignore[reportUnknownVariableType]
@@ -37,6 +39,11 @@ from .upload_routes import (
     upload_file,
 )
 
+# Fix incorrect MIME type for M4A files - Firefox requires audio/mp4
+# Python's mimetypes module incorrectly returns audio/mp4a-latm by default
+mimetypes.init()
+mimetypes.types_map[".m4a"] = "audio/mp4"
+
 
 @asynccontextmanager
 async def database_lifespan(_app: Litestar) -> AsyncGenerator[None, None]:
@@ -59,6 +66,13 @@ async def database_lifespan(_app: Litestar) -> AsyncGenerator[None, None]:
 media_router = create_static_files_router(
     path="/media",
     directories=["media"],
+    cache_control=CacheControlHeader(
+        max_age=86400,  # 24 hours - allow cache but with periodic revalidation
+        public=True,  # Allow shared caches (CDN, proxy)
+        must_revalidate=True,  # Force revalidation after max-age expires
+    ),
+    # Note: Litestar automatically generates ETags based on file mtime
+    # When file is regenerated, mtime changes → new ETag → cache invalidates
 )
 
 frontend_dist = Path("frontend/dist")
