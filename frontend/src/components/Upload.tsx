@@ -170,7 +170,6 @@ export function Upload({
 				accept="audio/*"
 				onChange={handleFileSelect}
 				style={{ display: "none" }}
-				capture
 			/>
 
 			{/* Simple upload button in sidebar */}

@@ -297,7 +297,7 @@ export function AuthenticatedApp({
 
 			<div className="main-content">
 				<aside
-					className={`sidebar flex flex-col gap-6 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
+					className={`sidebar flex gap-6 flex-col p-6 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
 				>
 					{selectedProfile && (
 						<Upload
@@ -342,7 +342,7 @@ export function AuthenticatedApp({
 									// biome-ignore lint/a11y/useKeyWithClickEvents: FIXME
 									<li
 										key={file.name}
-										className={`py-2.5 px-3 m-0 bg-transparent select-none border-none border-l-2 cursor-pointer transition-all text-sm rounded-r flex items-center justify-between gap-2 ${
+										className={`p-2.5 m-0 bg-transparent select-none border-none border-l-2 cursor-pointer transition-all text-sm rounded-r flex items-center justify-between gap-2 ${
 											selectedFile?.name === file.name
 												? "bg-blue-400/10 border-l-blue-400 text-white"
 												: "border-l-transparent hover:bg-white/5 hover:border-l-gray-700 text-gray-300"

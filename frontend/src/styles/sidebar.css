@@ -62,7 +62,6 @@ button:disabled {
 }
 
 .file-list {
-	padding: 1.5rem;
 	flex: 1;
 	overflow-y: auto;
 	/* Prevent scrollbar from showing until needed */
@@ -89,5 +88,5 @@ button:disabled {
 
 .file-list li {
 	margin-left: 0;
-	padding-left: 1rem !important;
+	padding-left: 0;
 }
