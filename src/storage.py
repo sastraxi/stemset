@@ -122,11 +122,11 @@ class R2Storage:
         if self.config.public_url:
             return f"{self.config.public_url}/{key}"
 
-        # Otherwise generate presigned URL (valid for 1 hour)
+        # Otherwise generate presigned URL (valid for 24 hours)
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},
-            ExpiresIn=3600,
+            ExpiresIn=86400,  # 24 hours
         )
 
     def get_waveform_url(self, profile_name: str, file_name: str, stem_name: str) -> str:
@@ -139,7 +139,7 @@ class R2Storage:
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},
-            ExpiresIn=3600,
+            ExpiresIn=86400,  # 24 hours
         )
 
     def list_files(self, profile_name: str) -> list[str]:
@@ -215,11 +215,11 @@ class R2Storage:
         if self.config.public_url:
             return f"{self.config.public_url}/{key}"
 
-        # Otherwise generate presigned URL (valid for 1 hour)
+        # Otherwise generate presigned URL (valid for 24 hours)
         return self.s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.config.bucket_name, "Key": key},
-            ExpiresIn=3600,
+            ExpiresIn=86400,  # 24 hours
         )
 
     def delete_file(self, profile_name: str, file_name: str, stem_name: str, ext: str) -> None:
