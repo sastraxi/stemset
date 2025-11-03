@@ -176,8 +176,8 @@ export function Upload({
 			{/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
 			{/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
 			<div className="upload-sidebar-button" onClick={handleClick}>
-				<UploadIcon className="h-4 w-4" />
-				<span>Upload Audio</span>
+				<UploadIcon className="h-6 w-6" />
+				<span>Recording</span>
 			</div>
 
 			{/* Full-screen drop overlay */}

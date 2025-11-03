@@ -2,12 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Music, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-	useProfileFiles,
-	useProfiles,
-	useRecording,
-	useUpdateDisplayName,
-} from "../hooks/queries";
+import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
 import "../styles/effects.css";
 import "../styles/layout.css";
@@ -16,10 +11,12 @@ import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
 import type { FileWithStems } from "@/api/generated";
-import { InlineEdit } from "./InlineEdit";
+import { MetadataEditorModal } from "./MetadataEditorModal";
 import { MetadataPage } from "./MetadataPage";
 import { ProfileSelector } from "./ProfileSelector";
+import { QRCodeModal } from "./QRCodeModal";
 import { QRUploadOverlay } from "./QRUploadOverlay";
+import { SongMetadata } from "./SongMetadata";
 import { Spinner } from "./Spinner";
 import { StemPlayer, type StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
@@ -35,8 +32,6 @@ interface AuthenticatedAppProps {
 	initialStateParam?: string;
 }
 
-const getDisplayName = (file: FileWithStems) => file.display_name || file.name;
-
 export function AuthenticatedApp({
 	user,
 	onLogout,
@@ -51,6 +46,9 @@ export function AuthenticatedApp({
 	const [selectedFile, setSelectedFile] = useState<FileWithStems | null>(null);
 	const [isLoadingStems, setIsLoadingStems] = useState(false);
 	const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
+	const [isMetadataEditorOpen, setIsMetadataEditorOpen] = useState(false);
+	const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+	const [audioDuration, setAudioDuration] = useState<number>(0);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
 	const navigate = useNavigate();
 
@@ -72,8 +70,6 @@ export function AuthenticatedApp({
 		error: filesError,
 		refetch: refetchFiles,
 	} = useProfileFiles(selectedProfile || undefined);
-
-	const updateDisplayNameMutation = useUpdateDisplayName();
 
 	// Fetch the full recording data (with config) when we have a selected file
 	// This primes the React Query cache for useConfigPersistence
@@ -192,37 +188,6 @@ export function AuthenticatedApp({
 		}
 	};
 
-	const handleSaveDisplayName = async (newDisplayName: string) => {
-		if (!selectedFile || !selectedProfile) return;
-
-		try {
-			const updatedData = await updateDisplayNameMutation.mutateAsync({
-				path: {
-					profile_name: selectedProfile,
-					output_name: selectedFile.name,
-				},
-				body: {
-					display_name: newDisplayName,
-				},
-			});
-
-			// Update the selectedFile state to trigger re-render of InlineEdit
-			setSelectedFile((prevFile) => {
-				if (!prevFile) return null;
-				return {
-					...prevFile,
-					display_name: updatedData.display_name,
-				};
-			});
-
-			toast.success("Display name updated");
-		} catch (error) {
-			console.error("Error updating display name:", error);
-			toast.error("Failed to update display name");
-			throw error; // Re-throw to let InlineEdit handle the error
-		}
-	};
-
 	// Show backend connection error
 	if (profilesError) {
 		return (
@@ -297,7 +262,7 @@ export function AuthenticatedApp({
 
 			<div className="main-content">
 				<aside
-					className={`sidebar flex gap-6 flex-col p-6 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
+					className={`sidebar flex gap-10 flex-col p-10 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
 				>
 					{selectedProfile && (
 						<Upload
@@ -352,7 +317,7 @@ export function AuthenticatedApp({
 										<span
 											className={`truncate ${selectedFile?.name === file.name ? "font-bold" : ""}`}
 										>
-											{getDisplayName(file)}
+											{file.display_name || file.name}
 										</span>
 										{selectedFile?.name === file.name && (
 											<Music className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
@@ -394,21 +359,42 @@ export function AuthenticatedApp({
 							<>
 								{!isLoadingStems && (
 									<div className="recording-header">
-										<h2 className="recording-name">
-											<InlineEdit
-												value={getDisplayName(selectedFile)}
-												onSave={handleSaveDisplayName}
-												placeholder={selectedFile.name}
-											/>
-										</h2>
-										<div className="flex-grow" />
 										<div
 											id="playback-controls-container"
 											className="playback-controls-header"
 										>
 											{/* Playback controls will be rendered here by StemPlayer */}
 										</div>
+										<SongMetadata
+											recording={selectedFile}
+											onEdit={() => setIsMetadataEditorOpen(true)}
+											onShowQR={() => setIsQRModalOpen(true)}
+											duration={audioDuration}
+										/>
 									</div>
+								)}
+								{selectedFile && selectedProfile && (
+									<>
+										<MetadataEditorModal
+											recording={selectedFile}
+											profileId={
+												profiles?.find((p) => p.name === selectedProfile)?.id ||
+												""
+											}
+											profileName={selectedProfile}
+											open={isMetadataEditorOpen}
+											onClose={() => setIsMetadataEditorOpen(false)}
+											onUpdate={(updatedRecording) => {
+												setSelectedFile(updatedRecording);
+											}}
+										/>
+										<QRCodeModal
+											isOpen={isQRModalOpen}
+											onClose={() => setIsQRModalOpen(false)}
+											url={`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/${selectedFile.name}`}
+											currentTime={0}
+										/>
+									</>
 								)}
 								<StemPlayer
 									key={`${selectedProfile}::${selectedFile.name}`}
@@ -417,6 +403,7 @@ export function AuthenticatedApp({
 									fileName={selectedFile.name}
 									stemsData={selectedFile.stems}
 									onLoadingChange={setIsLoadingStems}
+									onDurationChange={setAudioDuration}
 									recordingId={selectedFile.id}
 								/>
 							</>

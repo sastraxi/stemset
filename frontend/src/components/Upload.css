@@ -1,23 +1,44 @@
 /* Upload Sidebar Button */
 .upload-sidebar-button {
 	display: flex;
+	gap: 1rem;
 	align-items: center;
-	gap: 0.5rem;
-	padding: 0.75rem 1.5rem;
+	justify-content: center;
+	padding: 2rem 1.5rem;
 	background: transparent;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 6px;
 	color: #e8e8e8;
-	font-size: 0.85rem;
+	font-size: 1rem;
 	cursor: pointer;
-	transition: all 0.2s;
+	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
+	position: relative;
 }
 
 .upload-sidebar-button:hover {
-	background: rgba(74, 158, 255, 0.1);
-	border-color: #4a9eff;
-	color: #4a9eff;
+	/* border-color: #4a9eff;
+	background: #4a9eff2f; */
+	transform: translateY(-3px);
+
+	/* border-color: #ff4a9e;
+	background: #ff4a9e2f;
+ */
+	border-color: #ff9f43;
+	background: #ff9f432f;
+
+	box-shadow: 0 6px 6px #ff9f432f;
 }
+
+	.upload-sidebar-button svg {
+		margin-left: 0.2rem;
+	}
+
+	.upload-sidebar-button span {
+		pointer-events: none;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		font-size: 0.9rem;
+	}
 
 /* Full-screen Drop Overlay */
 .upload-fullscreen-overlay {

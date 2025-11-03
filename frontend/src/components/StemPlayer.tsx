@@ -1,4 +1,4 @@
-import { Music, QrCode, Share, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Music, Volume2, VolumeX } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -20,16 +20,18 @@ import { EqPanel } from "./effects/EqPanel";
 import { MasterVolumeControl } from "./effects/MasterVolumeControl";
 import { ReverbPanel } from "./effects/ReverbPanel";
 import { MobileVolumeControl } from "./MobileVolumeControl";
-import { QRCodeModal } from "./QRCodeModal";
 import { Ruler } from "./Ruler";
 import { Spinner } from "./Spinner";
+import { VCRDisplay } from "./VCRDisplay";
 import { WaveformVisualization } from "./WaveformVisualization";
+import "../styles/vcr-display.css";
 
 interface StemPlayerProps {
 	profileName: string;
 	fileName: string;
 	stemsData: StemResponse[];
 	onLoadingChange?: (isLoading: boolean) => void;
+	onDurationChange?: (duration: number) => void;
 	recordingId: string;
 }
 
@@ -43,13 +45,11 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-	({ profileName, fileName, stemsData, onLoadingChange, recordingId }, ref) => {
+	({ profileName, fileName, stemsData, onLoadingChange, onDurationChange, recordingId }, ref) => {
 		const [previewTime, setPreviewTime] = useState<number | null>(null);
 		const [showTimeRemaining, setShowTimeRemaining] = useState(false);
-		const [showQRModal, setShowQRModal] = useState(false);
 		const [showDeleteModal, setShowDeleteModal] = useState(false);
 		const [isDeleting, setIsDeleting] = useState(false);
-		const [volumeBeforeMute, setVolumeBeforeMute] = useState(0.8);
 		const playerRef = useRef<HTMLDivElement>(null);
 
 		useImperativeHandle(ref, () => ({
@@ -57,29 +57,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				playerRef.current?.focus();
 			},
 		}));
-
-		// Generate shareable URL with current time (floored to nearest second)
-		const generateShareUrl = useCallback(
-			(time: number) => {
-				const baseUrl =
-					import.meta.env.VITE_FRONTEND_URL || window.location.origin;
-				const currentPath = `/p/${profileName}/${fileName}`;
-				const url = new URL(currentPath, baseUrl);
-				url.searchParams.set("t", Math.floor(time).toString());
-				return url.toString();
-			},
-			[profileName, fileName],
-		);
-
-		// Generate QR URL for social sharing (points to upload page with source=qr)
-		const generateQRUrl = useCallback(() => {
-			const baseUrl =
-				import.meta.env.VITE_FRONTEND_URL || window.location.origin;
-			const currentPath = `/p/${profileName}/${fileName}`;
-			const url = new URL(currentPath, baseUrl);
-			url.searchParams.set("source", "qr");
-			return url.toString();
-		}, [profileName, fileName]);
 
 		// Handle recording deletion
 		const handleDelete = useCallback(async () => {
@@ -139,64 +116,55 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 
 		const { initializeAudioSession } = useAudioSession(audioContext);
 
-	const handlePlay = useCallback(() => {
-		initializeAudioSession();
-		play();
-		// Immediately update MediaSession state
-		if ("mediaSession" in navigator) {
-			navigator.mediaSession.playbackState = "playing";
-		}
-	}, [initializeAudioSession, play]);
-
-	const handlePause = useCallback(() => {
-		pause();
-		// Immediately update MediaSession state
-		if ("mediaSession" in navigator) {
-			navigator.mediaSession.playbackState = "paused";
-		}
-	}, [pause]);
-
-	const handleNextTrack = useCallback(() => {
-		console.log("Next track not implemented");
-	}, []);
-
-	const handlePreviousTrack = useCallback(() => {
-		console.log("Previous track not implemented");
-	}, []);
-
-	useMediaSession({
-		title: fileName,
-		artist: profileName,
-		album: profileName,
-		duration: duration,
-		currentTime: currentTime,
-		onPlay: handlePlay,
-		onPause: handlePause,
-		onSeek: seek,
-		onNextTrack: handleNextTrack,
-		onPreviousTrack: handlePreviousTrack,
-	});
-
-	// Remove the useEffect that updates playbackState - it's now handled in the callbacks
-
-
-		// Master volume mute toggle (like desktop MasterVolumeControl)
-		const isMasterMuted = masterVolume === 0;
-		const handleToggleMasterMute = useCallback(() => {
-			if (isMasterMuted) {
-				// Unmute: restore previous volume (or default to 0.7 if none saved)
-				setMasterVolume(volumeBeforeMute > 0 ? volumeBeforeMute : 0.7);
-			} else {
-				// Mute: save current volume and set to 0
-				setVolumeBeforeMute(masterVolume);
-				setMasterVolume(0);
+		const handlePlay = useCallback(() => {
+			initializeAudioSession();
+			play();
+			// Immediately update MediaSession state
+			if ("mediaSession" in navigator) {
+				navigator.mediaSession.playbackState = "playing";
 			}
-		}, [isMasterMuted, masterVolume, volumeBeforeMute, setMasterVolume]);
+		}, [initializeAudioSession, play]);
+
+		const handlePause = useCallback(() => {
+			pause();
+			// Immediately update MediaSession state
+			if ("mediaSession" in navigator) {
+				navigator.mediaSession.playbackState = "paused";
+			}
+		}, [pause]);
+
+		const handleNextTrack = useCallback(() => {
+			console.log("Next track not implemented");
+		}, []);
+
+		const handlePreviousTrack = useCallback(() => {
+			console.log("Previous track not implemented");
+		}, []);
+
+		useMediaSession({
+			title: fileName,
+			artist: profileName,
+			album: profileName,
+			duration: duration,
+			currentTime: currentTime,
+			onPlay: handlePlay,
+			onPause: handlePause,
+			onSeek: seek,
+			onNextTrack: handleNextTrack,
+			onPreviousTrack: handlePreviousTrack,
+		});
+
+		// Remove the useEffect that updates playbackState - it's now handled in the callbacks
 
 		// Notify parent of loading state changes
 		useEffect(() => {
 			onLoadingChange?.(isLoading);
 		}, [isLoading, onLoadingChange]);
+
+		// Notify parent of duration changes
+		useEffect(() => {
+			onDurationChange?.(duration);
+		}, [duration, onDurationChange]);
 
 		// Keyboard shortcuts
 		useEffect(() => {
@@ -289,104 +257,46 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			}
 		}
 
-		if (isLoading) {
-			return (
-				<div className="stem-player loading">
-					<Spinner size="lg" />
-					<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
-				</div>
-			);
-		}
-
-		// Render playback controls in header
+		// Render VCR display in header (before loading check so it shows immediately)
 		const playbackControlsContainer = document.getElementById(
 			"playback-controls-container",
 		);
-		const playbackControls = (
-			<>
-				<button
-					type="button"
-					onClick={() => setShowQRModal(true)}
-					className="share-button"
-					title="Show QR code for social sharing"
-				>
-					<QrCode className="h-4 w-4" />
-				</button>
-				<button
-					type="button"
-					onClick={async () => {
-						const shareUrl = generateShareUrl(currentTime);
-						try {
-							await navigator.clipboard.writeText(shareUrl);
-							toast.success(
-								`Share link (${formatTime(currentTime)}) copied to clipboard!`,
-							);
-						} catch (err) {
-							console.error("Failed to copy to clipboard:", err);
-							// Fallback - show the URL so user can copy manually
-							toast.error("Could not copy to clipboard. Link: " + shareUrl);
-						}
-					}}
-					className="share-button"
-					title="Share at current time"
-				>
-					<Share className="h-4 w-4" />
-				</button>
-				<button
-					type="button"
-					onClick={() => setShowDeleteModal(true)}
-					className="share-button"
-					title="Delete recording"
-				>
-					<Trash2 className="h-4 w-4" />
-				</button>
-				<MobileVolumeControl
-					volume={masterVolume}
-					onVolumeChange={setMasterVolume}
-					isMuted={isMasterMuted}
-					onToggleMute={handleToggleMasterMute}
-					max={1}
-				/>
-				{/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
-				{/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
-				<div
-					className="time-display clickable"
-					onClick={() => setShowTimeRemaining(!showTimeRemaining)}
-					title="Click to toggle time remaining"
-				>
-					{showTimeRemaining
-						? `-${formatTime(duration - (previewTime !== null ? previewTime : currentTime))} / ${formatTime(duration)}`
-						: `${formatTime(previewTime !== null ? previewTime : currentTime)} / ${formatTime(duration)}`}
-				</div>
-				<button
-					type="button"
-					onClick={isPlaying ? pause : handlePlay}
-					disabled={stemOrder.length === 0}
-					className="playback-button"
-					title={isPlaying ? "Pause" : "Play"}
-				>
-					{isPlaying ? "⏸" : "▶"}
-				</button>
-				<button
-					type="button"
-					onClick={stop}
-					disabled={!isPlaying && currentTime === 0}
-					className="playback-button stop-button"
-					title="Reset"
-				>
-					⏹
-				</button>
-			</>
+		const vcrDisplay = (
+			<VCRDisplay
+				currentTime={currentTime}
+				duration={duration}
+				formatTime={formatTime}
+				showTimeRemaining={showTimeRemaining}
+				onToggleTimeDisplay={() => setShowTimeRemaining(!showTimeRemaining)}
+				isPlaying={isPlaying}
+				onPlay={handlePlay}
+				onPause={handlePause}
+				onStop={stop}
+				disabled={stemOrder.length === 0 || isLoading}
+			/>
 		);
+
+		if (isLoading) {
+			return (
+				<>
+					{playbackControlsContainer &&
+						createPortal(vcrDisplay, playbackControlsContainer)}
+					<div className="stem-player loading">
+						<Spinner size="lg" />
+						<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
+					</div>
+				</>
+			);
+		}
 
 		return (
 			<>
 				{playbackControlsContainer &&
-					createPortal(playbackControls, playbackControlsContainer)}
+					createPortal(vcrDisplay, playbackControlsContainer)}
 				{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
 				<div className="stem-player" ref={playerRef} tabIndex={0}>
 					<div className="waveforms-section">
-						{/* Ruler row - now just ruler without controls */}
+						{/* Ruler row */}
 						<div className="waveform-row">
 							<div className="waveform-controls">
 								{/* Empty controls area to maintain alignment */}
@@ -523,13 +433,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 						/>
 					</div>
 				</div>
-
-				{/* QR Code Modal */}
-				<QRCodeModal
-					isOpen={showQRModal}
-					onClose={() => setShowQRModal(false)}
-					url={generateQRUrl()}
-				/>
 
 				{/* Delete Confirmation Modal */}
 				<DeleteConfirmationModal

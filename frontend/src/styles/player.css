@@ -31,35 +31,6 @@
 	width: 2rem;
 }
 
-.share-button {
-	background: transparent;
-	border: none;
-	color: #888;
-	cursor: pointer;
-	padding: 0.25rem;
-	margin-right: 0.5rem;
-	border-radius: 0.25rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: color 0.2s ease;
-}
-
-.share-button:hover {
-	color: #fff;
-	background-color: rgba(255, 255, 255, 0.1);
-}
-
-.share-button:active {
-	background-color: rgba(255, 255, 255, 0.2);
-}
-
-.time-display {
-	margin-right: 1rem;
-	color: #888;
-	font-variant-numeric: tabular-nums;
-}
-
 .volume-slider {
 	width: 100%;
 }

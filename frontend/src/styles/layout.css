@@ -43,7 +43,7 @@
 
 .player-area {
 	flex: 1;
-	padding: 2rem 2rem;
+	padding: 1.25rem 1.75rem;
 	z-index: 2;
 }
 
@@ -62,16 +62,16 @@
 
 .recording-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	margin-bottom: 2rem;
-	gap: 2rem;
+	gap: 1.1rem;
+	position: relative;
 }
 
 @media (max-width: 768px) {
 	.recording-header {
 		flex-direction: column;
-		align-items: flex-end;
+		align-items: flex-start;
 		gap: 1rem;
 		margin-bottom: 0;
 	}
@@ -89,9 +89,11 @@
 
 .playback-controls-header {
 	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	flex-shrink: 0;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.1rem;
+	width: 212px;
+	position: absolute;
 }
 
 @media (max-width: 768px) {
@@ -101,13 +103,13 @@
 		left: 0;
 		right: 0;
 		width: 100%;
-		background: #000;
-		padding: 0.75rem 1rem;
+		padding: 0;
 		margin: 0;
 		z-index: 1000;
-		box-shadow: 0 -4px 12px rgba(139, 92, 246, 0.15);
+		box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
 		justify-content: space-between;
 		gap: 1rem;
+		display: block;
 	}
 }
 
@@ -115,7 +117,6 @@
 	font-size: 1rem;
 	color: #ccc;
 	font-variant-numeric: tabular-nums;
-	min-width: 120px;
 	text-align: right;
 }
 
@@ -143,67 +144,28 @@
 	}
 }
 
+
 .playback-controls-header .playback-button {
-	width: 3rem;
-	height: 3rem;
-	padding: 0;
+	padding: 0.2rem 0.4rem;
 	font-size: 1.2rem;
 	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: #ccc;
 	cursor: pointer;
 	transition: all 0.2s;
-	border-radius: 6px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 2.25rem;
 }
 
-@media (max-width: 768px) {
-	.playback-controls-header .playback-button {
-		width: 2.5rem;
-		height: 2.5rem;
-		font-size: 1rem;
-	}
 
-	/* Reorder: share buttons first (left), master volume, time center, play/stop last (right) */
-	.playback-controls-header {
-		display: flex;
-	}
-
-	.playback-controls-header .share-button {
-		order: 1;
-	}
-
-	/* Hide QR code and delete buttons on mobile to save space */
-	.playback-controls-header .share-button[title="Show QR code for social sharing"],
-	.playback-controls-header .share-button[title="Delete recording"] {
-		display: none;
-	}
-
-	.playback-controls-header .mobile-volume-button {
-		order: 2;
-	}
-
-	.playback-controls-header .time-display {
-		order: 3;
-	}
-
-	.playback-controls-header .playback-button {
-		order: 4;
-	}
+.playback-controls-header .playback-button {
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: #ccc;
 }
 
-.playback-controls-header .playback-button:hover:not(:disabled) {
-	outline: 2px solid #4a9eff;
-	outline-offset: -1px;
-	color: #4a9eff;
-}
-
-.playback-controls-header .stop-button:hover:not(:disabled) {
-	outline: 2px solid #ff4444;
-	outline-offset: -1px;
-	color: #ff6666;
+.share-button {
+	background: transparent;
 }
 
 .playback-controls-header .playback-button:disabled {
@@ -221,87 +183,89 @@
 	font-size: 1rem;
 }
 
-/* Inline Edit Styles */
-.inline-edit-container {
-	display: inline-flex;
-	align-items: center;
+/* Song Metadata Styles */
+.song-metadata {
+	display: flex;
+	flex-direction: column;
 	gap: 0.5rem;
-	max-width: 100%;
-	min-height: 2.5rem;
-	/* Ensure consistent height */
+	margin-bottom: 0.75rem;
+	margin-right: 0.25rem;
+	flex-grow: 1;
+	margin-left: calc(220px + 0.5rem);
 }
 
-.inline-edit-value {
+@media (max-width: 768px) {
+	.song-metadata {
+		margin-left: 2.5rem;
+	}
+
+	.recording-name-row {
+		margin-left: -2.25rem;
+	}
+}
+
+.song-metadata-header {
+	display: flex;
+	align-items: end;
+	gap: 0.5rem;
+}
+
+.song-metadata-header .recording-name {
+	margin: 0;
+	font-size: 1.5rem;
+	font-weight: 600;
 	color: #e8e8e8;
-	flex: 0 1 auto;
-	min-width: 0;
-	line-height: 1.5;
-	padding: 0.5rem;
-	border: 1px solid transparent;
-	/* Match input border to prevent height shift */
+	flex: 1;
 }
 
-.inline-edit-input {
-	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: #e8e8e8;
-	padding: 0.5rem;
-	border-radius: 4px;
-	font-size: inherit;
-	font-family: inherit;
-	font-weight: inherit;
-	line-height: 1.5;
-	outline: none;
-	min-width: 200px;
-	height: auto;
+.song-metadata-badges {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	align-items: center;
 }
 
-.inline-edit-input:focus {
-	border-color: #4a9eff;
-	background: rgba(74, 158, 255, 0.1);
-}
-
-.inline-edit-buttons {
-	display: inline-flex;
+.qr-button-large {
+	display: flex;
+	flex-direction: column;
 	gap: 0.25rem;
-	flex-shrink: 0;
-}
-
-.inline-edit-button {
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: #ccc;
-	cursor: pointer;
-	padding: 0.375rem;
-	border-radius: 4px;
-	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.2s;
-	flex-shrink: 0;
+	padding: 1.75rem 1.25rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.9rem;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	cursor: pointer;
+	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
+	position: relative;
 }
 
-.inline-edit-button:hover:not(:disabled) {
-	border-color: #4a9eff;
-	color: #4a9eff;
+@media (max-width: 768px) {
+	.qr-button-large {
+		display: none;
+	}
 }
 
-.inline-edit-button.save:hover:not(:disabled) {
-	border-color: #4ade80;
-	color: #4ade80;
+.qr-button-large svg {
+	width: 2rem;
+	height: 2rem;
+	margin: 0;
+	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
 }
 
-.inline-edit-button.cancel:hover:not(:disabled) {
-	border-color: #ff6666;
-	color: #ff6666;
+button.qr-button-large:hover:not(:disabled) {
+	transform: translateY(-3px);
+	border-color: #a29bfe;
+	background: rgba(162, 155, 254, 0.18);
+	box-shadow: 0 6px 6px rgba(162, 155, 254, 0.18);
+	color: white;
 }
 
-.inline-edit-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.inline-edit-button.edit {
-	opacity: 1;
-	flex-shrink: 0;
-}
+	button.qr-button-large:hover:not(:disabled) svg {
+		stroke: white;
+	}

@@ -1,0 +1,111 @@
+/* Metadata Editor Styling - Inspired by QR Modal */
+
+.metadata-editor-modal-content {
+	background: #1a1a1a !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	max-width: 700px !important;
+}
+
+.metadata-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	padding: 0.5rem 0;
+}
+
+/* Title Section */
+.metadata-editor-title-section {
+	padding-bottom: 1rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metadata-editor-title-input-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.metadata-editor-title-row {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+/* Two Column Layout */
+.metadata-editor-columns {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 2rem;
+	padding: 0.5rem 0;
+}
+
+/* Calendar Column */
+.metadata-editor-calendar-column {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	min-width: fit-content;
+}
+
+.metadata-editor-calendar {
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.02);
+	/* Fixed height to always show full month (up to 6 weeks) */
+	min-height: 380px;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Fields Column */
+.metadata-editor-fields-column {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	min-width: 0; /* Allow shrinking */
+}
+
+/* Action Buttons */
+.metadata-editor-actions {
+	display: flex;
+	gap: 0.75rem;
+	justify-content: flex-end;
+	align-items: center;
+	padding-top: 1rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metadata-editor-actions .mr-auto {
+	margin-right: auto;
+}
+
+/* Match QR Modal Button Styling */
+.metadata-editor-actions button {
+	min-width: 100px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+	.metadata-editor-columns {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
+
+	.metadata-editor-calendar-column {
+		order: 2;
+	}
+
+	.metadata-editor-fields-column {
+		order: 1;
+	}
+
+	.metadata-editor-actions {
+		flex-direction: column-reverse;
+		align-items: stretch;
+	}
+
+	.metadata-editor-actions .mr-auto {
+		margin-right: 0;
+		order: 3;
+	}
+}
