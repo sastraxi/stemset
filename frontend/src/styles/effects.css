@@ -25,7 +25,7 @@
 	align-items: flex-start;
 	overflow-x: auto;
 	overflow-y: visible;
-	padding-left: calc(320px + 2.5rem);
+	padding-left: calc(400px + 1.5rem);
 	padding-bottom: 0.5rem;
 	/* Add substantial padding to the right so content doesn't get cut off when scrolling */
 	padding-right: 4rem;
