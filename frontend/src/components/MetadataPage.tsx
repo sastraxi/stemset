@@ -1,8 +1,5 @@
 import { format } from "date-fns";
-import {
-	Check,
-	Loader2,
-} from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type {
 	FileWithStems,
@@ -54,12 +51,16 @@ export function MetadataPage({
 	const [displayName, setDisplayName] = useState(
 		"display_name" in recording && recording.display_name
 			? recording.display_name
-			: ("name" in recording ? recording.name : ""),
+			: "name" in recording
+				? recording.name
+				: "",
 	);
 	const [selectedSongId, setSelectedSongId] = useState<string | null>(
 		"song" in recording && recording.song ? recording.song.id : null,
 	);
-	const [selectedLocationName, setSelectedLocationName] = useState<string | null>(
+	const [selectedLocationName, setSelectedLocationName] = useState<
+		string | null
+	>(
 		"location" in recording && recording.location
 			? recording.location.name
 			: null,
@@ -117,7 +118,7 @@ export function MetadataPage({
 	};
 
 	return (
-		<div className="flex items-center justify-center min-h-screen p-4">
+		<div className="flex items-center justify-center h-full p-4">
 			<Card className="w-full max-w-4xl">
 				<CardHeader>
 					<div className="flex items-center gap-2">
@@ -150,7 +151,9 @@ export function MetadataPage({
 						onDateChange={setSelectedDate}
 						onSave={handleSave}
 						mode="inline"
-						saveButtonText={showContinueButton ? "Continue to Recording" : "Save"}
+						saveButtonText={
+							showContinueButton ? "Continue to Recording" : "Save"
+						}
 					/>
 				</CardContent>
 			</Card>
