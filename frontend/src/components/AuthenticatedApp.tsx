@@ -240,7 +240,10 @@ export function AuthenticatedApp({
 			if (!a.date_recorded) return -1;
 			if (!b.date_recorded) return 1;
 			// Descending (most recent first)
-			return new Date(b.date_recorded).getTime() - new Date(a.date_recorded).getTime();
+			return (
+				new Date(b.date_recorded).getTime() -
+				new Date(a.date_recorded).getTime()
+			);
 		});
 	}, [files]);
 
@@ -297,7 +300,7 @@ export function AuthenticatedApp({
 
 			<div className="main-content">
 				<aside
-					className={`sidebar flex gap-10 flex-col p-10 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
+					className={`sidebar flex gap-7 flex-col p-7 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
 				>
 					{selectedProfile && (
 						<Upload
