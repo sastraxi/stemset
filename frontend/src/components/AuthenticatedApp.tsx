@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
-import { getRelativeTime } from "../lib/utils";
+import { cn, getRelativeTime } from "../lib/utils";
 import "../styles/effects.css";
 import "../styles/layout.css";
 import "../styles/player.css";
@@ -347,7 +347,10 @@ export function AuthenticatedApp({
 										// biome-ignore lint/a11y/useKeyWithClickEvents: FIXME
 										<li
 											key={file.name}
-											className="recording-list-item"
+											className={cn("recording-list-item", {
+												"recording-list-item-selected":
+													selectedFile?.name === file.name,
+											})}
 											onClick={() => handleFileSelect(file)}
 										>
 											<span
@@ -358,9 +361,6 @@ export function AuthenticatedApp({
 											<div className="flex items-center gap-2 flex-shrink-0">
 												{relativeTime && (
 													<span className="recording-time">{relativeTime}</span>
-												)}
-												{selectedFile?.name === file.name && (
-													<Music className="h-3.5 w-3.5 text-blue-400" />
 												)}
 											</div>
 										</li>

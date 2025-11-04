@@ -101,7 +101,8 @@ button:disabled {
 	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
 }
 
-.recording-list-item:hover {
+.recording-list-item:hover,
+.recording-list-item-selected {
 	transform: translateX(3px);
 	border-color: #4a9eff;
 	background: #4a9eff2f;
