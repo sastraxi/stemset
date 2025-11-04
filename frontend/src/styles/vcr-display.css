@@ -2,6 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 .vcr-display {
+	position: relative;
+	width: 100%;
+}
+
+/* Desktop: Two-row VCR layout */
+.vcr-desktop-layout {
 	background: linear-gradient(
 		180deg,
 		rgba(0, 20, 25, 0.95) 0%,
@@ -20,11 +26,10 @@
 		0 4px 12px rgba(0, 0, 0, 0.3);
 	position: relative;
 	overflow: hidden;
-	width: 100%;
 }
 
 /* Glossy highlight effect */
-.vcr-display::before {
+.vcr-desktop-layout::before {
 	content: '';
 	position: absolute;
 	top: 0;
@@ -112,33 +117,59 @@
 	color: #884422;
 }
 
-@media (max-width: 768px) {
-	.vcr-display {
-		width: calc(100% + 12px);
-		margin-left: -6px;
-		margin-right: -6px;
-		margin-bottom: -6px;
+/* Mobile: Single row layout */
+.vcr-mobile-row {
+	display: none;
+}
 
+@media (max-width: 768px) {
+	.vcr-desktop-layout {
+		display: none;
+	}
+
+	.vcr-mobile-row {
 		display: flex;
-		flex-direction: row;
 		align-items: center;
 		justify-content: space-between;
-
-		padding: 0.2rem 1.5rem;
+		gap: 0.5rem;
+		background: linear-gradient(
+			180deg,
+			rgba(0, 20, 25, 0.98) 0%,
+			rgba(0, 30, 35, 1) 50%,
+			rgba(0, 20, 25, 0.98) 100%
+		);
+		padding: 0.6rem 1rem;
+		/* Bleed off screen edges */
+		margin-left: -1rem;
+		margin-right: -1rem;
+		margin-bottom: -0.75rem;
+		border-top: 1.5px solid rgba(0, 80, 100, 0.4);
+		/* No side or bottom borders */
+		box-shadow:
+			inset 0 2px 8px rgba(0, 255, 255, 0.1),
+			0 -4px 12px rgba(0, 0, 0, 0.3);
 	}
-	.vcr-display::before {
-		border-radius: 0;
-		height: 20%;
+
+	.vcr-mobile-row .vcr-button {
+		width: 2.75rem;
+		flex: 0 0 auto;
 	}
 
-		.vcr-actions {
-			display: flex;
-			gap: 0.35rem;
-			justify-content: stretch;
-		}
-
-		.vcr-button {
-			width: 2.75rem;
-		}
-
+	.vcr-timecode-mobile {
+		font-family: 'Share Tech Mono', 'Courier New', monospace;
+		font-size: 1.1rem;
+		font-style: italic;
+		color: #00ffcc;
+		text-align: center;
+		text-shadow:
+			0 0 8px rgba(0, 255, 204, 0.8),
+			0 0 16px rgba(0, 255, 204, 0.4);
+		letter-spacing: 0.12em;
+		cursor: pointer;
+		user-select: none;
+		transition: all 0.2s ease;
+		padding: 0;
+		font-variant-numeric: tabular-nums;
+		flex: 1;
+	}
 }

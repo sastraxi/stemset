@@ -181,7 +181,7 @@ export function MetadataEditorModal({
 			}}
 		>
 			<DialogContent
-				className="sm:max-w-[700px] metadata-editor-modal-content"
+				className="sm:max-w-[700px] metadata-editor-modal-content [&>button]:hidden sm:[&>button]:hidden"
 				onEscapeKeyDown={(e) => e.preventDefault()}
 				onPointerDownOutside={(e) => e.preventDefault()}
 				onInteractOutside={(e) => e.preventDefault()}

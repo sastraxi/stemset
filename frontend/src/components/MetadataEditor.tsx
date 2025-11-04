@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Check, ChevronsUpDown, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,6 +11,12 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,6 +66,8 @@ export function MetadataEditor({
 
 	// Popover open states
 	const [songOpen, setSongOpen] = useState(false);
+	const [deleteDropdownOpen, setDeleteDropdownOpen] = useState(false);
+	const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
 
 	// Song search
 	const [songSearch, setSongSearch] = useState("");
@@ -139,6 +147,28 @@ export function MetadataEditor({
 
 	const selectedSong = songs.find((s) => s.id === selectedSongId);
 
+	// Delete countdown effect
+	useEffect(() => {
+		if (deleteCountdown === null || deleteCountdown <= 0) return;
+
+		const timer = setTimeout(() => {
+			setDeleteCountdown(deleteCountdown - 1);
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [deleteCountdown]);
+
+	const handleDeleteClick = () => {
+		setDeleteCountdown(3);
+	};
+
+	const handleConfirmDelete = () => {
+		if (onDelete && deleteCountdown === 0) {
+			onDelete();
+			setDeleteDropdownOpen(false);
+		}
+	};
+
 	return (
 		<div className="metadata-editor">
 			{/* Title Section with Auto-Generate */}
@@ -169,9 +199,23 @@ export function MetadataEditor({
 
 			{/* Two Column Layout */}
 			<div className="metadata-editor-columns">
-				{/* Left Column: Calendar */}
+				{/* Left Column: Calendar / Date Input */}
 				<div className="metadata-editor-calendar-column">
-					<Label>Date Recorded</Label>
+					<Label htmlFor="date-recorded">Date Recorded</Label>
+					{/* Mobile: Native date input */}
+					<Input
+						id="date-recorded"
+						type="date"
+						value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""}
+						onChange={(e) => {
+							const newDate = e.target.value ? new Date(e.target.value) : undefined;
+							onDateChange(newDate);
+						}}
+						max={format(new Date(), "yyyy-MM-dd")}
+						min="1900-01-01"
+						className="metadata-editor-date-input sm:hidden"
+					/>
+					{/* Desktop: Calendar */}
 					<Calendar
 						mode="single"
 						selected={selectedDate}
@@ -179,7 +223,7 @@ export function MetadataEditor({
 						disabled={(date) =>
 							date > new Date() || date < new Date("1900-01-01")
 						}
-						className="metadata-editor-calendar"
+						className="metadata-editor-calendar hidden sm:flex"
 					/>
 				</div>
 
@@ -338,15 +382,67 @@ export function MetadataEditor({
 			{/* Action Buttons */}
 			<div className="metadata-editor-actions">
 				{onDelete && (
-					<Button
-						type="button"
-						onClick={onDelete}
-						disabled={isDeleting}
-						variant="destructive"
-						className="mr-auto"
-					>
-						{isDeleting ? "Deleting..." : "Delete Recording"}
-					</Button>
+					<DropdownMenu open={deleteDropdownOpen} onOpenChange={(open) => {
+						setDeleteDropdownOpen(open);
+						if (!open) {
+							setDeleteCountdown(null);
+						}
+					}}>
+						<DropdownMenuTrigger asChild>
+							<Button
+								type="button"
+								disabled={isDeleting}
+								variant="destructive"
+								className="mr-auto"
+							>
+								{isDeleting ? "Deleting..." : "Delete Recording"}
+								<ChevronDown className="ml-2 h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" className="w-80">
+							<DropdownMenuItem
+								disabled={deleteCountdown !== 0}
+								onSelect={(e) => {
+									e.preventDefault();
+									if (deleteCountdown === null) {
+										handleDeleteClick();
+									} else if (deleteCountdown === 0) {
+										handleConfirmDelete();
+									}
+								}}
+								className="flex flex-col items-start gap-1 p-3"
+							>
+								{deleteCountdown === null ? (
+									<>
+										<div className="font-semibold text-destructive">
+											Delete this recording permanently?
+										</div>
+										<div className="text-xs text-muted-foreground">
+											This action cannot be undone. All stems and metadata will be lost.
+										</div>
+									</>
+								) : deleteCountdown > 0 ? (
+									<>
+										<div className="font-semibold text-muted-foreground">
+											Ready to delete in {deleteCountdown}...
+										</div>
+										<div className="text-xs text-muted-foreground">
+											This action cannot be undone. All stems and metadata will be lost.
+										</div>
+									</>
+								) : (
+									<>
+										<div className="font-semibold text-destructive">
+											Click to confirm deletion
+										</div>
+										<div className="text-xs text-muted-foreground">
+											This action cannot be undone. All stems and metadata will be lost.
+										</div>
+									</>
+								)}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 				<Button type="button" onClick={onCancel} variant="outline">
 					Cancel

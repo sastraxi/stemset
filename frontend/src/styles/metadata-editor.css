@@ -100,12 +100,19 @@
 	}
 
 	.metadata-editor-actions {
-		flex-direction: column-reverse;
+		flex-direction: row;
+		flex-wrap: wrap;
 		align-items: stretch;
 	}
 
 	.metadata-editor-actions .mr-auto {
 		margin-right: 0;
 		order: 3;
+		width: 100%;
+	}
+
+	/* Cancel and Save on same row */
+	.metadata-editor-actions button:not(.mr-auto) {
+		flex: 1;
 	}
 }

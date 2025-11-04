@@ -32,6 +32,7 @@ interface StemPlayerProps {
 	stemsData: StemResponse[];
 	onLoadingChange?: (isLoading: boolean) => void;
 	onDurationChange?: (duration: number) => void;
+	onShowQR?: () => void;
 	recordingId: string;
 }
 
@@ -45,7 +46,7 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-	({ profileName, fileName, stemsData, onLoadingChange, onDurationChange, recordingId }, ref) => {
+	({ profileName, fileName, stemsData, onLoadingChange, onDurationChange, onShowQR, recordingId }, ref) => {
 		const [previewTime, setPreviewTime] = useState<number | null>(null);
 		const [showTimeRemaining, setShowTimeRemaining] = useState(false);
 		const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -272,6 +273,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				onPlay={handlePlay}
 				onPause={handlePause}
 				onStop={stop}
+				onShowQR={onShowQR}
 				disabled={stemOrder.length === 0 || isLoading}
 			/>
 		);

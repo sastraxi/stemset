@@ -404,6 +404,7 @@ export function AuthenticatedApp({
 									stemsData={selectedFile.stems}
 									onLoadingChange={setIsLoadingStems}
 									onDurationChange={setAudioDuration}
+									onShowQR={() => setIsQRModalOpen(true)}
 									recordingId={selectedFile.id}
 								/>
 							</>
