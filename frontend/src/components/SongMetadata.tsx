@@ -40,57 +40,55 @@ export function SongMetadata({
 
 	return (
 		<div className="song-metadata">
-			<div className="song-metadata-header">
-				<div className="flex flex-col items-start gap-2">
-					<div className="flex flex-row justify-baseline gap-1 recording-name-row">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onEdit}
-							className="h-8 w-8"
-							title="Edit metadata"
-						>
-							<Pencil className="h-4 w-4 mt-1" />
-						</Button>
-						<h2 className="recording-name">{recording.display_name}</h2>
-					</div>
-					<div className="song-metadata-badges">
-						{recording.song ? (
-							<Badge variant="secondary">{recording.song.name}</Badge>
-						) : (
-							<Badge variant="outline" className="text-muted-foreground">
-								No song
-							</Badge>
-						)}
-						{recording.location ? (
-							<Badge variant="secondary">{recording.location.name}</Badge>
-						) : (
-							<Badge variant="outline" className="text-muted-foreground">
-								No location
-							</Badge>
-						)}
-						{formattedDate ? (
-							<Badge variant="secondary">{formattedDate}</Badge>
-						) : (
-							<Badge variant="outline" className="text-muted-foreground">
-								No date
-							</Badge>
-						)}
-						{duration !== undefined && duration > 0 ? (
-							<Badge variant="secondary">{formatDuration(duration)}</Badge>
-						) : null}
-					</div>
+			<div className="flex flex-col items-start gap-2">
+				<div className="flex flex-row justify-baseline gap-1 recording-name-row">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onEdit}
+						className="h-8 w-8"
+						title="Edit metadata"
+					>
+						<Pencil className="h-4 w-4 mt-1" />
+					</Button>
+					<h2 className="recording-name">{recording.display_name}</h2>
 				</div>
-				<Button
-					variant="outline"
-					size="lg"
-					onClick={onShowQR}
-					className="ml-auto qr-button-large"
-					title="Share & manage recording"
-				>
-					<QrCode />
-				</Button>
+				<div className="song-metadata-badges">
+					{recording.song ? (
+						<Badge variant="secondary">{recording.song.name}</Badge>
+					) : (
+						<Badge variant="outline" className="text-muted-foreground">
+							No song
+						</Badge>
+					)}
+					{recording.location ? (
+						<Badge variant="secondary">{recording.location.name}</Badge>
+					) : (
+						<Badge variant="outline" className="text-muted-foreground">
+							No location
+						</Badge>
+					)}
+					{formattedDate ? (
+						<Badge variant="secondary">{formattedDate}</Badge>
+					) : (
+						<Badge variant="outline" className="text-muted-foreground">
+							No date
+						</Badge>
+					)}
+					{duration !== undefined && duration > 0 ? (
+						<Badge variant="secondary">{formatDuration(duration)}</Badge>
+					) : null}
+				</div>
 			</div>
+			<Button
+				variant="outline"
+				size="icon"
+				onClick={onShowQR}
+				className="qr-button-header"
+				title="Share & manage recording"
+			>
+				<QrCode className="h-5 w-5" />
+			</Button>
 		</div>
 	);
 }

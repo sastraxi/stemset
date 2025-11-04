@@ -55,7 +55,7 @@
 	cursor: pointer;
 	user-select: none;
 	transition: all 0.2s ease;
-	padding: 0.75rem 0;
+	padding: 1.5rem 0;
 	font-variant-numeric: tabular-nums;
 }
 

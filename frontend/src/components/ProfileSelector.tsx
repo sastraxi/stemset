@@ -5,6 +5,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { ProfileResponse as Profile } from "../api/generated/types.gen";
 
 interface ProfileSelectorProps {
@@ -25,7 +26,18 @@ export function ProfileSelector({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800">
+				<button
+					type="button"
+					className={`
+						flex items-center
+						gap-2
+						rounded-lg
+						px-3 py-2
+						hover:bg-white/10
+						transition-colors
+						focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800
+					`}
+				>
 					<Music className="h-4 w-4 text-blue-400" />
 					<span className="text-sm font-medium text-white hidden sm:inline-block">
 						{currentProfile?.name || "Select Profile"}
@@ -38,12 +50,12 @@ export function ProfileSelector({
 					<DropdownMenuItem
 						key={profile.name}
 						onClick={() => onSelectProfile(profile.name)}
-						className={`flex items-center justify-between gap-8 cursor-pointer
-              ${
-								selectedProfile === profile.name
-									? "bg-blue-400/15 text-blue-400 focus:bg-blue-400/20 focus:text-blue-400"
-									: "text-gray-200 focus:bg-white/5 focus:text-gray-200"
-							}`}
+						className={cn(
+							"flex items-center justify-between gap-8 cursor-pointer",
+							selectedProfile === profile.name
+								? "bg-blue-400/15 text-blue-400 focus:bg-blue-400/20 focus:text-blue-400"
+								: "text-gray-200 focus:bg-white/5 focus:text-gray-200",
+						)}
 					>
 						<span className="font-medium whitespace-nowrap">
 							{profile.name}

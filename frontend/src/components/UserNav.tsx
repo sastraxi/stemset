@@ -1,4 +1,4 @@
-import { LogOut, ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -47,7 +47,18 @@ export function UserNav({ user, onLogout }: UserNavProps) {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<button className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800">
+				<button
+					type="button"
+					className={`
+						flex items-center
+						gap-2
+						rounded-lg
+						px-3 py-2
+						hover:bg-white/10
+						transition-colors
+						focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-800
+					`}
+				>
 					<Avatar className="h-9 w-9 ring-2 ring-white/20">
 						<AvatarImage
 							src={user.picture || getFallbackAvatarUrl(user)}

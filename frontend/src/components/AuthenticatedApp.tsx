@@ -224,7 +224,7 @@ export function AuthenticatedApp({
 
 	return (
 		<div className="app">
-			<header className="px-6 py-4 flex justify-between items-center">
+			<header className="px-3 py-2 flex justify-between items-center md:px-6 md:py-4">
 				<div className="flex-1 flex items-center gap-4">
 					{selectedProfile ? (
 						<Link
@@ -359,12 +359,6 @@ export function AuthenticatedApp({
 						) : (
 							<>
 								<div className="recording-header">
-									<div
-										id="playback-controls-container"
-										className="playback-controls-header"
-									>
-										{/* Playback controls will be rendered here by StemPlayer */}
-									</div>
 									{!isLoadingStems && (
 										<SongMetadata
 											recording={selectedFile}
@@ -373,6 +367,12 @@ export function AuthenticatedApp({
 											duration={audioDuration}
 										/>
 									)}
+									<div
+										id="playback-controls-container"
+										className="playback-controls-header"
+									>
+										{/* Playback controls will be rendered here by StemPlayer */}
+									</div>
 								</div>
 								{selectedFile && selectedProfile && (
 									<>

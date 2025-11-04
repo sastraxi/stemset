@@ -64,8 +64,10 @@
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 1.1rem;
+	gap: 1.5rem;
 	position: relative;
+	margin: 0 4px;
+	/* Match waveform-row margin */
 }
 
 @media (max-width: 768px) {
@@ -92,8 +94,9 @@
 	flex-direction: column;
 	align-items: flex-end;
 	gap: 0.1rem;
-	width: 212px;
-	position: absolute;
+	width: 200px;
+	flex-shrink: 0;
+	margin-bottom: -2.4rem;
 }
 
 @media (max-width: 768px) {
@@ -186,12 +189,14 @@
 /* Song Metadata Styles */
 .song-metadata {
 	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
 	margin-bottom: 0.75rem;
-	margin-right: 0.25rem;
-	flex-grow: 1;
-	margin-left: calc(220px + 0.5rem);
+	flex: 1;
+	min-width: 0;
+	/* Allow truncation */
 }
 
 @media (max-width: 768px) {
@@ -204,13 +209,7 @@
 	}
 }
 
-.song-metadata-header {
-	display: flex;
-	align-items: end;
-	gap: 0.5rem;
-}
-
-.song-metadata-header .recording-name {
+.song-metadata .recording-name {
 	margin: 0;
 	font-size: 1.5rem;
 	font-weight: 600;
@@ -225,37 +224,23 @@
 	align-items: center;
 }
 
-.qr-button-large {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-	align-items: center;
-	justify-content: center;
-	padding: 1.75rem 1.25rem;
+.qr-button-header {
+	flex-shrink: 0;
 	background: transparent;
 	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 6px;
 	color: #e8e8e8;
-	font-size: 0.9rem;
-	font-weight: 500;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	cursor: pointer;
-	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
-	position: relative;
+	transition: all 0.2s;
+}
+
+.qr-button-header:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-color: rgba(255, 255, 255, 0.2);
 }
 
 @media (max-width: 768px) {
-	.qr-button-large {
+	.qr-button-header {
 		display: none;
 	}
-}
-
-.qr-button-large svg {
-	width: 2rem;
-	height: 2rem;
-	margin: 0;
-	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
 }
 
 button.qr-button-large:hover:not(:disabled) {
