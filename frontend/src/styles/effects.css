@@ -70,6 +70,7 @@
 	padding: 0.85rem 1rem 1rem;
 	transition: border-color 0.2s;
 	flex-shrink: 0;
+	pointer-events: auto;
 }
 
 .eq-section:hover,

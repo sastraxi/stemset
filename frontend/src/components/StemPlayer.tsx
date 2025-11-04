@@ -25,6 +25,7 @@ import { Spinner } from "./Spinner";
 import { VCRDisplay } from "./VCRDisplay";
 import { WaveformVisualization } from "./WaveformVisualization";
 import "../styles/vcr-display.css";
+import { InteractivePanel } from "./InteractivePanel";
 
 interface StemPlayerProps {
 	profileName: string;
@@ -422,7 +423,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					</div>
 				</div>
 				<div className="player-panel master-effects">
-					<div className="master-effects-row">
+					<InteractivePanel
+						className="master-effects-row"
+						selector="main.player-area"
+					>
 						<MasterVolumeControl
 							volume={masterVolume}
 							onVolumeChange={setMasterVolume}
@@ -449,7 +453,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							onUpdate={updateCompressor}
 							onReset={resetCompressor}
 						/>
-					</div>
+					</InteractivePanel>
 				</div>
 
 				{/* Delete Confirmation Modal */}

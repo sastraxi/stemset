@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
 import { Volume2, VolumeX } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 export interface MasterVolumeControlProps {
 	volume: number; // 0 to 1 (linear)
@@ -38,7 +38,7 @@ export function MasterVolumeControl({
 	 * This makes the slider feel more natural to users.
 	 */
 	const linearToExponential = (linear: number): number => {
-		return Math.pow(linear, 2);
+		return linear ** 2;
 	};
 
 	/**
@@ -160,6 +160,7 @@ export function MasterVolumeControl({
 				<h4>Master Volume</h4>
 				<div className="effect-controls">
 					<button
+						type="button"
 						onClick={handleToggleMute}
 						className={`mute-button ${isMuted ? "muted" : ""}`}
 						title={isMuted ? "Unmute" : "Mute"}
