@@ -1,4 +1,4 @@
-import { Play, Square } from "lucide-react";
+import { Pause, Play, Square } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface VCRDisplayProps {
@@ -75,7 +75,11 @@ export function VCRDisplay({
 					className="vcr-button-mobile"
 					variant="outline"
 				>
-					<Play className="h-4 w-4 fill-current" />
+					{isPlaying ? (
+						<Pause className="h-4 w-4 fill-current" />
+					) : (
+						<Play className="h-4 w-4 fill-current" />
+					)}
 				</Button>
 				{/* biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
