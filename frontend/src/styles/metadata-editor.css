@@ -13,18 +13,7 @@
 	padding: 0.5rem 0;
 }
 
-/* Title Section */
-.metadata-editor-title-section {
-	padding-bottom: 1rem;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.metadata-editor-title-input-group {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-}
-
+/* Title Row */
 .metadata-editor-title-row {
 	display: flex;
 	gap: 0.5rem;
@@ -39,7 +28,7 @@
 	padding: 0.5rem 0;
 }
 
-/* Calendar Column */
+/* Calendar Column - Desktop only */
 .metadata-editor-calendar-column {
 	display: flex;
 	flex-direction: column;
@@ -57,6 +46,15 @@
 	flex-direction: column;
 }
 
+/* Date picker visibility */
+.metadata-editor-calendar-desktop {
+	display: flex;
+}
+
+.metadata-editor-date-mobile {
+	display: none;
+}
+
 /* Fields Column */
 .metadata-editor-fields-column {
 	display: flex;
@@ -68,15 +66,23 @@
 /* Action Buttons */
 .metadata-editor-actions {
 	display: flex;
+	flex-direction: row;
 	gap: 0.75rem;
-	justify-content: flex-end;
+	justify-content: space-between;
 	align-items: center;
 	padding-top: 1rem;
 	border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.metadata-editor-actions .mr-auto {
-	margin-right: auto;
+.metadata-editor-delete-button {
+	min-width: 180px;
+}
+
+.metadata-editor-actions-row {
+	display: flex;
+	gap: 0.75rem;
+	justify-content: flex-end;
+	align-items: center;
 }
 
 /* Match QR Modal Button Styling */
@@ -91,8 +97,15 @@
 		gap: 1.5rem;
 	}
 
-	.metadata-editor-calendar-column {
-		order: 2;
+	/* Hide desktop calendar on mobile */
+	.metadata-editor-calendar-desktop {
+		display: none;
+	}
+
+	/* Show mobile date picker */
+	.metadata-editor-date-mobile {
+		display: flex;
+		flex-direction: column;
 	}
 
 	.metadata-editor-fields-column {
@@ -100,12 +113,21 @@
 	}
 
 	.metadata-editor-actions {
-		flex-direction: column-reverse;
-		align-items: stretch;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
-	.metadata-editor-actions .mr-auto {
-		margin-right: 0;
-		order: 3;
+	.metadata-editor-delete-button {
+		width: 100%;
+		order: 2;
+	}
+
+	.metadata-editor-actions-row {
+		width: 100%;
+		order: 1;
+	}
+
+	.metadata-editor-actions-row button {
+		flex: 1;
 	}
 }

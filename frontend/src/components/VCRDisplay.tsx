@@ -1,3 +1,4 @@
+import { QrCode } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface VCRDisplayProps {
@@ -10,6 +11,7 @@ interface VCRDisplayProps {
 	onPlay: () => void;
 	onPause: () => void;
 	onStop: () => void;
+	onShowQR?: () => void;
 	disabled?: boolean;
 }
 
@@ -23,6 +25,7 @@ export function VCRDisplay({
 	onPlay,
 	onPause,
 	onStop,
+	onShowQR,
 	disabled = false,
 }: VCRDisplayProps) {
 	return (
@@ -59,6 +62,18 @@ export function VCRDisplay({
 				>
 					⏹
 				</Button>
+				{onShowQR && (
+					<Button
+						type="button"
+						onClick={onShowQR}
+						disabled={disabled}
+						title="Share track"
+						className="vcr-button"
+						variant="outline"
+					>
+						<QrCode className="h-4 w-4" />
+					</Button>
+				)}
 			</div>
 		</div>
 	);

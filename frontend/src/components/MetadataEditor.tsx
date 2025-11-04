@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Check, ChevronsUpDown, Sparkles } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, ChevronsUpDown, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,6 +11,12 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,9 +66,14 @@ export function MetadataEditor({
 
 	// Popover open states
 	const [songOpen, setSongOpen] = useState(false);
+	const [dateOpen, setDateOpen] = useState(false);
 
 	// Song search
 	const [songSearch, setSongSearch] = useState("");
+
+	// Delete countdown state
+	const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
+	const [deleteDropdownOpen, setDeleteDropdownOpen] = useState(false);
 
 	// LocationIQ location search state
 	const [locationSearch, setLocationSearch] = useState("");
@@ -137,40 +148,40 @@ export function MetadataEditor({
 		return () => clearTimeout(timer);
 	}, [locationSearch]);
 
+	// Delete countdown timer - starts when dropdown opens
+	useEffect(() => {
+		if (deleteDropdownOpen) {
+			setDeleteCountdown(3);
+		} else {
+			setDeleteCountdown(null);
+		}
+	}, [deleteDropdownOpen]);
+
+	useEffect(() => {
+		if (deleteCountdown === null || deleteCountdown === 0) return;
+
+		const timer = setTimeout(() => {
+			setDeleteCountdown(deleteCountdown - 1);
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [deleteCountdown]);
+
+	const handleConfirmDelete = () => {
+		if (deleteCountdown === 0 && onDelete) {
+			onDelete();
+			setDeleteDropdownOpen(false);
+		}
+	};
+
 	const selectedSong = songs.find((s) => s.id === selectedSongId);
 
 	return (
 		<div className="metadata-editor">
-			{/* Title Section with Auto-Generate */}
-			<div className="metadata-editor-title-section">
-				<div className="metadata-editor-title-input-group">
-					<Label htmlFor="display-name">Recording Title</Label>
-					<div className="metadata-editor-title-row">
-						<Input
-							id="display-name"
-							type="text"
-							value={displayName}
-							onChange={(e) => onDisplayNameChange(e.target.value)}
-							placeholder="Enter recording title..."
-							className="flex-1"
-						/>
-						<Button
-							type="button"
-							onClick={handleAutoGenerateTitle}
-							variant="outline"
-							size="sm"
-							title="Auto-generate from date, song, and location"
-						>
-							<Sparkles className="h-4 w-4" />
-						</Button>
-					</div>
-				</div>
-			</div>
-
 			{/* Two Column Layout */}
 			<div className="metadata-editor-columns">
-				{/* Left Column: Calendar */}
-				<div className="metadata-editor-calendar-column">
+				{/* Left Column: Calendar (Desktop only) */}
+				<div className="metadata-editor-calendar-column metadata-editor-calendar-desktop">
 					<Label>Date Recorded</Label>
 					<Calendar
 						mode="single"
@@ -183,8 +194,65 @@ export function MetadataEditor({
 					/>
 				</div>
 
-				{/* Right Column: Song & Location */}
+				{/* Right Column: Title, Song & Location */}
 				<div className="metadata-editor-fields-column">
+					{/* Date Recorded (Mobile only) */}
+					<div className="space-y-2 metadata-editor-date-mobile">
+						<Label>Date Recorded</Label>
+						<Popover open={dateOpen} onOpenChange={setDateOpen}>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									className={cn(
+										"w-full justify-start text-left font-normal",
+										!selectedDate && "text-muted-foreground"
+									)}
+								>
+									<CalendarIcon className="mr-2 h-4 w-4" />
+									{selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-auto p-0" align="start">
+								<Calendar
+									mode="single"
+									selected={selectedDate}
+									onSelect={(date) => {
+										onDateChange(date);
+										setDateOpen(false);
+									}}
+									disabled={(date) =>
+										date > new Date() || date < new Date("1900-01-01")
+									}
+									initialFocus
+								/>
+							</PopoverContent>
+						</Popover>
+					</div>
+
+					{/* Recording Title */}
+					<div className="space-y-2">
+						<Label htmlFor="display-name">Recording Title</Label>
+						<div className="metadata-editor-title-row">
+							<Input
+								id="display-name"
+								type="text"
+								value={displayName}
+								onChange={(e) => onDisplayNameChange(e.target.value)}
+								placeholder="Enter recording title..."
+								className="flex-1"
+							/>
+							<Button
+								type="button"
+								onClick={handleAutoGenerateTitle}
+								variant="outline"
+								size="sm"
+								title="Auto-generate from date, song, and location"
+							>
+								<Sparkles className="h-4 w-4" />
+							</Button>
+						</div>
+					</div>
+
 					{/* Song Name */}
 					<div className="space-y-2">
 						<Label htmlFor="song">Song Name</Label>
@@ -338,22 +406,41 @@ export function MetadataEditor({
 			{/* Action Buttons */}
 			<div className="metadata-editor-actions">
 				{onDelete && (
-					<Button
-						type="button"
-						onClick={onDelete}
-						disabled={isDeleting}
-						variant="destructive"
-						className="mr-auto"
-					>
-						{isDeleting ? "Deleting..." : "Delete Recording"}
-					</Button>
+					<DropdownMenu open={deleteDropdownOpen} onOpenChange={setDeleteDropdownOpen}>
+						<DropdownMenuTrigger asChild>
+							<Button
+								type="button"
+								variant="destructive"
+								className="metadata-editor-delete-button"
+								disabled={isDeleting}
+							>
+								{isDeleting ? "Deleting..." : "Delete Recording"}
+								<ChevronDown className="ml-2 h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="w-full min-w-[300px]" align="start" side="top">
+							<DropdownMenuItem
+								disabled={deleteCountdown !== 0}
+								onSelect={handleConfirmDelete}
+								className="text-destructive focus:text-destructive cursor-pointer"
+							>
+								{deleteCountdown === null || deleteCountdown > 0 ? (
+									`Please wait ${deleteCountdown || 3} second${deleteCountdown === 1 ? "" : "s"}...`
+								) : (
+									"Click to permanently delete this recording"
+								)}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
-				<Button type="button" onClick={onCancel} variant="outline">
-					Cancel
-				</Button>
-				<Button type="button" onClick={onSave}>
-					Save
-				</Button>
+				<div className="metadata-editor-actions-row">
+					<Button type="button" onClick={onCancel} variant="outline">
+						Cancel
+					</Button>
+					<Button type="button" onClick={onSave}>
+						Save
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

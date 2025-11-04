@@ -1,6 +1,7 @@
 import { Upload as UploadIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getToken } from "../lib/storage";
 import "./Upload.css";
 
 // Use environment variable for API URL in production, fallback to empty for local dev (proxy handles it)
@@ -61,12 +62,20 @@ export function Upload({
 				const formData = new FormData();
 				formData.append("data", file);
 
+				// Get auth token
+				const token = getToken();
+				const headers: HeadersInit = {};
+				if (token) {
+					headers.Authorization = `Bearer ${token}`;
+				}
+
 				// Upload file (returns immediately)
 				const response = await fetch(
 					`${API_BASE}/api/upload/${encodeURIComponent(profileName)}`,
 					{
 						method: "POST",
 						body: formData,
+						headers,
 						credentials: "include",
 					},
 				);
@@ -75,9 +84,14 @@ export function Upload({
 					const errorData = await response
 						.json()
 						.catch(() => ({ detail: "Upload failed" }));
-					throw new Error(
-						errorData.detail || `Upload failed: ${response.statusText}`,
-					);
+
+					// Provide user-friendly error messages
+					let errorMessage = errorData.detail || `Upload failed: ${response.statusText}`;
+					if (response.status === 401) {
+						errorMessage = "Authentication failed. Please log in again.";
+					}
+
+					throw new Error(errorMessage);
 				}
 
 				const result = await response.json();

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import type { FileWithStems } from "@/api/generated/types.gen";
@@ -55,6 +55,16 @@ export function MetadataEditorModal({
 	const updateDisplayNameMutation = useUpdateDisplayName();
 	const updateMetadata = useUpdateRecordingMetadata();
 	const createLocation = useCreateLocation();
+
+	// Sync local state with recording prop when it changes
+	useEffect(() => {
+		setDisplayName(recording.display_name);
+		setSelectedSongId(recording.song ? recording.song.id : null);
+		setSelectedLocationName(recording.location ? recording.location.name : null);
+		setSelectedDate(
+			recording.date_recorded ? new Date(recording.date_recorded) : new Date(),
+		);
+	}, [recording]);
 
 	const handleSave = async () => {
 		try {
@@ -173,18 +183,14 @@ export function MetadataEditorModal({
 		<Dialog
 			open={open}
 			onOpenChange={(newOpen) => {
-				// Prevent closing via escape/backdrop click
-				if (!newOpen) {
-					// User tried to close - do nothing
-					return;
-				}
+				if (!newOpen) handleCancel();
 			}}
 		>
 			<DialogContent
 				className="sm:max-w-[700px] metadata-editor-modal-content"
-				onEscapeKeyDown={(e) => e.preventDefault()}
-				onPointerDownOutside={(e) => e.preventDefault()}
-				onInteractOutside={(e) => e.preventDefault()}
+				onEscapeKeyDown={handleCancel}
+				onPointerDownOutside={handleCancel}
+				onInteractOutside={handleCancel}
 			>
 				<DialogHeader>
 					<DialogTitle>Edit Recording Metadata</DialogTitle>

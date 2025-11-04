@@ -49,6 +49,7 @@ export function AuthenticatedApp({
 	const [isMetadataEditorOpen, setIsMetadataEditorOpen] = useState(false);
 	const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 	const [audioDuration, setAudioDuration] = useState<number>(0);
+	const [audioCurrentTime, setAudioCurrentTime] = useState<number>(0);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
 	const navigate = useNavigate();
 
@@ -392,7 +393,7 @@ export function AuthenticatedApp({
 											isOpen={isQRModalOpen}
 											onClose={() => setIsQRModalOpen(false)}
 											url={`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/${selectedFile.name}`}
-											currentTime={0}
+											currentTime={audioCurrentTime}
 										/>
 									</>
 								)}
@@ -404,6 +405,8 @@ export function AuthenticatedApp({
 									stemsData={selectedFile.stems}
 									onLoadingChange={setIsLoadingStems}
 									onDurationChange={setAudioDuration}
+									onCurrentTimeChange={setAudioCurrentTime}
+									onShowQR={() => setIsQRModalOpen(true)}
 									recordingId={selectedFile.id}
 								/>
 							</>
