@@ -358,22 +358,22 @@ export function AuthenticatedApp({
 							/>
 						) : (
 							<>
-								{!isLoadingStems && (
-									<div className="recording-header">
-										<div
-											id="playback-controls-container"
-											className="playback-controls-header"
-										>
-											{/* Playback controls will be rendered here by StemPlayer */}
-										</div>
+								<div className="recording-header">
+									<div
+										id="playback-controls-container"
+										className="playback-controls-header"
+									>
+										{/* Playback controls will be rendered here by StemPlayer */}
+									</div>
+									{!isLoadingStems && (
 										<SongMetadata
 											recording={selectedFile}
 											onEdit={() => setIsMetadataEditorOpen(true)}
 											onShowQR={() => setIsQRModalOpen(true)}
 											duration={audioDuration}
 										/>
-									</div>
-								)}
+									)}
+								</div>
 								{selectedFile && selectedProfile && (
 									<>
 										<MetadataEditorModal
