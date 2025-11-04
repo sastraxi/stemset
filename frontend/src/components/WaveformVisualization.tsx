@@ -145,7 +145,9 @@ export function WaveformVisualization({
 
 		canvas.width = rect.width * dpr;
 		canvas.height = 108 * dpr; // Fixed height for consistent UI
-		// Don't set inline styles - let CSS handle sizing to allow responsive shrinking
+		// Set CSS dimensions to maintain proper display size
+		canvas.style.width = `${rect.width}px`;
+		canvas.style.height = "108px";
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -205,7 +207,7 @@ export function WaveformVisualization({
 				lineWidth: number = 1,
 				dotted: boolean = false,
 			) => {
-				const x = (timeSeconds / duration) * canvas.width;
+				const x = Math.round((timeSeconds / duration) * canvas.width);
 				if (x >= 0 && x <= canvas.width) {
 					ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
 					ctx.lineWidth = lineWidth * dpr;
@@ -244,12 +246,13 @@ export function WaveformVisualization({
 			ctx.globalCompositeOperation = "source-over";
 
 			// Vertical line with consistent white color
+			const cursorXRounded = Math.round(cursorX);
 			ctx.strokeStyle = cursorColor;
 			ctx.lineWidth = 2 * dpr;
 			ctx.setLineDash([3 * dpr, 3 * dpr]); // Make the cursor dashed
 			ctx.beginPath();
-			ctx.moveTo(cursorX, 0);
-			ctx.lineTo(cursorX, canvas.height);
+			ctx.moveTo(cursorXRounded, 0);
+			ctx.lineTo(cursorXRounded, canvas.height);
 			ctx.stroke();
 			ctx.setLineDash([]); // Reset line dash after drawing the cursor
 		}

@@ -119,6 +119,72 @@ class AudioSeparator(ABC):
         return self._separator
 
 
+class NeuralAudioSeparator(AudioSeparator, ABC):
+    """Base class for custom/neural separation models.
+
+    Unlike AudioSeparatorLibraryModel which wraps the audio-separator library,
+    this allows integration of arbitrary separation approaches: PyTorch models,
+    classical DSP algorithms, external APIs, etc.
+
+    Subclasses must implement:
+    - model_filename: Identifier for this separator (may not be an actual file)
+    - output_slots: Dict mapping output slot names to human descriptions
+    - separate: Perform separation and return paths to output stems
+    """
+
+    def __init__(self, output_config: OutputConfig) -> None:
+        """Initialize with output configuration.
+
+        Args:
+            output_config: Output format and bitrate settings
+        """
+        self.output_config = output_config
+
+    @property
+    @abstractmethod
+    def model_filename(self) -> str:
+        """Identifier for this separator (may not be an actual file).
+
+        Returns:
+            Model identifier string
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def output_slots(self) -> dict[str, str]:
+        """Map of output slot names to human descriptions.
+
+        Returns:
+            Dict mapping slot_name -> description
+        """
+        ...
+
+    def get_output_slots(self) -> set[str]:
+        """Get output slot names from the model's output_slots property.
+
+        Returns:
+            Set of output slot names this model produces
+        """
+        return set(self.output_slots.keys())
+
+    @abstractmethod
+    def separate(self, input_file: Path, output_dir: Path) -> dict[str, Path]:
+        """Perform audio separation.
+
+        Args:
+            input_file: Input audio file path
+            output_dir: Directory to write output files
+
+        Returns:
+            Dict mapping slot_name -> output_file_path
+
+        Raises:
+            RuntimeError: If separation fails or outputs are missing
+        """
+        ...
+
+
 class AudioSeparatorLibraryModel(AudioSeparator, ABC):
     """Base implementation for models using audio-separator library directly.
 

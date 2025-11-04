@@ -54,7 +54,9 @@ export function Ruler({
 		const rect = container.getBoundingClientRect();
 		canvas.width = rect.width * dpr;
 		canvas.height = height * dpr;
-		// Don't set inline styles - let CSS handle sizing to allow responsive shrinking
+		// Set CSS dimensions to maintain proper display size
+		canvas.style.width = `${rect.width}px`;
+		canvas.style.height = `${height}px`;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -77,7 +79,7 @@ export function Ruler({
 				opacity: number,
 				lineWidth: number = 1,
 			) => {
-				const x = (timeSeconds / duration) * canvas.width;
+				const x = Math.round((timeSeconds / duration) * canvas.width);
 				if (x >= 0 && x <= canvas.width) {
 					ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
 					ctx.lineWidth = lineWidth * dpr;
@@ -107,7 +109,7 @@ export function Ruler({
 			ctx.textBaseline = "middle";
 
 			for (let time = 0; time <= duration; time += 30) {
-				const x = (time / duration) * canvas.width;
+				const x = Math.round((time / duration) * canvas.width);
 				if (x >= 20 * dpr && x <= canvas.width - 20 * dpr) {
 					// Avoid edges
 					const timeText = formatTime(time);
@@ -116,12 +118,12 @@ export function Ruler({
 						// Every minute - white text, larger
 						ctx.fillStyle = "#ffffff";
 						ctx.font = `${12 * dpr}px system-ui, sans-serif`;
-						ctx.fillText(timeText, x, canvas.height / 2);
+						ctx.fillText(timeText, x, Math.round(canvas.height / 2));
 					} else {
 						// Every 30 seconds - dimmer text, smaller
 						ctx.fillStyle = "#999999";
 						ctx.font = `${10 * dpr}px system-ui, sans-serif`;
-						ctx.fillText(timeText, x, canvas.height / 2);
+						ctx.fillText(timeText, x, Math.round(canvas.height / 2));
 					}
 				}
 			}
@@ -134,12 +136,13 @@ export function Ruler({
 			// Draw triangle pointing down at the bottom of the ruler
 			const triangleSize = 6 * dpr;
 			const triangleY = canvas.height - triangleSize;
+			const cursorXRounded = Math.round(cursorX);
 
 			ctx.fillStyle = "#ffffff";
 			ctx.beginPath();
-			ctx.moveTo(cursorX, canvas.height); // Bottom point
-			ctx.lineTo(cursorX - triangleSize, triangleY); // Top left
-			ctx.lineTo(cursorX + triangleSize, triangleY); // Top right
+			ctx.moveTo(cursorXRounded, canvas.height); // Bottom point
+			ctx.lineTo(cursorXRounded - triangleSize, triangleY); // Top left
+			ctx.lineTo(cursorXRounded + triangleSize, triangleY); // Top right
 			ctx.closePath();
 			ctx.fill();
 		}

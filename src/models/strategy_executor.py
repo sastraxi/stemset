@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from ..config import AudioFormat, OutputConfig, Strategy, StrategyNode
 from .audio_separator_base import AudioSeparator
@@ -100,7 +101,7 @@ class StrategyExecutor:
         print(f"  Step {step_num}: Model '{node.model}' on {input_file.name}")
 
         # Get or create model instance
-        model = self._get_model_instance(node.model)
+        model = self._get_model_instance(node.model, node.params)
 
         # Validate config keys match actual model output slots
         model_output_slots = model.get_output_slots()
@@ -123,7 +124,7 @@ class StrategyExecutor:
             format=AudioFormat.WAV, bitrate=self.output_config.bitrate
         )
         # Always use WAV for separation to ensure lossless intermediates
-        model = self._create_model_instance(node.model, temp_output_config)
+        model = self._create_model_instance(node.model, temp_output_config, node.params)
 
         # Execute separation
         slot_outputs = model.separate(input_file, step_dir)
@@ -154,17 +155,25 @@ class StrategyExecutor:
 
         return final_outputs
 
-    def _get_model_instance(self, model_name: str) -> AudioSeparator:
+    def _get_model_instance(
+        self, model_name: str, params: dict[str, Any] | None = None
+    ) -> AudioSeparator:
         """Get or create cached model instance."""
-        if model_name not in self._model_instances:
-            self._model_instances[model_name] = self._create_model_instance(
-                model_name, self.output_config
+        if params is None:
+            params = {}
+        # Create a cache key that includes params to avoid conflicts
+        cache_key = f"{model_name}:{hash(frozenset(params.items()))}"
+        if cache_key not in self._model_instances:
+            self._model_instances[cache_key] = self._create_model_instance(
+                model_name, self.output_config, params
             )
-        return self._model_instances[model_name]
+        return self._model_instances[cache_key]
 
     def _create_model_instance(
-        self, model_name: str, output_config: OutputConfig
+        self, model_name: str, output_config: OutputConfig, params: dict[str, Any] | None = None
     ) -> AudioSeparator:
-        """Create a new model instance with given output config."""
+        """Create a new model instance with given output config and parameters."""
+        if params is None:
+            params = {}
         model_class = get_model_class(model_name)
-        return model_class(output_config)
+        return model_class(output_config, **params)

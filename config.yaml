@@ -78,3 +78,20 @@ strategies:
       bass: bass
       drums: drums
       other: other
+
+  # Guitar L/R separation with configurable ILD threshold
+  # Produces 6 stems: vocals, drums, bass, guitar_left, guitar_right, other
+  guitar_lr_separation:
+    _: "vocals_mel_band_roformer.ckpt"
+    vocals: vocals
+    other:
+      _: "htdemucs_ft"
+      bass: bass
+      drums: drums
+      other:
+        _: "stereo_spatial"
+        __params:
+          ild_threshold_db: 6.0
+        left: guitar_left
+        right: guitar_right
+        center: other

@@ -76,11 +76,15 @@ class StrategyNode(BaseModel):
         default_factory=dict,
         description="Output slot mappings (slot_name -> final_name or subtree)",
     )
+    params: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional parameters to pass to model constructor",
+    )
 
     @model_validator(mode="before")
     @classmethod
     def extract_outputs(cls, data: Any) -> dict[str, Any]:
-        """Extract model and outputs from YAML structure."""
+        """Extract model, outputs, and params from YAML structure."""
         if not isinstance(data, dict):
             raise ValueError("Strategy node must be a dictionary")
 
@@ -95,9 +99,16 @@ class StrategyNode(BaseModel):
             raise ValueError("Strategy node must have '_' key specifying model name")
 
         model_name = cast(str, dict_data["_"])
-        outputs = {k: v for k, v in dict_data.items() if k != "_"}
 
-        return {"model": model_name, "outputs": outputs}
+        # Extract optional params (keys starting with underscore after '_')
+        params = {}
+        if "__params" in dict_data:
+            params = dict_data["__params"]
+
+        # Outputs are all keys that aren't '_' or '__params'
+        outputs = {k: v for k, v in dict_data.items() if k not in ("_", "__params")}
+
+        return {"model": model_name, "outputs": outputs, "params": params}
 
     def get_final_outputs(self) -> set[str]:
         """Get all final output names from this tree."""

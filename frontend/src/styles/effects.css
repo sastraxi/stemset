@@ -37,8 +37,6 @@
 	/* Prevent swipe gestures from triggering browser back/forward navigation */
 	touch-action: pan-x pinch-zoom;
 	
-	pointer-events: none;
-
 	/* Custom scrollbar styling */
 	scrollbar-width: none;
 }

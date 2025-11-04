@@ -11,6 +11,7 @@ from .atomic_models import (
     VocalsMelBandRoformerModel,
     KuielabDrumsModel,
     KuielabBassModel,
+    SimpleStereoSeparator,
 )
 from .audio_separator_base import AudioSeparator
 
@@ -21,6 +22,7 @@ _MODEL_REGISTRY_DICT: dict[str, type[AudioSeparator]] = {
     "vocals_mel_band_roformer.ckpt": VocalsMelBandRoformerModel,
     "kuielab_b_drums.onnx": KuielabDrumsModel,
     "kuielab_a_bass.onnx": KuielabBassModel,
+    "stereo_spatial": SimpleStereoSeparator,
 }
 
 # Frozen mapping for immutability and type safety
@@ -35,6 +37,7 @@ ModelName = Literal[
     "vocals_mel_band_roformer.ckpt",
     "kuielab_b_drums.onnx",
     "kuielab_a_bass.onnx",
+    "stereo_spatial",
 ]
 
 
