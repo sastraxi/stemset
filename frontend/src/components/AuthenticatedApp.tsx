@@ -392,7 +392,9 @@ export function AuthenticatedApp({
 										<QRCodeModal
 											isOpen={isQRModalOpen}
 											onClose={() => setIsQRModalOpen(false)}
-											url={`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/${selectedFile.name}`}
+											url={encodeURI(
+												`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/${selectedFile.name}`,
+											)}
 											currentTime={audioCurrentTime}
 										/>
 									</>
