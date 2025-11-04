@@ -36,6 +36,9 @@
 	overscroll-behavior-y: auto;
 	/* Prevent swipe gestures from triggering browser back/forward navigation */
 	touch-action: pan-x pinch-zoom;
+	
+	pointer-events: none;
+
 	/* Custom scrollbar styling */
 	scrollbar-width: none;
 }
@@ -60,8 +63,10 @@
 .eq-section,
 .limiter-section,
 .reverb-section,
-.master-volume-section {
+.master-volume-section,
+.stereo-expander-section{
 	background: rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(7px);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 8px;
 	padding: 0.85rem 1rem 1rem;
@@ -152,7 +157,7 @@
 .eq-header,
 .limiter-header,
 .reverb-header,
-.master-volume-header {
+.master-volume-header{
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -291,13 +296,6 @@
 
 /* Stereo Expander Styles */
 .stereo-expander-section {
-	background: rgba(0, 0, 0, 0.3);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
-	padding: 0.85rem 1rem 1rem;
-	transition: border-color 0.2s;
-	flex-shrink: 0;
-	width: 600px;
 	/* Double the width of normal limiter sections */
 	display: flex;
 	flex-direction: column;

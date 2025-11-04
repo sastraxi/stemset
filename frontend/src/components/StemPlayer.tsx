@@ -33,7 +33,6 @@ interface StemPlayerProps {
 	onLoadingChange?: (isLoading: boolean) => void;
 	onDurationChange?: (duration: number) => void;
 	onCurrentTimeChange?: (currentTime: number) => void;
-	onShowQR?: () => void;
 	recordingId: string;
 }
 
@@ -47,7 +46,18 @@ export interface StemPlayerHandle {
  * - Delegates all audio graph & timing logic to hook.
  */
 export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
-	({ profileName, fileName, stemsData, onLoadingChange, onDurationChange, onCurrentTimeChange, onShowQR, recordingId }, ref) => {
+	(
+		{
+			profileName,
+			fileName,
+			stemsData,
+			onLoadingChange,
+			onDurationChange,
+			onCurrentTimeChange,
+			recordingId,
+		},
+		ref,
+	) => {
 		const [previewTime, setPreviewTime] = useState<number | null>(null);
 		const [showTimeRemaining, setShowTimeRemaining] = useState(false);
 		const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -279,21 +289,16 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				onPlay={handlePlay}
 				onPause={handlePause}
 				onStop={stop}
-				onShowQR={onShowQR}
 				disabled={stemOrder.length === 0 || isLoading}
 			/>
 		);
 
 		if (isLoading) {
 			return (
-				<>
-					{playbackControlsContainer &&
-						createPortal(vcrDisplay, playbackControlsContainer)}
-					<div className="stem-player loading">
-						<Spinner size="lg" />
-						<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
-					</div>
-				</>
+				<div className="stem-player loading">
+					<Spinner size="lg" />
+					<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
+				</div>
 			);
 		}
 
@@ -302,7 +307,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				{playbackControlsContainer &&
 					createPortal(vcrDisplay, playbackControlsContainer)}
 				{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
-				<div className="stem-player" ref={playerRef} tabIndex={0}>
+				<div
+					className="stem-player ml-[-1rem] md:ml-0"
+					ref={playerRef}
+					tabIndex={0}
+					style={{ "--stem-count": stemOrder.length } as React.CSSProperties}
+				>
 					<div className="waveforms-section">
 						{/* Ruler row */}
 						<div className="waveform-row">

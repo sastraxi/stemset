@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Music, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
+import { getRelativeTime } from "../lib/utils";
 import "../styles/effects.css";
 import "../styles/layout.css";
 import "../styles/player.css";
@@ -11,6 +12,8 @@ import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
 import type { FileWithStems } from "@/api/generated";
+import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
+import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MetadataEditorModal } from "./MetadataEditorModal";
 import { MetadataPage } from "./MetadataPage";
 import { ProfileSelector } from "./ProfileSelector";
@@ -48,6 +51,8 @@ export function AuthenticatedApp({
 	const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
 	const [isMetadataEditorOpen, setIsMetadataEditorOpen] = useState(false);
 	const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 	const [audioDuration, setAudioDuration] = useState<number>(0);
 	const [audioCurrentTime, setAudioCurrentTime] = useState<number>(0);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
@@ -189,6 +194,34 @@ export function AuthenticatedApp({
 		}
 	};
 
+	const handleDeleteRecording = async () => {
+		if (!selectedFile || !selectedProfile) return;
+
+		try {
+			setIsDeleting(true);
+
+			await apiRecordingsRecordingIdDeleteRecordingEndpoint({
+				path: {
+					recording_id: selectedFile.id,
+				},
+			});
+
+			toast.success("Recording deleted successfully");
+			setIsDeleteModalOpen(false);
+
+			// Navigate back to profile page
+			navigate({
+				to: "/p/$profileName",
+				params: { profileName: selectedProfile },
+			});
+		} catch (error) {
+			console.error("Failed to delete recording:", error);
+			toast.error("Failed to delete recording");
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
 	// Show backend connection error
 	if (profilesError) {
 		return (
@@ -209,6 +242,19 @@ export function AuthenticatedApp({
 			</div>
 		);
 	}
+
+	// Sort files by date_recorded descending, with nulls at top
+	const sortedFiles = useMemo(() => {
+		if (!files) return [];
+		return [...files].sort((a, b) => {
+			// Nulls first
+			if (!a.date_recorded && !b.date_recorded) return 0;
+			if (!a.date_recorded) return -1;
+			if (!b.date_recorded) return 1;
+			// Descending (most recent first)
+			return new Date(b.date_recorded).getTime() - new Date(a.date_recorded).getTime();
+		});
+	}, [files]);
 
 	// Calculate file counts for profile selector
 	const fileCountByProfile: Record<string, number> = {};
@@ -298,33 +344,37 @@ export function AuthenticatedApp({
 							<p className="empty-state">
 								Error loading files. Try refreshing.
 							</p>
-						) : !files || files.length === 0 ? (
+						) : !sortedFiles || sortedFiles.length === 0 ? (
 							<p className="empty-state">
 								No processed files yet. Upload a file above or use the CLI.
 							</p>
 						) : (
 							<ul className="list-none">
-								{files.map((file) => (
-									// biome-ignore lint/a11y/useKeyWithClickEvents: FIXME
-									<li
-										key={file.name}
-										className={`p-2.5 m-0 bg-transparent select-none border-none border-l-2 cursor-pointer transition-all text-sm rounded-r flex items-center justify-between gap-2 ${
-											selectedFile?.name === file.name
-												? "bg-blue-400/10 border-l-blue-400 text-white"
-												: "border-l-transparent hover:bg-white/5 hover:border-l-gray-700 text-gray-300"
-										}`}
-										onClick={() => handleFileSelect(file)}
-									>
-										<span
-											className={`truncate ${selectedFile?.name === file.name ? "font-bold" : ""}`}
+								{sortedFiles.map((file) => {
+									const relativeTime = getRelativeTime(file.date_recorded);
+									return (
+										// biome-ignore lint/a11y/useKeyWithClickEvents: FIXME
+										<li
+											key={file.name}
+											className="recording-list-item"
+											onClick={() => handleFileSelect(file)}
 										>
-											{file.display_name || file.name}
-										</span>
-										{selectedFile?.name === file.name && (
-											<Music className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
-										)}
-									</li>
-								))}
+											<span
+												className={`truncate ${selectedFile?.name === file.name ? "font-medium" : ""}`}
+											>
+												{file.display_name || file.name}
+											</span>
+											<div className="flex items-center gap-2 flex-shrink-0">
+												{relativeTime && (
+													<span className="recording-time">{relativeTime}</span>
+												)}
+												{selectedFile?.name === file.name && (
+													<Music className="h-3.5 w-3.5 text-blue-400" />
+												)}
+											</div>
+										</li>
+									);
+								})}
 							</ul>
 						)}
 					</div>
@@ -364,6 +414,7 @@ export function AuthenticatedApp({
 											recording={selectedFile}
 											onEdit={() => setIsMetadataEditorOpen(true)}
 											onShowQR={() => setIsQRModalOpen(true)}
+											onDelete={() => setIsDeleteModalOpen(true)}
 											duration={audioDuration}
 										/>
 									)}
@@ -397,6 +448,13 @@ export function AuthenticatedApp({
 											)}
 											currentTime={audioCurrentTime}
 										/>
+										<DeleteConfirmationModal
+											isOpen={isDeleteModalOpen}
+											onClose={() => setIsDeleteModalOpen(false)}
+											onConfirm={handleDeleteRecording}
+											recordingTitle={selectedFile.display_name}
+											isDeleting={isDeleting}
+										/>
 									</>
 								)}
 								<StemPlayer
@@ -408,7 +466,6 @@ export function AuthenticatedApp({
 									onLoadingChange={setIsLoadingStems}
 									onDurationChange={setAudioDuration}
 									onCurrentTimeChange={setAudioCurrentTime}
-									onShowQR={() => setIsQRModalOpen(true)}
 									recordingId={selectedFile.id}
 								/>
 							</>

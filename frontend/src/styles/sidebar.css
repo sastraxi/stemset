@@ -63,8 +63,6 @@ button:disabled {
 
 .file-list {
 	flex: 1;
-	overflow-y: auto;
-	/* Prevent scrollbar from showing until needed */
 	min-height: 0;
 }
 
@@ -86,7 +84,32 @@ button:disabled {
 	margin-left: 0;
 }
 
-.file-list li {
-	margin-left: 0;
-	padding-left: 0;
+/* Recording List Item - matches upload button styling */
+.recording-list-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 1rem 1.25rem;
+	margin-bottom: 0.5rem;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+	color: #e8e8e8;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
+}
+
+.recording-list-item:hover {
+	transform: translateX(3px);
+	border-color: #4a9eff;
+	background: #4a9eff2f;
+	box-shadow: 0 6px 6px #4a9eff2f;
+}
+
+.recording-time {
+	font-size: 0.8rem;
+	color: rgba(255, 255, 255, 0.4);
+	white-space: nowrap;
 }

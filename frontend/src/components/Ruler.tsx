@@ -286,10 +286,7 @@ export function Ruler({
 	}, [isDragging, onSeek, onPreview, previewTime, duration]);
 
 	return (
-		<div
-			ref={containerRef}
-			className="ruler-container rounded-t-lg overflow-hidden"
-		>
+		<div ref={containerRef} className="ruler-container overflow-hidden">
 			<canvas
 				ref={canvasRef}
 				className="ruler-canvas"

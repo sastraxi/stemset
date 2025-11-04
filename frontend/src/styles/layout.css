@@ -66,14 +66,13 @@
 	justify-content: space-between;
 	gap: 1.5rem;
 	position: relative;
-	margin: 0 4px;
 	/* Match waveform-row margin */
 }
 
 @media (max-width: 768px) {
 	.recording-header {
 		flex-direction: column;
-		align-items: flex-start;
+		align-items: stretch;
 		gap: 1rem;
 		margin-bottom: 0;
 	}
@@ -109,7 +108,7 @@
 		padding: 0;
 		margin: 0;
 		z-index: 1000;
-		box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+		box-shadow: 0 0px 2px rgba(0, 0, 0, 0.75);
 		justify-content: space-between;
 		gap: 1rem;
 		display: block;
@@ -193,20 +192,10 @@
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 1rem;
-	margin-bottom: 0.75rem;
+	margin-bottom: 1.5rem;
 	flex: 1;
 	min-width: 0;
 	/* Allow truncation */
-}
-
-@media (max-width: 768px) {
-	.song-metadata {
-		margin-left: 2.5rem;
-	}
-
-	.recording-name-row {
-		margin-left: -2.25rem;
-	}
 }
 
 .song-metadata .recording-name {
@@ -222,6 +211,12 @@
 	gap: 0.5rem;
 	flex-wrap: wrap;
 	align-items: center;
+}
+
+@media (max-width: 768px) {
+	.song-metadata-badges .text-muted-foreground {
+		display: none;
+	}
 }
 
 .qr-button-header {
@@ -240,6 +235,63 @@
 @media (max-width: 768px) {
 	.qr-button-header {
 		display: none;
+	}
+}
+
+/* Recording Menu Styles */
+.recording-menu-desktop {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.recording-menu-mobile {
+	display: none;
+}
+
+.recording-menu-button {
+	flex-shrink: 0;
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: #e8e8e8;
+	transition: all 0.2s;
+}
+
+.recording-menu-button:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+.recording-menu-button-delete {
+	border-color: rgba(239, 68, 68, 0.3);
+	color: rgba(239, 68, 68, 0.9);
+}
+
+.recording-menu-button-delete:hover {
+	background: rgba(239, 68, 68, 0.1);
+	border-color: rgba(239, 68, 68, 0.5);
+	color: rgb(239, 68, 68);
+}
+
+.recording-menu-trigger {
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: #e8e8e8;
+	transition: all 0.2s;
+}
+
+.recording-menu-trigger:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+	.recording-menu-desktop {
+		display: none;
+	}
+
+	.recording-menu-mobile {
+		display: flex;
 	}
 }
 

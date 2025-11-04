@@ -1,12 +1,12 @@
-import { Pencil, QrCode } from "lucide-react";
 import type { FileWithStems } from "@/api/generated/types.gen";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { RecordingMenu } from "./RecordingMenu";
 
 export interface SongMetadataProps {
 	recording: FileWithStems;
 	onEdit: () => void;
 	onShowQR: () => void;
+	onDelete: () => void;
 	duration?: number;
 }
 
@@ -14,6 +14,7 @@ export function SongMetadata({
 	recording,
 	onEdit,
 	onShowQR,
+	onDelete,
 	duration,
 }: SongMetadataProps) {
 	const formatDate = (dateString: string | null | undefined) => {
@@ -41,18 +42,7 @@ export function SongMetadata({
 	return (
 		<div className="song-metadata">
 			<div className="flex flex-col items-start gap-2">
-				<div className="flex flex-row justify-baseline gap-1 recording-name-row">
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onEdit}
-						className="h-8 w-8"
-						title="Edit metadata"
-					>
-						<Pencil className="h-4 w-4 mt-1" />
-					</Button>
-					<h2 className="recording-name">{recording.display_name}</h2>
-				</div>
+				<h2 className="recording-name">{recording.display_name}</h2>
 				<div className="song-metadata-badges">
 					{recording.song ? (
 						<Badge variant="secondary">{recording.song.name}</Badge>
@@ -80,15 +70,11 @@ export function SongMetadata({
 					) : null}
 				</div>
 			</div>
-			<Button
-				variant="outline"
-				size="icon"
-				onClick={onShowQR}
-				className="qr-button-header"
-				title="Share & manage recording"
-			>
-				<QrCode className="h-5 w-5" />
-			</Button>
+			<RecordingMenu
+				onShowQR={onShowQR}
+				onEdit={onEdit}
+				onDelete={onDelete}
+			/>
 		</div>
 	);
 }

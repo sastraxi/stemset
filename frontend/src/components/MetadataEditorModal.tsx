@@ -2,7 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import type { FileWithStems } from "@/api/generated/types.gen";
 import {
 	Dialog,
@@ -48,7 +47,6 @@ export function MetadataEditorModal({
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
 		recording.date_recorded ? new Date(recording.date_recorded) : new Date(),
 	);
-	const [isDeleting, setIsDeleting] = useState(false);
 
 	const queryClient = useQueryClient();
 	const { data: locations = [] } = useProfileLocations(profileId);
@@ -157,28 +155,6 @@ export function MetadataEditorModal({
 		onClose();
 	};
 
-	const handleDelete = async () => {
-		try {
-			setIsDeleting(true);
-
-			await apiRecordingsRecordingIdDeleteRecordingEndpoint({
-				path: {
-					recording_id: recording.id,
-				},
-			});
-
-			toast.success("Recording deleted successfully");
-
-			// Navigate back to profile page
-			window.location.href = `/p/${profileName}`;
-		} catch (error) {
-			console.error("Failed to delete recording:", error);
-			toast.error("Failed to delete recording");
-		} finally {
-			setIsDeleting(false);
-		}
-	};
-
 	return (
 		<Dialog
 			open={open}
@@ -207,8 +183,6 @@ export function MetadataEditorModal({
 					onDateChange={setSelectedDate}
 					onSave={handleSave}
 					onCancel={handleCancel}
-					onDelete={handleDelete}
-					isDeleting={isDeleting}
 				/>
 			</DialogContent>
 		</Dialog>
