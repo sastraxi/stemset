@@ -41,9 +41,11 @@ interface MetadataEditorProps {
 	onLocationChange: (locationName: string | null) => void;
 	onDateChange: (date: Date | undefined) => void;
 	onSave: () => void;
-	onCancel: () => void;
+	onCancel?: () => void;
 	onDelete?: () => void;
 	isDeleting?: boolean;
+	mode?: "modal" | "inline";
+	saveButtonText?: string;
 }
 
 export function MetadataEditor({
@@ -60,6 +62,8 @@ export function MetadataEditor({
 	onCancel,
 	onDelete,
 	isDeleting = false,
+	mode = "modal",
+	saveButtonText = "Save",
 }: MetadataEditorProps) {
 	const { data: songs = [] } = useProfileSongs(profileId);
 	const createSong = useCreateSong();
@@ -405,7 +409,7 @@ export function MetadataEditor({
 
 			{/* Action Buttons */}
 			<div className="metadata-editor-actions">
-				{onDelete && (
+				{mode === "modal" && onDelete && (
 					<DropdownMenu open={deleteDropdownOpen} onOpenChange={setDeleteDropdownOpen}>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -434,11 +438,13 @@ export function MetadataEditor({
 					</DropdownMenu>
 				)}
 				<div className="metadata-editor-actions-row">
-					<Button type="button" onClick={onCancel} variant="outline">
-						Cancel
-					</Button>
-					<Button type="button" onClick={onSave}>
-						Save
+					{mode === "modal" && onCancel && (
+						<Button type="button" onClick={onCancel} variant="outline">
+							Cancel
+						</Button>
+					)}
+					<Button type="button" onClick={onSave} className={mode === "inline" ? "w-full" : ""} size={mode === "inline" ? "lg" : "default"}>
+						{saveButtonText}
 					</Button>
 				</div>
 			</div>

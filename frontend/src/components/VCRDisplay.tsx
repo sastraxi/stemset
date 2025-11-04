@@ -30,6 +30,20 @@ export function VCRDisplay({
 }: VCRDisplayProps) {
 	return (
 		<div className="vcr-display">
+			<div className="vcr-actions mobile-only">
+				{onShowQR && (
+					<Button
+						type="button"
+						onClick={onShowQR}
+						disabled={disabled}
+						title="Share track"
+						className="vcr-button"
+						variant="outline"
+					>
+						<QrCode className="h-4 w-4" />
+					</Button>
+				)}
+			</div>
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
 			<div
@@ -62,18 +76,6 @@ export function VCRDisplay({
 				>
 					⏹
 				</Button>
-				{onShowQR && (
-					<Button
-						type="button"
-						onClick={onShowQR}
-						disabled={disabled}
-						title="Share track"
-						className="vcr-button"
-						variant="outline"
-					>
-						<QrCode className="h-4 w-4" />
-					</Button>
-				)}
 			</div>
 		</div>
 	);

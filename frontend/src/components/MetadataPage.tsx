@@ -1,17 +1,13 @@
 import { format } from "date-fns";
 import {
-	Calendar as CalendarIcon,
 	Check,
-	ChevronsUpDown,
 	Loader2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type {
 	FileWithStems,
 	RecordingStatusResponse,
 } from "@/api/generated/types.gen";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
 	Card,
 	CardContent,
@@ -20,28 +16,13 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
-import { Label } from "@/components/ui/label";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import {
 	useCreateLocation,
-	useCreateSong,
 	useProfileLocations,
-	useProfileSongs,
 	useRecording,
 	useUpdateRecordingMetadata,
 } from "@/hooks/queries";
-import { cn } from "@/lib/utils";
+import { MetadataEditor } from "./MetadataEditor";
+import "../styles/metadata-editor.css";
 
 interface MetadataPageProps {
 	recording: RecordingStatusResponse | FileWithStems;
@@ -65,20 +46,22 @@ export function MetadataPage({
 	// Use polled recording if available, otherwise use prop
 	const currentRecording = polledRecording || recording;
 
-	// FIXME: use the loading state of these metadata bits
-	const { data: songs = [] } = useProfileSongs(profileId);
 	const { data: locations = [] } = useProfileLocations(profileId);
-	const createSong = useCreateSong();
 	const createLocation = useCreateLocation();
 	const updateMetadata = useUpdateRecordingMetadata();
 
 	// Local state for form values
+	const [displayName, setDisplayName] = useState(
+		"display_name" in recording && recording.display_name
+			? recording.display_name
+			: ("name" in recording ? recording.name : ""),
+	);
 	const [selectedSongId, setSelectedSongId] = useState<string | null>(
 		"song" in recording && recording.song ? recording.song.id : null,
 	);
-	const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+	const [selectedLocationName, setSelectedLocationName] = useState<string | null>(
 		"location" in recording && recording.location
-			? recording.location.id
+			? recording.location.name
 			: null,
 	);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -87,65 +70,55 @@ export function MetadataPage({
 			: new Date(),
 	);
 
-	// Popover open states
-	const [songOpen, setSongOpen] = useState(false);
-	const [locationOpen, setLocationOpen] = useState(false);
-	const [dateOpen, setDateOpen] = useState(false);
+	const isProcessing = currentRecording.status === "processing";
+	const isComplete = currentRecording.status === "complete";
+	const showContinueButton = wasInitiallyProcessing && isComplete && onContinue;
 
-	// Song search/create
-	const [songSearch, setSongSearch] = useState("");
-	const [locationSearch, setLocationSearch] = useState("");
+	const handleSave = async () => {
+		try {
+			// Handle location: find or create from LocationIQ name
+			let locationId: string | undefined;
+			if (selectedLocationName) {
+				// Check if location already exists
+				const existingLocation = locations.find(
+					(loc) => loc.name === selectedLocationName,
+				);
+				if (existingLocation) {
+					locationId = existingLocation.id;
+				} else {
+					// Create new location from LocationIQ result
+					const newLocation = await createLocation.mutateAsync({
+						path: { profile_id: profileId },
+						body: { name: selectedLocationName },
+					});
+					locationId = newLocation.id;
+				}
+			}
 
-	// Auto-save when values change (debounced)
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			const recordingId =
-				"recording_id" in recording ? recording.recording_id : recording.id;
-			updateMetadata.mutate({
+			// Update metadata
+			await updateMetadata.mutateAsync({
 				path: { recording_id: recordingId },
 				body: {
 					song_id: selectedSongId || undefined,
-					location_id: selectedLocationId || undefined,
+					location_id: locationId,
 					date_recorded: selectedDate
 						? format(selectedDate, "yyyy-MM-dd")
 						: undefined,
 				},
 			});
-		}, 500);
 
-		return () => clearTimeout(timer);
-	}, [selectedSongId, selectedLocationId, selectedDate]);
-
-	const handleCreateSong = async (name: string) => {
-		const result = await createSong.mutateAsync({
-			path: { profile_id: profileId },
-			body: { name },
-		});
-		setSelectedSongId(result.id);
-		setSongOpen(false);
-		setSongSearch("");
+			// If this is the interstitial page with continue button, navigate
+			if (onContinue) {
+				onContinue();
+			}
+		} catch (error) {
+			console.error("Failed to save metadata:", error);
+		}
 	};
-
-	const handleCreateLocation = async (name: string) => {
-		const result = await createLocation.mutateAsync({
-			path: { profile_id: profileId },
-			body: { name },
-		});
-		setSelectedLocationId(result.id);
-		setLocationOpen(false);
-		setLocationSearch("");
-	};
-
-	const selectedSong = songs.find((s) => s.id === selectedSongId);
-	const selectedLocation = locations.find((l) => l.id === selectedLocationId);
-
-	const isProcessing = currentRecording.status === "processing";
-	const isComplete = currentRecording.status === "complete";
-	const showContinueButton = wasInitiallyProcessing && isComplete && onContinue;
 
 	return (
 		<div className="flex items-center justify-center min-h-screen p-4">
-			<Card className="w-full max-w-2xl">
+			<Card className="w-full max-w-4xl">
 				<CardHeader>
 					<div className="flex items-center gap-2">
 						<CardTitle>Recording Metadata</CardTitle>
@@ -164,185 +137,21 @@ export function MetadataPage({
 							"Processing complete! Add metadata or continue to playback."}
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-6">
-					{/* Song Name */}
-					<div className="space-y-2">
-						<Label htmlFor="song">Song Name</Label>
-						<Popover open={songOpen} onOpenChange={setSongOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									id="song"
-									variant="outline"
-									role="combobox"
-									aria-expanded={songOpen}
-									className="w-full justify-between"
-								>
-									{selectedSong ? selectedSong.name : "Select song..."}
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-full p-0" align="start">
-								<Command>
-									<CommandInput
-										placeholder="Search or create song..."
-										value={songSearch}
-										onValueChange={setSongSearch}
-									/>
-									<CommandList>
-										<CommandEmpty>
-											{songSearch && (
-												<Button
-													variant="ghost"
-													className="w-full"
-													onClick={() => handleCreateSong(songSearch)}
-													disabled={createSong.isPending}
-												>
-													Create "{songSearch}"
-												</Button>
-											)}
-											{!songSearch && "No songs found."}
-										</CommandEmpty>
-										<CommandGroup>
-											{songs.map((song) => (
-												<CommandItem
-													key={song.id}
-													value={song.name}
-													onSelect={() => {
-														setSelectedSongId(song.id);
-														setSongOpen(false);
-														setSongSearch("");
-													}}
-												>
-													<Check
-														className={cn(
-															"mr-2 h-4 w-4",
-															selectedSongId === song.id
-																? "opacity-100"
-																: "opacity-0",
-														)}
-													/>
-													{song.name}
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
-
-					{/* Location */}
-					<div className="space-y-2">
-						<Label htmlFor="location">Location</Label>
-						<Popover open={locationOpen} onOpenChange={setLocationOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									id="location"
-									variant="outline"
-									role="combobox"
-									aria-expanded={locationOpen}
-									className="w-full justify-between"
-								>
-									{selectedLocation
-										? selectedLocation.name
-										: "Select location..."}
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-full p-0" align="start">
-								<Command>
-									<CommandInput
-										placeholder="Search or create location..."
-										value={locationSearch}
-										onValueChange={setLocationSearch}
-									/>
-									<CommandList>
-										<CommandEmpty>
-											{locationSearch && (
-												<Button
-													variant="ghost"
-													className="w-full"
-													onClick={() => handleCreateLocation(locationSearch)}
-													disabled={createLocation.isPending}
-												>
-													Create "{locationSearch}"
-												</Button>
-											)}
-											{!locationSearch && "No locations found."}
-										</CommandEmpty>
-										<CommandGroup>
-											{locations.map((location) => (
-												<CommandItem
-													key={location.id}
-													value={location.name}
-													onSelect={() => {
-														setSelectedLocationId(location.id);
-														setLocationOpen(false);
-														setLocationSearch("");
-													}}
-												>
-													<Check
-														className={cn(
-															"mr-2 h-4 w-4",
-															selectedLocationId === location.id
-																? "opacity-100"
-																: "opacity-0",
-														)}
-													/>
-													{location.name}
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
-
-					{/* Date Recorded */}
-					<div className="space-y-2">
-						<Label htmlFor="date">Date Recorded</Label>
-						<Popover open={dateOpen} onOpenChange={setDateOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									id="date"
-									variant="outline"
-									className={cn(
-										"w-full justify-start text-left font-normal",
-										!selectedDate && "text-muted-foreground",
-									)}
-								>
-									<CalendarIcon className="mr-2 h-4 w-4" />
-									{selectedDate ? (
-										format(selectedDate, "PPP")
-									) : (
-										<span>Pick a date</span>
-									)}
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-auto p-0" align="start">
-								<Calendar
-									mode="single"
-									selected={selectedDate}
-									onSelect={(date) => {
-										setSelectedDate(date);
-										setDateOpen(false);
-									}}
-									disabled={(date) =>
-										date > new Date() || date < new Date("1900-01-01")
-									}
-									initialFocus
-								/>
-							</PopoverContent>
-						</Popover>
-					</div>
-
-					{/* Continue Button */}
-					{showContinueButton && (
-						<Button onClick={onContinue} className="w-full" size="lg">
-							Continue to Recording
-						</Button>
-					)}
+				<CardContent>
+					<MetadataEditor
+						profileId={profileId}
+						displayName={displayName}
+						selectedSongId={selectedSongId}
+						selectedLocationName={selectedLocationName}
+						selectedDate={selectedDate}
+						onDisplayNameChange={setDisplayName}
+						onSongChange={setSelectedSongId}
+						onLocationChange={setSelectedLocationName}
+						onDateChange={setSelectedDate}
+						onSave={handleSave}
+						mode="inline"
+						saveButtonText={showContinueButton ? "Continue to Recording" : "Save"}
+					/>
 				</CardContent>
 			</Card>
 		</div>

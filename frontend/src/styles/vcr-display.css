@@ -73,6 +73,16 @@
 	justify-content: stretch;
 }
 
+.vcr-actions.mobile-only {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.vcr-actions.mobile-only {
+		display: flex;
+	}
+}
+
 .vcr-button {
 	flex: 1;
 	background: rgba(0, 20, 25, 0.6);
