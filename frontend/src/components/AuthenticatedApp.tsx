@@ -61,13 +61,6 @@ export function AuthenticatedApp({
 	// Check if we're on the recording route
 	const isOnRecordingRoute = !!initialRecording;
 
-	console.log("[AuthenticatedApp] Route state:", {
-		initialProfile,
-		initialRecording,
-		isOnRecordingRoute,
-		selectedFile: selectedFile?.name,
-	});
-
 	const { data: profiles, error: profilesError } = useProfiles();
 
 	const {
@@ -112,10 +105,6 @@ export function AuthenticatedApp({
 				setTimeout(() => stemPlayerRef.current?.focus(), 100);
 			} else if (!targetFile && initialRecording) {
 				// Initial recording doesn't exist - clear selection
-				console.log(
-					"[AuthenticatedApp] Initial recording not found:",
-					initialRecording,
-				);
 				setSelectedFile(null);
 			}
 		}
@@ -124,7 +113,6 @@ export function AuthenticatedApp({
 		initialRecording,
 		selectedProfile,
 		initialProfile,
-		selectedFile,
 		initialStateParam,
 	]);
 

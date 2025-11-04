@@ -1,6 +1,6 @@
 /* Waveform Display */
 .waveforms-section {
-	margin-bottom: -6px;
+	margin-bottom: 1.75rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0;
@@ -39,6 +39,10 @@
 }
 
 @media (max-width: 768px) {
+	.waveforms-section {
+		margin-bottom: -6px;
+	}
+
 	.waveform-controls {
 		width: auto;
 		flex-direction: row;
