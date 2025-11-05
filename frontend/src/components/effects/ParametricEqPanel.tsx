@@ -1,6 +1,5 @@
 import type { ParametricEqBandConfig, ParametricEqConfig } from "@/types";
 import { VerticalDragControl } from "../VerticalDragControl";
-import { VolumeSlider } from "../VolumeSlider";
 
 export interface ParametricEqPanelProps {
 	config: ParametricEqConfig;
@@ -71,15 +70,6 @@ function ParametricBand({
 		return 10 ** logFreq;
 	};
 
-	// Convert gain -12..+12 to 0..2 for VolumeSlider
-	const gainToVolume = (gain: number): number => {
-		return (gain + 12) / 12; // -12 → 0, 0 → 1, +12 → 2
-	};
-
-	const volumeToGain = (volume: number): number => {
-		return volume * 12 - 12; // 0 → -12, 1 → 0, 2 → +12
-	};
-
 	return (
 		<div className="parametric-band">
 			{/* Left column: Q control */}
@@ -100,9 +90,15 @@ function ParametricBand({
 			<div className="parametric-band-sliders">
 				{/* Gain slider */}
 				<div className="parametric-slider-row">
-					<label className="parametric-slider-label">{bandName} Gain</label>
+					<label
+						htmlFor={`parametric-gain-${bandKey}`}
+						className="parametric-slider-label"
+					>
+						{bandName} Gain
+					</label>
 					<div className="parametric-slider-container">
 						<input
+							id={`parametric-gain-${bandKey}`}
 							type="range"
 							min={-12}
 							max={12}
@@ -122,9 +118,15 @@ function ParametricBand({
 
 				{/* Frequency slider */}
 				<div className="parametric-slider-row">
-					<label className="parametric-slider-label">Freq</label>
+					<label
+						htmlFor={`parametric-freq-${bandKey}`}
+						className="parametric-slider-label"
+					>
+						Freq
+					</label>
 					<div className="parametric-slider-container">
 						<input
+							id={`parametric-freq-${bandKey}`}
 							type="range"
 							min={0}
 							max={1}
