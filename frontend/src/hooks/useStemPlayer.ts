@@ -3,6 +3,7 @@ import type { StemResponse } from "../api/generated/types.gen";
 import type {
 	EffectsChainConfig,
 	StemCompressionLevel,
+	StemEqLevel,
 	StemUserConfig,
 	StemViewModel,
 } from "../types";
@@ -52,6 +53,9 @@ export interface UseStemPlayerResult {
 	toggleMute: (stemName: string) => void;
 	toggleSolo: (stemName: string) => void;
 	cycleStemCompression: (stemName: string) => void;
+	cycleStemEqLow: (stemName: string) => void;
+	cycleStemEqMid: (stemName: string) => void;
+	cycleStemEqHigh: (stemName: string) => void;
 
 	// Master volume
 	masterVolume: number;
@@ -169,6 +173,9 @@ export function useStemPlayer({
 				muted: savedStem?.muted ?? false,
 				soloed: savedStem?.soloed ?? false,
 				compression: savedStem?.compression ?? "off",
+				eqLow: savedStem?.eqLow ?? "off",
+				eqMid: savedStem?.eqMid ?? "off",
+				eqHigh: savedStem?.eqHigh ?? "off",
 			};
 		});
 		return newStems;
@@ -184,11 +191,10 @@ export function useStemPlayer({
 			const state = stems[name];
 			if (!state) return;
 
-			// Apply gain
-			node.gainNode.gain.value = state.gain;
-
-			// Apply compression settings
+			// Apply compression settings with makeup gain
 			const compressor = node.compressorNode;
+			let makeupGain = 1.0; // Linear gain multiplier
+
 			switch (state.compression) {
 				case "off":
 					compressor.threshold.value = 0;
@@ -196,6 +202,7 @@ export function useStemPlayer({
 					compressor.ratio.value = 1;
 					compressor.attack.value = 0;
 					compressor.release.value = 0;
+					makeupGain = 1.0; // 0 dB
 					break;
 				case "low":
 					compressor.threshold.value = -24;
@@ -203,6 +210,8 @@ export function useStemPlayer({
 					compressor.ratio.value = 3;
 					compressor.attack.value = 0.003;
 					compressor.release.value = 0.25;
+					// Makeup gain: ~6 dB to compensate for gentle compression
+					makeupGain = Math.pow(10, 6 / 20);
 					break;
 				case "medium":
 					compressor.threshold.value = -18;
@@ -210,6 +219,8 @@ export function useStemPlayer({
 					compressor.ratio.value = 6;
 					compressor.attack.value = 0.003;
 					compressor.release.value = 0.15;
+					// Makeup gain: ~9 dB to compensate for moderate compression
+					makeupGain = Math.pow(10, 9 / 20);
 					break;
 				case "high":
 					compressor.threshold.value = -12;
@@ -217,6 +228,64 @@ export function useStemPlayer({
 					compressor.ratio.value = 12;
 					compressor.attack.value = 0.001;
 					compressor.release.value = 0.1;
+					// Makeup gain: ~12 dB to compensate for heavy compression
+					makeupGain = Math.pow(10, 12 / 20);
+					break;
+			}
+
+			// Apply gain with makeup gain compensation
+			node.gainNode.gain.value = state.gain * makeupGain;
+
+			// Apply EQ settings
+			// Low-shelf (200 Hz)
+			switch (state.eqLow) {
+				case "off":
+					node.eqLowNode.gain.value = 0;
+					break;
+				case "low":
+					node.eqLowNode.gain.value = 3; // +3 dB
+					break;
+				case "medium":
+					node.eqLowNode.gain.value = 6; // +6 dB
+					break;
+				case "high":
+					node.eqLowNode.gain.value = 9; // +9 dB
+					break;
+			}
+
+			// Mid-band peaking (1 kHz) - more aggressive than shelves
+			switch (state.eqMid) {
+				case "off":
+					node.eqMidNode.gain.value = 0;
+					node.eqMidNode.Q.value = 1.0;
+					break;
+				case "low":
+					node.eqMidNode.gain.value = 6; // +6 dB (more noticeable)
+					node.eqMidNode.Q.value = 2.0; // Narrower, more focused
+					break;
+				case "medium":
+					node.eqMidNode.gain.value = 9; // +9 dB
+					node.eqMidNode.Q.value = 2.5; // Even narrower
+					break;
+				case "high":
+					node.eqMidNode.gain.value = 12; // +12 dB (very aggressive)
+					node.eqMidNode.Q.value = 3.0; // Very narrow, surgical boost
+					break;
+			}
+
+			// High-shelf (4 kHz)
+			switch (state.eqHigh) {
+				case "off":
+					node.eqHighNode.gain.value = 0;
+					break;
+				case "low":
+					node.eqHighNode.gain.value = 3; // +3 dB
+					break;
+				case "medium":
+					node.eqHighNode.gain.value = 6; // +6 dB
+					break;
+				case "high":
+					node.eqHighNode.gain.value = 9; // +9 dB
 					break;
 			}
 
@@ -345,6 +414,54 @@ export function useStemPlayer({
 		[stemConfigs, setStemConfigs, stems],
 	);
 
+	const cycleStemEqLow = useCallback(
+		(stemName: string) => {
+			const currentLevel: StemEqLevel = stems[stemName]?.eqLow ?? "off";
+			const levels: StemEqLevel[] = ["off", "low", "medium", "high"];
+			const currentIndex = levels.indexOf(currentLevel);
+			const nextIndex = (currentIndex + 1) % levels.length;
+			const nextLevel = levels[nextIndex];
+
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], eqLow: nextLevel },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
+
+	const cycleStemEqMid = useCallback(
+		(stemName: string) => {
+			const currentLevel: StemEqLevel = stems[stemName]?.eqMid ?? "off";
+			const levels: StemEqLevel[] = ["off", "low", "medium", "high"];
+			const currentIndex = levels.indexOf(currentLevel);
+			const nextIndex = (currentIndex + 1) % levels.length;
+			const nextLevel = levels[nextIndex];
+
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], eqMid: nextLevel },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
+
+	const cycleStemEqHigh = useCallback(
+		(stemName: string) => {
+			const currentLevel: StemEqLevel = stems[stemName]?.eqHigh ?? "off";
+			const levels: StemEqLevel[] = ["off", "low", "medium", "high"];
+			const currentIndex = levels.indexOf(currentLevel);
+			const nextIndex = (currentIndex + 1) % levels.length;
+			const nextLevel = levels[nextIndex];
+
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], eqHigh: nextLevel },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
+
 	return {
 		// Loading
 		isLoading,
@@ -372,6 +489,9 @@ export function useStemPlayer({
 		toggleMute,
 		toggleSolo,
 		cycleStemCompression,
+		cycleStemEqLow,
+		cycleStemEqMid,
+		cycleStemEqHigh,
 
 		// Master volume
 		masterVolume,

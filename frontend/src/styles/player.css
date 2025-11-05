@@ -48,7 +48,11 @@
 
 .mute-button,
 .solo-button,
-.reset-gain {
+.reset-gain,
+.compression-button,
+.eq-low-button,
+.eq-mid-button,
+.eq-high-button {
 	width: 2rem;
 	padding: 0.3rem 0.5rem;
 	font-size: 0.85rem;
@@ -67,7 +71,11 @@
 
 .waveform-row:hover .mute-button,
 .waveform-row:hover .solo-button,
-.waveform-row:hover .reset-gain {
+.waveform-row:hover .reset-gain,
+.waveform-row:hover .compression-button,
+.waveform-row:hover .eq-low-button,
+.waveform-row:hover .eq-mid-button,
+.waveform-row:hover .eq-high-button {
 	opacity: 1;
 }
 
@@ -136,6 +144,220 @@
 
 .solo-button.soloed:hover svg {
 	color: #ffc266 !important;
+}
+
+/* Compression button states - colored backgrounds matching stem colors */
+.compression-button:hover {
+	outline: 2px solid #888;
+	outline-offset: -1px;
+	opacity: 1;
+}
+
+/* Compression off state - grey (default) */
+.compression-button.off {
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.1);
+	color: #888;
+}
+
+/* Compression low state - turquoise (bass color) */
+.compression-button.low {
+	background: rgba(72, 219, 251, 0.15);
+	border-color: #48dbfb;
+	color: #48dbfb;
+	opacity: 1;
+}
+
+.compression-button.low:hover {
+	background: rgba(72, 219, 251, 0.25);
+	border-color: #5fe5ff;
+	color: #5fe5ff;
+}
+
+/* Compression medium state - gold (drums color) */
+.compression-button.medium {
+	background: rgba(255, 159, 67, 0.15);
+	border-color: #ff9f43;
+	color: #ff9f43;
+	opacity: 1;
+}
+
+.compression-button.medium:hover {
+	background: rgba(255, 159, 67, 0.25);
+	border-color: #ffb366;
+	color: #ffb366;
+}
+
+/* Compression high state - salmon (vocals color) */
+.compression-button.high {
+	background: rgba(255, 107, 107, 0.15);
+	border-color: #ff6b6b;
+	color: #ff6b6b;
+	opacity: 1;
+}
+
+.compression-button.high:hover {
+	background: rgba(255, 107, 107, 0.25);
+	border-color: #ff8585;
+	color: #ff8585;
+}
+
+/* EQ button states - using complementary colors for visual distinction */
+
+/* EQ Low-shelf button */
+.eq-low-button:hover {
+	outline: 2px solid #888;
+	outline-offset: -1px;
+	opacity: 1;
+}
+
+.eq-low-button.off {
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.1);
+	color: #888;
+}
+
+.eq-low-button.low {
+	background: rgba(138, 43, 226, 0.15);
+	border-color: #8a2be2;
+	color: #9d4edd;
+	opacity: 1;
+}
+
+.eq-low-button.low:hover {
+	background: rgba(138, 43, 226, 0.25);
+	border-color: #9d4edd;
+	color: #b085f5;
+}
+
+.eq-low-button.medium {
+	background: rgba(138, 43, 226, 0.2);
+	border-color: #9d4edd;
+	color: #b085f5;
+	opacity: 1;
+}
+
+.eq-low-button.medium:hover {
+	background: rgba(138, 43, 226, 0.3);
+	border-color: #b085f5;
+	color: #c4a3ff;
+}
+
+.eq-low-button.high {
+	background: rgba(138, 43, 226, 0.25);
+	border-color: #b085f5;
+	color: #c4a3ff;
+	opacity: 1;
+}
+
+.eq-low-button.high:hover {
+	background: rgba(138, 43, 226, 0.35);
+	border-color: #c4a3ff;
+	color: #d4b5ff;
+}
+
+/* EQ Mid-band button */
+.eq-mid-button:hover {
+	outline: 2px solid #888;
+	outline-offset: -1px;
+	opacity: 1;
+}
+
+.eq-mid-button.off {
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.1);
+	color: #888;
+}
+
+.eq-mid-button.low {
+	background: rgba(34, 197, 94, 0.15);
+	border-color: #22c55e;
+	color: #4ade80;
+	opacity: 1;
+}
+
+.eq-mid-button.low:hover {
+	background: rgba(34, 197, 94, 0.25);
+	border-color: #4ade80;
+	color: #86efac;
+}
+
+.eq-mid-button.medium {
+	background: rgba(34, 197, 94, 0.2);
+	border-color: #4ade80;
+	color: #86efac;
+	opacity: 1;
+}
+
+.eq-mid-button.medium:hover {
+	background: rgba(34, 197, 94, 0.3);
+	border-color: #86efac;
+	color: #a7f3d0;
+}
+
+.eq-mid-button.high {
+	background: rgba(34, 197, 94, 0.25);
+	border-color: #86efac;
+	color: #a7f3d0;
+	opacity: 1;
+}
+
+.eq-mid-button.high:hover {
+	background: rgba(34, 197, 94, 0.35);
+	border-color: #a7f3d0;
+	color: #bbf7d0;
+}
+
+/* EQ High-shelf button */
+.eq-high-button:hover {
+	outline: 2px solid #888;
+	outline-offset: -1px;
+	opacity: 1;
+}
+
+.eq-high-button.off {
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.1);
+	color: #888;
+}
+
+.eq-high-button.low {
+	background: rgba(236, 72, 153, 0.15);
+	border-color: #ec4899;
+	color: #f472b6;
+	opacity: 1;
+}
+
+.eq-high-button.low:hover {
+	background: rgba(236, 72, 153, 0.25);
+	border-color: #f472b6;
+	color: #f9a8d4;
+}
+
+.eq-high-button.medium {
+	background: rgba(236, 72, 153, 0.2);
+	border-color: #f472b6;
+	color: #f9a8d4;
+	opacity: 1;
+}
+
+.eq-high-button.medium:hover {
+	background: rgba(236, 72, 153, 0.3);
+	border-color: #f9a8d4;
+	color: #fbcfe8;
+}
+
+.eq-high-button.high {
+	background: rgba(236, 72, 153, 0.25);
+	border-color: #f9a8d4;
+	color: #fbcfe8;
+	opacity: 1;
+}
+
+.eq-high-button.high:hover {
+	background: rgba(236, 72, 153, 0.35);
+	border-color: #fbcfe8;
+	color: #fce7f3;
 }
 
 /* Range Input Styling */

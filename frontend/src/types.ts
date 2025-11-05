@@ -12,6 +12,9 @@ export interface StemAudioData {
 export interface StemAudioNode {
 	buffer: AudioBuffer;
 	gainNode: GainNode;
+	eqLowNode: BiquadFilterNode; // Low-shelf filter
+	eqMidNode: BiquadFilterNode; // Peaking filter for mids
+	eqHighNode: BiquadFilterNode; // High-shelf filter
 	compressorNode: DynamicsCompressorNode;
 	outputGainNode: GainNode;
 	initialGain: number; // Computed from metadata.stem_gain_adjustment_db
@@ -84,12 +87,16 @@ export interface EqConfig {
 }
 
 export type StemCompressionLevel = "off" | "low" | "medium" | "high";
+export type StemEqLevel = "off" | "low" | "medium" | "high";
 
 export interface StemUserConfig {
 	gain: number; // Volume slider value (0-2)
 	muted: boolean; // Mute button state
 	soloed: boolean; // Solo button state
 	compression: StemCompressionLevel; // Compression level
+	eqLow: StemEqLevel; // Low-shelf EQ
+	eqMid: StemEqLevel; // Mid-band EQ
+	eqHigh: StemEqLevel; // High-shelf EQ
 }
 
 export interface EffectsChainConfig {
@@ -124,4 +131,7 @@ export interface StemViewModel {
 	muted: boolean;
 	soloed: boolean;
 	compression: StemCompressionLevel;
+	eqLow: StemEqLevel;
+	eqMid: StemEqLevel;
+	eqHigh: StemEqLevel;
 }

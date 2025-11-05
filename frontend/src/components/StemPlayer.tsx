@@ -1,4 +1,6 @@
-import { Gauge, Music, Volume2, VolumeX } from "lucide-react";
+import { Music, Volume2, VolumeX } from "lucide-react";
+import { CompressionIcon } from "./CompressionIcon";
+import { EqIcon } from "./EqIcon";
 import {
 	forwardRef,
 	useCallback,
@@ -124,6 +126,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			toggleMute,
 			toggleSolo,
 			cycleStemCompression,
+			cycleStemEqLow,
+			cycleStemEqMid,
+			cycleStemEqHigh,
 			formatTime,
 			masterVolume,
 			setMasterVolume,
@@ -403,21 +408,34 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 											<button
 												type="button"
 												onClick={() => cycleStemCompression(stemName)}
-												className={`compression-button ${stem.compression !== "off" ? "active" : ""}`}
+												className={`compression-button ${stem.compression}`}
 												title={`Compression: ${stem.compression}`}
 											>
-												<Gauge
-													className="h-4 w-4"
-													color={
-														stem.compression === "high"
-															? "#ff6b6b"
-															: stem.compression === "medium"
-																? "#feca57"
-																: stem.compression === "low"
-																	? "#48dbfb"
-																	: "currentColor"
-													}
-												/>
+												<CompressionIcon level={stem.compression} className="h-4 w-4" />
+											</button>
+											<button
+												type="button"
+												onClick={() => cycleStemEqLow(stemName)}
+												className={`eq-low-button ${stem.eqLow}`}
+												title={`Low EQ: ${stem.eqLow}`}
+											>
+												<EqIcon band="low" level={stem.eqLow} className="h-4 w-4" />
+											</button>
+											<button
+												type="button"
+												onClick={() => cycleStemEqMid(stemName)}
+												className={`eq-mid-button ${stem.eqMid}`}
+												title={`Mid EQ: ${stem.eqMid}`}
+											>
+												<EqIcon band="mid" level={stem.eqMid} className="h-4 w-4" />
+											</button>
+											<button
+												type="button"
+												onClick={() => cycleStemEqHigh(stemName)}
+												className={`eq-high-button ${stem.eqHigh}`}
+												title={`High EQ: ${stem.eqHigh}`}
+											>
+												<EqIcon band="high" level={stem.eqHigh} className="h-4 w-4" />
 											</button>
 										</div>
 									</div>

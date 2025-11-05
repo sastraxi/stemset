@@ -34,7 +34,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.25rem;
-	width: 200px;
+	width: 212px;
 	flex-shrink: 0;
 }
 
@@ -69,6 +69,13 @@
 		display: none !important;
 	}
 
+	/* Hide EQ buttons on mobile - keep compression visible */
+	.waveform-controls .eq-low-button,
+	.waveform-controls .eq-mid-button,
+	.waveform-controls .eq-high-button {
+		display: none !important;
+	}
+
 	/* Ruler controls area on mobile - empty but maintains space for alignment */
 	.waveform-row:first-child .waveform-controls {
 		width: 2rem !important;
@@ -81,6 +88,8 @@
 	color: #e8e8e8;
 	font-size: 0.85rem;
 	min-width: 60px;
+	position: relative;
+	top: 5px;
 }
 
 .waveform-controls .volume-slider {
@@ -93,7 +102,6 @@
 	width: 100%;
 	gap: 0rem;
 	align-items: center;
-	padding-bottom: 0.25rem;
 }
 
 .waveform-controls .volume-label {
