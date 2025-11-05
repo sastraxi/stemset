@@ -499,7 +499,7 @@
 
 .parametric-bands {
 	display: flex;
-	flex-direction: column;
+	flex-direction: column-reverse;
 	gap: 1.25rem;
 	margin-top: 0.75rem;
 	padding: 0.5rem 0;
