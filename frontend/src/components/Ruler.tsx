@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RulerProps {
+	containerRef: React.RefObject<HTMLDivElement>;
 	currentTime: number;
 	duration: number;
 	previewTime?: number; // Optional preview time for scrubbing visualization
@@ -20,6 +21,7 @@ interface RulerProps {
  * - Same interaction logic as WaveformVisualization
  */
 export function Ruler({
+	containerRef,
 	currentTime,
 	duration,
 	previewTime,
@@ -28,7 +30,6 @@ export function Ruler({
 	height = 48,
 }: RulerProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const containerRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 
 	// Format time in MM:SS format
@@ -39,7 +40,7 @@ export function Ruler({
 	};
 
 	// Render ruler with time codes and grid lines
-	const renderRuler = () => {
+	const renderRuler = useCallback(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 
@@ -50,13 +51,14 @@ export function Ruler({
 		if (!container) return;
 
 		// Set canvas size to match container (responsive)
-		const dpr = window.devicePixelRatio || 1;
 		const rect = container.getBoundingClientRect();
-		canvas.width = rect.width * dpr;
+		const dpr = window.devicePixelRatio || 1;
+
+		canvas.width = rect.width * dpr * 1;
 		canvas.height = height * dpr;
 		// Set CSS dimensions to maintain proper display size
-		canvas.style.width = `${rect.width}px`;
-		canvas.style.height = `${height}px`;
+		// canvas.style.width = `${rect.width}px`;
+		// canvas.style.height = `${height}px`;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -66,6 +68,7 @@ export function Ruler({
 		const cursorX = progress * canvas.width;
 
 		// Background
+		// ctx.scale(canvas.width / (2 * rect.width), 1);
 		ctx.fillStyle = "#1a1a1a";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -146,7 +149,7 @@ export function Ruler({
 			ctx.closePath();
 			ctx.fill();
 		}
-	};
+	}, [containerRef]);
 
 	// Re-render on time change, preview time change, or window resize
 	useEffect(() => {
@@ -289,7 +292,7 @@ export function Ruler({
 	}, [isDragging, onSeek, onPreview, previewTime, duration]);
 
 	return (
-		<div ref={containerRef} className="ruler-container overflow-hidden">
+		<div className="ruler-container overflow-hidden">
 			<canvas
 				ref={canvasRef}
 				className="ruler-canvas"

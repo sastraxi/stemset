@@ -15,6 +15,7 @@
 	align-items: center;
 	padding: 0;
 	margin: 0;
+	margin-right: 0rem;
 	/* Add horizontal margin to prevent outline clipping */
 	transition: background 0.15s;
 }
@@ -27,6 +28,7 @@
 	.waveform-row {
 		gap: 0.25rem;
 		margin: 0;
+		margin-right: 0;
 	}
 }
 
@@ -142,8 +144,8 @@
 }
 
 .waveform-container {
+	flex-grow: 1;
 	position: relative;
-	width: 100%;
 	background: rgba(0, 0, 0, 0.2);
 	border: none;
 	border-radius: 0;
@@ -157,14 +159,27 @@
 
 .waveform-canvas {
 	display: block;
-	width: 100%;
-	height: 108px;
 	cursor: pointer;
+	width: 100%;
 	transition: opacity 0.2s;
 	touch-action: none;
 
 	/* Smooth image rendering for better waveform display */
 	image-rendering: -webkit-optimize-contrast;
+}
+
+/* Desktop height calculation */
+@media (min-width: 769px) {
+	.waveform-canvas {
+		height: clamp(
+			120px,
+			calc(
+				(100vh - (9.25rem + 60px + 48px + var(--effects-bar-height))) /
+					var(--stem-count)
+			),
+			200px
+		);
+	}
 }
 
 @media (max-width: 768px) {
@@ -200,8 +215,8 @@
 
 /* Ruler Component */
 .ruler-container {
+	flex-grow: 1;
 	position: relative;
-	width: 100%;
 	background: transparent;
 	overflow: hidden;
 	border-radius: 0;

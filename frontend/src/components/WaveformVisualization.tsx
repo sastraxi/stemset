@@ -135,25 +135,18 @@ export function WaveformVisualization({
 		if (!container) return;
 
 		// Set canvas size to match container (responsive)
+		const rect = container.parentElement!.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
-		const rect = container.getBoundingClientRect();
 
 		// Skip rendering if container has no dimensions yet
 		if (rect.width === 0 || rect.height === 0) {
 			return;
 		}
 
-		canvas.width = rect.width * dpr;
-		canvas.height = 108 * dpr; // Fixed height for consistent UI
-		// Set CSS dimensions to maintain proper display size
-		canvas.style.width = `${rect.width}px`;
-		canvas.style.height = "128px";
+		canvas.width = rect.width * dpr * 1;
+		canvas.height = rect.height * dpr;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-		// Enable high-quality image smoothing for better downscaling
-		ctx.imageSmoothingEnabled = true;
-		ctx.imageSmoothingQuality = "high";
 
 		// Use preview time if dragging, otherwise use current time
 		const displayTime = previewTime !== undefined ? previewTime : currentTime;

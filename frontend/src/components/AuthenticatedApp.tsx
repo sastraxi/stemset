@@ -43,6 +43,16 @@ export function AuthenticatedApp({
 	sourceParam,
 	initialStateParam,
 }: AuthenticatedAppProps) {
+	useEffect(() => {
+		const handleResize = () => {
+			console.log("Window resized, new width:", window.innerWidth);
+		};
+		window.addEventListener("resize", handleResize);
+		return () => {
+			window.removeEventListener("resize", handleResize);
+		};
+	}, []);
+
 	const [selectedProfile, setSelectedProfile] = useState<string | null>(
 		initialProfile || null,
 	);

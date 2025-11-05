@@ -1,6 +1,4 @@
 import { Music, Volume2, VolumeX } from "lucide-react";
-import { CompressionIcon } from "./CompressionIcon";
-import { EqIcon } from "./EqIcon";
 import {
 	forwardRef,
 	useCallback,
@@ -16,7 +14,9 @@ import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useStemPlayer } from "../hooks/useStemPlayer";
+import { CompressionIcon } from "./CompressionIcon";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { EqIcon } from "./EqIcon";
 import { CompressorPanel } from "./effects/CompressorPanel";
 import { EqPanel } from "./effects/EqPanel";
 import { MasterVolumeControl } from "./effects/MasterVolumeControl";
@@ -239,6 +239,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			return () => window.removeEventListener("keydown", handleKeyDown);
 		}, [isPlaying, play, pause, stop]);
 
+		const containerRef = useRef<HTMLDivElement>(null);
+
 		// Dump profile info once after load completes
 		const hasLoggedRef =
 			// biome-ignore lint/suspicious/noExplicitAny: WIP
@@ -339,11 +341,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				>
 					<div className="waveforms-section">
 						{/* Ruler row */}
-						<div className="waveform-row">
+						<div className="waveform-row" ref={containerRef}>
 							<div className="waveform-controls">
 								{/* Empty controls area to maintain alignment */}
 							</div>
 							<Ruler
+								containerRef={containerRef}
 								currentTime={currentTime}
 								duration={duration}
 								previewTime={previewTime || undefined}
@@ -367,7 +370,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 										<div className="waveform-volume-control">
 											<VolumeSlider
 												volume={stem.gain}
-												onVolumeChange={(volume) => setStemGain(stemName, volume)}
+												onVolumeChange={(volume) =>
+													setStemGain(stemName, volume)
+												}
 												size="small"
 												isMuted={stem.muted}
 												onDoubleClick={() => resetStemGain(stemName)}
@@ -415,7 +420,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												className={`compression-button ${stem.compression}`}
 												title={`Compression: ${stem.compression}`}
 											>
-												<CompressionIcon level={stem.compression} className="h-4 w-4" />
+												<CompressionIcon
+													level={stem.compression}
+													className="h-4 w-4"
+												/>
 											</button>
 											<button
 												type="button"
@@ -423,7 +431,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												className={`eq-low-button ${stem.eqLow}`}
 												title={`Low EQ: ${stem.eqLow}`}
 											>
-												<EqIcon band="low" level={stem.eqLow} className="h-4 w-4" />
+												<EqIcon
+													band="low"
+													level={stem.eqLow}
+													className="h-4 w-4"
+												/>
 											</button>
 											<button
 												type="button"
@@ -431,7 +443,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												className={`eq-mid-button ${stem.eqMid}`}
 												title={`Mid EQ: ${stem.eqMid}`}
 											>
-												<EqIcon band="mid" level={stem.eqMid} className="h-4 w-4" />
+												<EqIcon
+													band="mid"
+													level={stem.eqMid}
+													className="h-4 w-4"
+												/>
 											</button>
 											<button
 												type="button"
@@ -439,7 +455,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 												className={`eq-high-button ${stem.eqHigh}`}
 												title={`High EQ: ${stem.eqHigh}`}
 											>
-												<EqIcon band="high" level={stem.eqHigh} className="h-4 w-4" />
+												<EqIcon
+													band="high"
+													level={stem.eqHigh}
+													className="h-4 w-4"
+												/>
 											</button>
 										</div>
 									</div>

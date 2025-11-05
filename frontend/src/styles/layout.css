@@ -5,6 +5,10 @@
 	flex-direction: column;
 }
 
+:root {
+	--effects-bar-height: 180px;
+}
+
 .app > header {
 	background: transparent;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -47,6 +51,7 @@
 	flex: 1;
 	padding: 1.25rem 1.75rem;
 	z-index: 2;
+	position: relative;
 }
 
 @media (max-width: 768px) {
