@@ -54,11 +54,11 @@ export function Ruler({
 		const rect = container.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
 
-		canvas.width = rect.width * dpr * 1;
+		canvas.width = rect.width * dpr;
 		canvas.height = height * dpr;
 		// Set CSS dimensions to maintain proper display size
-		// canvas.style.width = `${rect.width}px`;
-		// canvas.style.height = `${height}px`;
+		canvas.style.width = `${rect.width}px`;
+		canvas.style.height = `${height}px`;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
