@@ -81,6 +81,7 @@ strategies:
 
   # Guitar L/R separation with configurable ILD threshold
   # Produces 6 stems: vocals, drums, bass, guitar_left, guitar_right, other
+  # TODO: the stereo_spatial model isn't working well at all, so use at own peril
   guitar_lr_separation:
     _: "vocals_mel_band_roformer.ckpt"
     vocals: vocals
