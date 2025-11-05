@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RulerProps {
-	containerRef: React.RefObject<HTMLDivElement>;
 	currentTime: number;
 	duration: number;
 	previewTime?: number; // Optional preview time for scrubbing visualization
@@ -21,7 +20,6 @@ interface RulerProps {
  * - Same interaction logic as WaveformVisualization
  */
 export function Ruler({
-	containerRef,
 	currentTime,
 	duration,
 	previewTime,
@@ -30,6 +28,7 @@ export function Ruler({
 	height = 48,
 }: RulerProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 
 	// Format time in MM:SS format
@@ -51,14 +50,14 @@ export function Ruler({
 		if (!container) return;
 
 		// Set canvas size to match container (responsive)
-		const rect = container.getBoundingClientRect();
+		const rect = container.parentElement!.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
 
 		canvas.width = rect.width * dpr;
 		canvas.height = height * dpr;
 		// Set CSS dimensions to maintain proper display size
-		canvas.style.width = `${rect.width}px`;
-		canvas.style.height = `${height}px`;
+		// canvas.style.width = `${rect.width}px`;
+		// canvas.style.height = `${height}px`;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -292,7 +291,7 @@ export function Ruler({
 	}, [isDragging, onSeek, onPreview, previewTime, duration]);
 
 	return (
-		<div className="ruler-container overflow-hidden">
+		<div ref={containerRef} className="ruler-container overflow-hidden">
 			<canvas
 				ref={canvasRef}
 				className="ruler-canvas"

@@ -239,8 +239,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			return () => window.removeEventListener("keydown", handleKeyDown);
 		}, [isPlaying, play, pause, stop]);
 
-		const containerRef = useRef<HTMLDivElement>(null);
-
 		// Dump profile info once after load completes
 		const hasLoggedRef =
 			// biome-ignore lint/suspicious/noExplicitAny: WIP
@@ -341,12 +339,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				>
 					<div className="waveforms-section">
 						{/* Ruler row */}
-						<div className="waveform-row" ref={containerRef}>
+						<div className="waveform-row">
 							<div className="waveform-controls">
 								{/* Empty controls area to maintain alignment */}
 							</div>
 							<Ruler
-								containerRef={containerRef}
 								currentTime={currentTime}
 								duration={duration}
 								previewTime={previewTime || undefined}
