@@ -59,6 +59,7 @@
 }
 
 .eq-section,
+.parametric-eq-section,
 .limiter-section,
 .reverb-section,
 .master-volume-section,
@@ -74,6 +75,7 @@
 }
 
 .eq-section:hover,
+.parametric-eq-section:hover,
 .limiter-section:hover,
 .reverb-section:hover,
 .master-volume-section:hover {
@@ -156,7 +158,8 @@
 .eq-header,
 .limiter-header,
 .reverb-header,
-.master-volume-header{
+.master-volume-header,
+.parametric-eq-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -168,7 +171,8 @@
 .eq-header h4,
 .limiter-header h4,
 .reverb-header h4,
-.master-volume-header h4 {
+.master-volume-header h4,
+.parametric-eq-header h4 {
 	font-size: 0.7rem;
 	font-weight: 600;
 	color: #e8e8e8;
@@ -204,7 +208,8 @@
 
 .eq-header .reset-gain,
 .limiter-header .reset-gain,
-.reverb-header .reset-gain {
+.reverb-header .reset-gain,
+.parametric-eq-header .reset-gain {
 	opacity: 0.3;
 	transition: opacity 0.2s;
 	font-size: 0.85rem;
@@ -213,7 +218,8 @@
 
 .eq-section:hover .reset-gain,
 .limiter-section:hover .reset-gain,
-.reverb-section:hover .reset-gain {
+.reverb-section:hover .reset-gain,
+.parametric-eq-section:hover .reset-gain {
 	opacity: 1;
 }
 
@@ -484,4 +490,160 @@
 .master-volume-section .mute-button {
 	padding: 0.2rem 0.35rem;
 	opacity: 1;
+}
+
+/* Parametric EQ Styles */
+.parametric-eq-section {
+	width: 400px;
+}
+
+.parametric-bands {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	margin-top: 0.75rem;
+	padding: 0.5rem 0;
+}
+
+.parametric-band {
+	display: flex;
+	flex-direction: row;
+	gap: 1.25rem;
+	padding: 0 0.5rem;
+	align-items: center;
+}
+
+.parametric-band-q {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.parametric-band-sliders {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	flex: 1;
+}
+
+.parametric-band-name {
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #888;
+	text-align: center;
+	margin-bottom: 0.25rem;
+}
+
+.parametric-slider-row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.parametric-slider-label {
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #888;
+}
+
+.parametric-slider-container {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.parametric-horizontal-slider {
+	width: 100%;
+	height: 4px;
+	-webkit-appearance: none;
+	appearance: none;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 2px;
+	outline: none;
+	cursor: pointer;
+}
+
+.parametric-horizontal-slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #4a9eff;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.parametric-horizontal-slider::-webkit-slider-thumb:hover {
+	background: #6bb0ff;
+}
+
+.parametric-horizontal-slider::-moz-range-thumb {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #4a9eff;
+	cursor: pointer;
+	border: none;
+	transition: background 0.2s;
+}
+
+.parametric-horizontal-slider::-moz-range-thumb:hover {
+	background: #6bb0ff;
+}
+
+.parametric-slider-value {
+	font-size: 0.65rem;
+	color: #888;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.parametric-band-effect {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2rem;
+}
+
+.parametric-effect-placeholder {
+	font-size: 1.2rem;
+	color: #444;
+	user-select: none;
+}
+
+/* Vertical Drag Control Styles */
+.vertical-drag-control {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.vertical-drag-button {
+	width: 3.5rem;
+	height: 3.5rem;
+	border: 2px solid;
+	border-radius: 8px;
+	cursor: grab;
+	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	user-select: none;
+	touch-action: none;
+}
+
+.vertical-drag-button:active {
+	cursor: grabbing;
+	transform: scale(0.95);
+}
+
+.vertical-drag-value {
+	font-size: 0.65rem;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	min-width: 3rem;
 }

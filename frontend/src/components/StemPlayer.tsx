@@ -20,6 +20,7 @@ import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { CompressorPanel } from "./effects/CompressorPanel";
 import { EqPanel } from "./effects/EqPanel";
 import { MasterVolumeControl } from "./effects/MasterVolumeControl";
+import { ParametricEqPanel } from "./effects/ParametricEqPanel";
 import { ReverbPanel } from "./effects/ReverbPanel";
 import { MobileVolumeControl } from "./MobileVolumeControl";
 import { Ruler } from "./Ruler";
@@ -133,6 +134,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			masterVolume,
 			setMasterVolume,
 			effectsConfig,
+			updateParametricEqBand,
+			setParametricEqEnabled,
+			resetParametricEq,
 			updateEqBand,
 			setEqEnabled,
 			resetEq,
@@ -466,6 +470,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 						<MasterVolumeControl
 							volume={masterVolume}
 							onVolumeChange={setMasterVolume}
+						/>
+						<ParametricEqPanel
+							config={effectsConfig.parametricEq}
+							onUpdate={updateParametricEqBand}
+							onSetEnabled={setParametricEqEnabled}
+							onReset={resetParametricEq}
 						/>
 						<EqPanel
 							config={effectsConfig.eq}

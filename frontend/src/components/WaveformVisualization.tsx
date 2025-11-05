@@ -147,7 +147,7 @@ export function WaveformVisualization({
 		canvas.height = 108 * dpr; // Fixed height for consistent UI
 		// Set CSS dimensions to maintain proper display size
 		canvas.style.width = `${rect.width}px`;
-		canvas.style.height = "108px";
+		canvas.style.height = "128px";
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 

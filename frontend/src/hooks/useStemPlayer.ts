@@ -63,6 +63,12 @@ export interface UseStemPlayerResult {
 
 	// Effects
 	effectsConfig: EffectsChainConfig;
+	updateParametricEqBand: (
+		band: "lowBand" | "midBand" | "highBand",
+		changes: Partial<EffectsChainConfig["parametricEq"]["lowBand"]>,
+	) => void;
+	setParametricEqEnabled: (enabled: boolean) => void;
+	resetParametricEq: () => void;
 	updateEqBand: (
 		id: string,
 		changes: Partial<{
@@ -301,12 +307,13 @@ export function useStemPlayer({
 	}, [stems, stemNodes]);
 
 	// 7. Audio effects (each effect persists its own config independently)
-	const { eq, compressor, reverb, stereoExpander } = useAudioEffects({
-		audioContext,
-		masterInput,
-		masterOutput,
-		recordingId,
-	});
+	const { parametricEq, eq, compressor, reverb, stereoExpander } =
+		useAudioEffects({
+			audioContext,
+			masterInput,
+			masterOutput,
+			recordingId,
+		});
 
 	// 8. Playback control (use saved position or 0 if none)
 	const { isPlaying, currentTime, play, pause, stop, seek, formatTime } =
@@ -499,11 +506,15 @@ export function useStemPlayer({
 
 		// Effects
 		effectsConfig: {
+			parametricEq: parametricEq.config,
 			eq: eq.config,
 			compressor: compressor.config,
 			reverb: reverb.config,
 			stereoExpander: stereoExpander.config,
 		},
+		updateParametricEqBand: parametricEq.updateBand,
+		setParametricEqEnabled: parametricEq.setEnabled,
+		resetParametricEq: parametricEq.reset,
 		updateEqBand: eq.updateBand,
 		setEqEnabled: eq.setEnabled,
 		resetEq: eq.reset,

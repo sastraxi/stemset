@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type {
 	CompressorConfig,
 	EqConfig,
+	ParametricEqConfig,
 	ReverbConfig,
 	StereoExpanderConfig,
 } from "@/types";
@@ -9,12 +10,15 @@ import type { UseCompressorEffectResult } from "./effects/useCompressorEffect";
 import { useCompressorEffect } from "./effects/useCompressorEffect";
 import type { UseEqEffectResult } from "./effects/useEqEffect";
 import { useEqEffect } from "./effects/useEqEffect";
+import type { UseParametricEqEffectResult } from "./effects/useParametricEqEffect";
+import { useParametricEqEffect } from "./effects/useParametricEqEffect";
 import type { UseReverbEffectResult } from "./effects/useReverbEffect";
 import { useReverbEffect } from "./effects/useReverbEffect";
 import type { UseStereoExpanderEffectResult } from "./effects/useStereoExpanderEffect";
 import { useStereoExpanderEffect } from "./effects/useStereoExpanderEffect";
 
 export interface AudioEffectsConfig {
+	parametricEqConfig?: ParametricEqConfig;
 	eqConfig?: EqConfig;
 	compressorConfig?: CompressorConfig;
 	reverbConfig?: ReverbConfig;
@@ -29,6 +33,10 @@ export interface UseAudioEffectsOptions {
 }
 
 export interface UseAudioEffectsResult {
+	parametricEq: Omit<
+		UseParametricEqEffectResult,
+		"inputNode" | "outputNode" | "nodes" | "isReady"
+	>;
 	eq: Omit<UseEqEffectResult, "inputNode" | "outputNode" | "nodes" | "isReady">;
 	compressor: Omit<
 		UseCompressorEffectResult,
@@ -45,7 +53,7 @@ export interface UseAudioEffectsResult {
  * Audio effects orchestrator hook.
  *
  * Composes all effect hooks and manages the audio graph routing:
- * masterInput → EQ → stereoExpander → reverb → compressor → masterOutput
+ * masterInput → parametricEQ → EQ → stereoExpander → reverb → compressor → masterOutput
  *
  * Each effect now manages its own persistence directly via useConfigPersistence.
  */
@@ -55,6 +63,11 @@ export function useAudioEffects({
 	masterOutput,
 	recordingId,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
+	const parametricEq = useParametricEqEffect({
+		audioContext,
+		recordingId,
+	});
+
 	const eq = useEqEffect({
 		audioContext,
 		recordingId,
@@ -75,7 +88,7 @@ export function useAudioEffects({
 		recordingId,
 	});
 
-	const allEffects = [eq, stereoExpander, reverb, compressor];
+	const allEffects = [parametricEq, eq, stereoExpander, reverb, compressor];
 
 	// The Grand Central Wiring Effect
 	useEffect(() => {
@@ -172,6 +185,8 @@ export function useAudioEffects({
 		audioContext,
 		masterInput,
 		masterOutput,
+		parametricEq.isReady,
+		parametricEq.config.enabled,
 		eq.isReady,
 		eq.config.enabled,
 		stereoExpander.isReady,
@@ -186,6 +201,7 @@ export function useAudioEffects({
 	]);
 
 	return {
+		parametricEq,
 		eq,
 		compressor,
 		reverb,

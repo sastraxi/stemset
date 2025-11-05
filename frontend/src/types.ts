@@ -32,6 +32,19 @@ export interface CompressorConfig {
 	enabled: boolean;
 }
 
+export interface ParametricEqBandConfig {
+	frequency: number; // Hz
+	gain: number; // dB, -12 to +12
+	q: number; // 0.3 to 8 (logarithmic scale)
+}
+
+export interface ParametricEqConfig {
+	lowBand: ParametricEqBandConfig; // 20-500Hz
+	midBand: ParametricEqBandConfig; // 200-5000Hz
+	highBand: ParametricEqBandConfig; // 1000-20000Hz
+	enabled: boolean;
+}
+
 export const IMPULSES = {
 	"sparkling-hall": "Sparkling Hall",
 	"ambience-close-mic": "Ambience Close Mic",
@@ -100,11 +113,12 @@ export interface StemUserConfig {
 }
 
 export interface EffectsChainConfig {
+	parametricEq: ParametricEqConfig;
 	eq: EqConfig;
 	compressor: CompressorConfig;
 	reverb: ReverbConfig;
 	stereoExpander: StereoExpanderConfig;
-	// Future: order: Array<'eq' | 'compressor' | 'reverb' | 'stereoExpander'>;
+	// Future: order: Array<'parametricEq' | 'eq' | 'compressor' | 'reverb' | 'stereoExpander'>;
 }
 
 export interface RecordingUserConfig {
