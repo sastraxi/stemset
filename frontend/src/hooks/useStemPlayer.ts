@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { StemResponse } from "../api/generated/types.gen";
 import type {
 	EffectsChainConfig,
+	StemCompressionLevel,
 	StemUserConfig,
 	StemViewModel,
 } from "../types";
@@ -50,6 +51,7 @@ export interface UseStemPlayerResult {
 	resetStemGain: (stemName: string) => void;
 	toggleMute: (stemName: string) => void;
 	toggleSolo: (stemName: string) => void;
+	cycleStemCompression: (stemName: string) => void;
 
 	// Master volume
 	masterVolume: number;
@@ -166,6 +168,7 @@ export function useStemPlayer({
 				gain: savedStem?.gain ?? node.initialGain,
 				muted: savedStem?.muted ?? false,
 				soloed: savedStem?.soloed ?? false,
+				compression: savedStem?.compression ?? "off",
 			};
 		});
 		return newStems;
@@ -183,6 +186,39 @@ export function useStemPlayer({
 
 			// Apply gain
 			node.gainNode.gain.value = state.gain;
+
+			// Apply compression settings
+			const compressor = node.compressorNode;
+			switch (state.compression) {
+				case "off":
+					compressor.threshold.value = 0;
+					compressor.knee.value = 0;
+					compressor.ratio.value = 1;
+					compressor.attack.value = 0;
+					compressor.release.value = 0;
+					break;
+				case "low":
+					compressor.threshold.value = -24;
+					compressor.knee.value = 30;
+					compressor.ratio.value = 3;
+					compressor.attack.value = 0.003;
+					compressor.release.value = 0.25;
+					break;
+				case "medium":
+					compressor.threshold.value = -18;
+					compressor.knee.value = 20;
+					compressor.ratio.value = 6;
+					compressor.attack.value = 0.003;
+					compressor.release.value = 0.15;
+					break;
+				case "high":
+					compressor.threshold.value = -12;
+					compressor.knee.value = 10;
+					compressor.ratio.value = 12;
+					compressor.attack.value = 0.001;
+					compressor.release.value = 0.1;
+					break;
+			}
 
 			// Apply audibility (mute/solo logic)
 			let audible = true;
@@ -287,6 +323,28 @@ export function useStemPlayer({
 		[stemConfigs, setStemConfigs, stems],
 	);
 
+	const cycleStemCompression = useCallback(
+		(stemName: string) => {
+			const currentCompression: StemCompressionLevel =
+				stems[stemName]?.compression ?? "off";
+			const compressionLevels: StemCompressionLevel[] = [
+				"off",
+				"low",
+				"medium",
+				"high",
+			];
+			const currentIndex = compressionLevels.indexOf(currentCompression);
+			const nextIndex = (currentIndex + 1) % compressionLevels.length;
+			const nextCompression = compressionLevels[nextIndex];
+
+			setStemConfigs({
+				...stemConfigs,
+				[stemName]: { ...stemConfigs[stemName], compression: nextCompression },
+			});
+		},
+		[stemConfigs, setStemConfigs, stems],
+	);
+
 	return {
 		// Loading
 		isLoading,
@@ -313,6 +371,7 @@ export function useStemPlayer({
 		resetStemGain,
 		toggleMute,
 		toggleSolo,
+		cycleStemCompression,
 
 		// Master volume
 		masterVolume,

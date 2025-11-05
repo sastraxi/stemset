@@ -12,6 +12,7 @@ export interface StemAudioData {
 export interface StemAudioNode {
 	buffer: AudioBuffer;
 	gainNode: GainNode;
+	compressorNode: DynamicsCompressorNode;
 	outputGainNode: GainNode;
 	initialGain: number; // Computed from metadata.stem_gain_adjustment_db
 }
@@ -82,10 +83,13 @@ export interface EqConfig {
 	enabled: boolean;
 }
 
+export type StemCompressionLevel = "off" | "low" | "medium" | "high";
+
 export interface StemUserConfig {
 	gain: number; // Volume slider value (0-2)
 	muted: boolean; // Mute button state
 	soloed: boolean; // Solo button state
+	compression: StemCompressionLevel; // Compression level
 }
 
 export interface EffectsChainConfig {
@@ -119,4 +123,5 @@ export interface StemViewModel {
 	gain: number;
 	muted: boolean;
 	soloed: boolean;
+	compression: StemCompressionLevel;
 }

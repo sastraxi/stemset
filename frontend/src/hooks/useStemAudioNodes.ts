@@ -42,6 +42,7 @@ export function useStemAudioNodes({
 		stemNodes.forEach((node, name) => {
 			try {
 				node.gainNode?.disconnect();
+				node.compressorNode?.disconnect();
 				node.outputGainNode?.disconnect();
 			} catch (error) {
 				console.error(
@@ -63,16 +64,25 @@ export function useStemAudioNodes({
 				initialGain = Math.pow(10, metadata.stem_gain_adjustment_db / 20);
 			}
 
-			// Create gain nodes
+			// Create gain nodes and compressor
 			const gainNode = audioContext.createGain();
+			const compressorNode = audioContext.createDynamicsCompressor();
 			const outputGainNode = audioContext.createGain();
 
 			gainNode.gain.value = initialGain;
 			outputGainNode.gain.value = 1;
 
-			// Connect: gainNode → outputGainNode → masterInput
+			// Initialize compressor with "off" settings (minimal compression)
+			compressorNode.threshold.value = 0; // No threshold by default
+			compressorNode.knee.value = 0;
+			compressorNode.ratio.value = 1; // 1:1 = no compression
+			compressorNode.attack.value = 0;
+			compressorNode.release.value = 0;
+
+			// Connect: gainNode → compressorNode → outputGainNode → masterInput
 			try {
-				gainNode.connect(outputGainNode);
+				gainNode.connect(compressorNode);
+				compressorNode.connect(outputGainNode);
 				outputGainNode.connect(masterInput);
 			} catch (error) {
 				console.error(
@@ -82,6 +92,7 @@ export function useStemAudioNodes({
 				);
 				console.error("[useStemAudioNodes] Node details:", {
 					gainNodeType: gainNode.constructor.name,
+					compressorNodeType: compressorNode.constructor.name,
 					outputGainNodeType: outputGainNode.constructor.name,
 					masterInputType: masterInput.constructor.name,
 					audioContextState: audioContext.state,
@@ -92,6 +103,7 @@ export function useStemAudioNodes({
 			newNodes.set(name, {
 				buffer,
 				gainNode,
+				compressorNode,
 				outputGainNode,
 				initialGain,
 			});
@@ -103,6 +115,7 @@ export function useStemAudioNodes({
 			newNodes.forEach((node) => {
 				try {
 					node.gainNode?.disconnect();
+					node.compressorNode?.disconnect();
 					node.outputGainNode?.disconnect();
 				} catch (error) {
 					// Already disconnected or invalid node

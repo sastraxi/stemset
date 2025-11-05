@@ -1,4 +1,4 @@
-import { Music, Volume2, VolumeX } from "lucide-react";
+import { Gauge, Music, Volume2, VolumeX } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -23,9 +23,22 @@ import { MobileVolumeControl } from "./MobileVolumeControl";
 import { Ruler } from "./Ruler";
 import { Spinner } from "./Spinner";
 import { VCRDisplay } from "./VCRDisplay";
+import { VolumeSlider } from "./VolumeSlider";
 import { WaveformVisualization } from "./WaveformVisualization";
 import "../styles/vcr-display.css";
 import { InteractivePanel } from "./InteractivePanel";
+
+/**
+ * Convert linear volume (0-2) to dB.
+ * - volume=0 → -∞ dB
+ * - volume=1 → 0 dB (unity gain)
+ * - volume=2 → +6.02 dB
+ */
+function volumeToDb(volume: number): string {
+	if (volume === 0) return "-∞";
+	const db = 20 * Math.log10(volume);
+	return db >= 0 ? `+${db.toFixed(1)}` : db.toFixed(1);
+}
 
 interface StemPlayerProps {
 	profileName: string;
@@ -110,6 +123,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			resetStemGain,
 			toggleMute,
 			toggleSolo,
+			cycleStemCompression,
 			formatTime,
 			masterVolume,
 			setMasterVolume,
@@ -342,23 +356,16 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 											{stemName}
 										</label>
 										<div className="waveform-volume-control">
-											<input
-												id={`stem-${stemName}-gain`}
-												type="range"
-												min={0}
-												max={2}
-												step={0.01}
-												value={stem.gain}
-												onChange={(e) =>
-													setStemGain(stemName, parseFloat(e.target.value))
-												}
-												className="volume-slider"
-												disabled={stem.muted}
+											<VolumeSlider
+												volume={stem.gain}
+												onVolumeChange={(volume) => setStemGain(stemName, volume)}
+												size="small"
+												isMuted={stem.muted}
+												onDoubleClick={() => resetStemGain(stemName)}
+												showUnityMarker={true}
 											/>
 											<span className="volume-label">
-												{stem.muted
-													? "Muted"
-													: `${(stem.gain * 100).toFixed(0)}%`}
+												{stem.muted ? "Muted" : `${volumeToDb(stem.gain)} dB`}
 											</span>
 										</div>
 										<div className="waveform-control-buttons flex gap-1">
@@ -395,11 +402,22 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 											</button>
 											<button
 												type="button"
-												onClick={() => resetStemGain(stemName)}
-												className="reset-gain"
-												title="Reset to initial gain"
+												onClick={() => cycleStemCompression(stemName)}
+												className={`compression-button ${stem.compression !== "off" ? "active" : ""}`}
+												title={`Compression: ${stem.compression}`}
 											>
-												↺
+												<Gauge
+													className="h-4 w-4"
+													color={
+														stem.compression === "high"
+															? "#ff6b6b"
+															: stem.compression === "medium"
+																? "#feca57"
+																: stem.compression === "low"
+																	? "#48dbfb"
+																	: "currentColor"
+													}
+												/>
 											</button>
 										</div>
 									</div>
