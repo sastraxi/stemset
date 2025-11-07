@@ -171,13 +171,15 @@
 /* Desktop height calculation */
 @media (min-width: 769px) {
 	.waveform-canvas {
+		/* Optimized for ~4 stems, giving more room to effects panel
+		   Stems are kept smaller to maximize effects panel space */
 		height: clamp(
-			120px,
+			100px,  /* Reduced minimum */
 			calc(
-				(100vh - (9.25rem + 60px + 48px + var(--effects-bar-height))) /
+				(100vh - 9.25rem - 60px - 48px - 400px) /
 					var(--stem-count)
 			),
-			200px
+			160px  /* Reduced maximum - stems stay compact */
 		);
 	}
 }

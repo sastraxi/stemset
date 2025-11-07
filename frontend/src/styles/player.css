@@ -1,6 +1,32 @@
 /* Stem Player Styles */
+
+/* Flex container for player content (waveforms + effects) */
+/* This fills the remaining space in player-area after the recording-header */
+.player-content-flex {
+	display: flex;
+	flex-direction: column;
+	flex: 1; /* Fill remaining vertical space */
+	min-height: 0; /* Critical for flexbox overflow to work */
+	overflow: hidden;
+}
+
+@media (max-width: 768px) {
+	.player-content-flex {
+		/* On mobile, ensure content extends to bottom edge (VCR is fixed) */
+		padding-bottom: 0;
+	}
+}
+
 .stem-player {
 	outline: none;
+	flex-shrink: 0; /* Don't shrink waveforms */
+	padding: 0 1.75rem; /* Desktop: side padding only */
+}
+
+@media (max-width: 768px) {
+	.stem-player {
+		padding: 0; /* Mobile: no padding - waveforms extend to edges */
+	}
 }
 
 .stem-player:focus {

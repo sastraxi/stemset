@@ -6,10 +6,6 @@
 	overflow: hidden;
 }
 
-:root {
-	--effects-bar-height: 180px;
-}
-
 .app > header {
 	background: transparent;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -39,7 +35,7 @@
 	border-right: 1px solid rgba(255, 255, 255, 0.06);
 	overflow-y: hidden;
 	pointer-events: auto;
-	display: flex;
+	/* display: flex set via Tailwind classes (flex/hidden md:flex) */
 	flex-direction: column;
 	/* Let flex handle height, don't set explicit height */
 }
@@ -53,18 +49,19 @@
 
 .player-area {
 	flex: 1;
-	padding: 1.25rem 1.75rem;
+	padding: 0; /* Removed - padding now on individual components */
 	z-index: 2;
 	position: relative;
-	overflow-y: auto;
-	overflow-x: hidden;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 }
 
 @media (max-width: 768px) {
 	.player-area {
-		padding: 1rem;
-		padding-bottom: 5rem;
-		/* Add space for fixed playback controls */
+		padding: 0; /* No padding - individual components handle their own */
+		padding-bottom: 5rem; /* Space for fixed VCR at bottom */
 	}
 
 	/* Move toasts above playback controls on mobile */
@@ -79,7 +76,8 @@
 	justify-content: space-between;
 	gap: 1.5rem;
 	position: relative;
-	/* Match waveform-row margin */
+	flex-shrink: 0; /* Don't shrink the header */
+	padding: 1.25rem 1.75rem 0; /* Top and sides padding */
 }
 
 @media (max-width: 768px) {
@@ -88,6 +86,7 @@
 		align-items: stretch;
 		gap: 1rem;
 		margin-bottom: 0;
+		padding: 1rem 1rem 0; /* Mobile padding */
 	}
 }
 
@@ -202,10 +201,11 @@
 .song-metadata {
 	display: flex;
 	flex-direction: row;
-	align-items: flex-start;
+	align-items: flex-end;
 	justify-content: space-between;
 	gap: 1rem;
-	margin-bottom: 1.5rem;
+	margin-bottom: 0.75rem;
+	margin-top: 0.25rem;
 	flex: 1;
 	min-width: 0;
 	/* Allow truncation */

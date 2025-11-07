@@ -135,17 +135,9 @@ button:disabled {
 /* VCR Player in Sidebar */
 .sidebar-vcr-container {
 	flex-shrink: 0;
-	padding: 1rem 1.75rem;
-	background: linear-gradient(to top,
-		rgba(26, 26, 26, 0.9) 0%, 
-		rgba(26, 26, 26, 0.7) 10%,
-		rgba(26, 26, 26, 0.3) 20%,
-		rgba(26, 26, 26, 0.12) 25%,
-		rgba(26, 26, 26, 0.1) 30%,
-		transparent 50%,
-		transparent 100%
-	);
+	padding: 1.25rem 1.75rem;
 	margin: -1.75rem;
+	margin-top: -1.75rem;
 }
 
 /* Note: Container is always rendered, visibility controlled by child .vcr-desktop-only class */

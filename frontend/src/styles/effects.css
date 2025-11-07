@@ -2,7 +2,11 @@
 .master-effects {
 	padding: 0;
 	margin: 0;
-
+	/* Use flex to fill remaining vertical space */
+	flex: 1;
+	min-height: 240px;
+	display: flex;
+	flex-direction: column;	
 }
 
 @media (max-width: 768px) {
@@ -19,13 +23,13 @@
 	overflow-x: auto;
 	overflow-y: auto;
 
-	max-height: 25vh;
+	/* Fill parent height (master-effects container) */
+	flex: 1;
+	min-height: 0;
 
-	margin-left: -1.75rem;
-	padding-top: 1.75rem;
-	padding-left: 1.75rem;
-	margin-right: -1.75rem;
-	margin-bottom: 0;
+	/* Padding to give space from edges */
+	padding: 1.75rem;
+	padding-top: 1rem; /* Less padding on top since border provides visual separation */
 
 	/* Smooth scrolling for better UX */
 	scroll-behavior: smooth;
@@ -42,24 +46,13 @@
 	border-top: 1px solid rgba(255, 255, 255, 0.14);
 
 	background-color: rgba(26, 26, 26, 0.8);
-	background-image: 
-		linear-gradient(45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%), 
-		linear-gradient(-45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%), 
-		linear-gradient(45deg, transparent 75%, rgba(8, 8, 8, 0.1) 75%), 
+	background-image:
+		linear-gradient(45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%),
+		linear-gradient(-45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, rgba(8, 8, 8, 0.1) 75%),
 		linear-gradient(-45deg, transparent 75%, rgba(8, 8, 8, 0.1) 75%);
 	background-size: 20px 20px;
 	background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-/* 
-	background: linear-gradient(to bottom,
-		rgba(26, 26, 26, 0.9) 0%, 
-		rgba(26, 26, 26, 0.7) 10%,
-		rgba(26, 26, 26, 0.3) 20%,
-		rgba(26, 26, 26, 0.12) 25%,
-		rgba(26, 26, 26, 0.1) 30%,
-		transparent 50%,
-		transparent 100%
-	); */
-
 }
 
 .master-effects-row::-webkit-scrollbar {

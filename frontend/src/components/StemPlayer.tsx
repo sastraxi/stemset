@@ -358,13 +358,15 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		return (
 			<>
 				{vcrPortals}
-				{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
-				<div
-					className="stem-player ml-[-1rem] md:ml-0"
-					ref={playerRef}
-					tabIndex={0}
-					style={{ "--stem-count": stemOrder.length } as React.CSSProperties}
-				>
+				{/* Flex container for waveforms + effects to fill vertical space */}
+				<div className="player-content-flex">
+					{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
+					<div
+						className="stem-player"
+						ref={playerRef}
+						tabIndex={0}
+						style={{ "--stem-count": stemOrder.length } as React.CSSProperties}
+					>
 					<div className="waveforms-section">
 						{/* Ruler row */}
 						<div className="waveform-row" ref={containerRef}>
@@ -542,6 +544,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							onReset={resetCompressor}
 						/>
 					</div>
+				</div>
 				</div>
 
 				{/* Delete Confirmation Modal */}
