@@ -39,8 +39,8 @@ export function VuMeter({ levels }: VuMeterProps) {
 
 	return (
 		<div className="vu-meter">
-			<div className="vu-meter-channel vu-meter-left">
-				<div className="vu-meter-segments">
+			<div className="flex items-center">
+				<div className="flex gap-[3px] items-center">
 					{Array.from({ length: SEGMENT_COUNT }).map((_, i) => {
 						// Left channel goes from center outward (reverse order)
 						const segmentIndex = SEGMENT_COUNT - 1 - i;
@@ -61,8 +61,8 @@ export function VuMeter({ levels }: VuMeterProps) {
 				</div>
 			</div>
 
-			<div className="vu-meter-channel vu-meter-right">
-				<div className="vu-meter-segments">
+			<div className="flex items-center">
+				<div className="flex gap-[3px] items-center">
 					{Array.from({ length: SEGMENT_COUNT }).map((_, i) => {
 						const isLit = i < rightLit;
 						return (

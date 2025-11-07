@@ -339,7 +339,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				{/* Mobile: Portal to header (fixed to bottom) */}
 				{playbackControlsContainer &&
 					createPortal(
-						<div className="vcr-mobile-only">
+						<div className="block md:hidden">
 							<VCRDisplay {...vcrProps} />
 						</div>,
 						playbackControlsContainer,
@@ -347,7 +347,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				{/* Desktop: Portal to sidebar */}
 				{sidebarVcrContainer &&
 					createPortal(
-						<div className="vcr-desktop-only">
+						<div className="hidden md:block">
 							<VCRDisplay {...vcrProps} />
 						</div>,
 						sidebarVcrContainer,

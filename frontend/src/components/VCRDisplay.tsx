@@ -46,7 +46,7 @@ export function VCRDisplay({
 						: formatTime(currentTime)}
 				</div>
 				<VuMeter levels={vuMeterLevels} />
-				<div className="vcr-actions">
+				<div className="flex gap-2 justify-stretch pt-1 relative z-[1]">
 					<Button
 						type="button"
 						onClick={isPlaying ? onPause : onPlay}
