@@ -88,6 +88,9 @@ export interface UseStemPlayerResult {
 	updateReverb: (changes: Partial<EffectsChainConfig["reverb"]>) => void;
 	setReverbEnabled: (enabled: boolean) => void;
 	resetReverb: () => void;
+	updateSoftClipper: (changes: Partial<EffectsChainConfig["softClipper"]>) => void;
+	setSoftClipperEnabled: (enabled: boolean) => void;
+	resetSoftClipper: () => void;
 	updateStereoExpander: (
 		changes: Partial<EffectsChainConfig["stereoExpander"]>,
 	) => void;
@@ -217,8 +220,9 @@ export function useStemPlayer({
 					compressor.ratio.value = 3;
 					compressor.attack.value = 0.003;
 					compressor.release.value = 0.25;
-					// Makeup gain: ~6 dB to compensate for gentle compression
-					makeupGain = Math.pow(10, 6 / 20);
+					// Conservative makeup: compensate for ~60% of expected reduction
+					// Expected average reduction: ~4dB, apply ~2.4dB makeup
+					makeupGain = Math.pow(10, 2.4 / 20);
 					break;
 				case "medium":
 					compressor.threshold.value = -18;
@@ -226,8 +230,9 @@ export function useStemPlayer({
 					compressor.ratio.value = 6;
 					compressor.attack.value = 0.003;
 					compressor.release.value = 0.15;
-					// Makeup gain: ~9 dB to compensate for moderate compression
-					makeupGain = Math.pow(10, 9 / 20);
+					// Conservative makeup: compensate for ~60% of expected reduction
+					// Expected average reduction: ~6dB, apply ~3.6dB makeup
+					makeupGain = Math.pow(10, 3.6 / 20);
 					break;
 				case "high":
 					compressor.threshold.value = -12;
@@ -235,8 +240,9 @@ export function useStemPlayer({
 					compressor.ratio.value = 12;
 					compressor.attack.value = 0.001;
 					compressor.release.value = 0.1;
-					// Makeup gain: ~12 dB to compensate for heavy compression
-					makeupGain = Math.pow(10, 12 / 20);
+					// Conservative makeup: compensate for ~60% of expected reduction
+					// Expected average reduction: ~8dB, apply ~4.8dB makeup
+					makeupGain = Math.pow(10, 4.8 / 20);
 					break;
 			}
 
@@ -308,7 +314,7 @@ export function useStemPlayer({
 	}, [stems, stemNodes]);
 
 	// 7. Audio effects (each effect persists its own config independently)
-	const { parametricEq, eq, compressor, reverb, stereoExpander } =
+	const { parametricEq, eq, compressor, reverb, softClipper, stereoExpander } =
 		useAudioEffects({
 			audioContext,
 			masterInput,
@@ -511,6 +517,7 @@ export function useStemPlayer({
 			eq: eq.config,
 			compressor: compressor.config,
 			reverb: reverb.config,
+			softClipper: softClipper.config,
 			stereoExpander: stereoExpander.config,
 		},
 		updateParametricEqBand: parametricEq.updateBand,
@@ -528,6 +535,9 @@ export function useStemPlayer({
 		updateStereoExpander: stereoExpander.update,
 		setStereoExpanderEnabled: stereoExpander.setEnabled,
 		resetStereoExpander: stereoExpander.reset,
+		updateSoftClipper: softClipper.update,
+		setSoftClipperEnabled: softClipper.setEnabled,
+		resetSoftClipper: softClipper.reset,
 		compressorGainReduction: compressor.gainReduction,
 		audioContext,
 		getMasterOutput,

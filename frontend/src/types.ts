@@ -82,6 +82,16 @@ export interface StereoExpanderConfig {
 	enabled: boolean;
 }
 
+export type SoftClipperCurve = "tanh" | "atan" | "cubic";
+
+export interface SoftClipperConfig {
+	threshold: number; // 0.1 to 1.0, where saturation starts
+	drive: number; // 1.0 to 10.0, input gain multiplier
+	curve: SoftClipperCurve; // saturation curve type
+	mix: number; // 0 to 1, dry/wet blend
+	enabled: boolean;
+}
+
 // ============================================================================
 // User Config Types (mutable, persisted to localStorage)
 // ============================================================================
@@ -117,8 +127,9 @@ export interface EffectsChainConfig {
 	eq: EqConfig;
 	compressor: CompressorConfig;
 	reverb: ReverbConfig;
+	softClipper: SoftClipperConfig;
 	stereoExpander: StereoExpanderConfig;
-	// Future: order: Array<'parametricEq' | 'eq' | 'compressor' | 'reverb' | 'stereoExpander'>;
+	// Future: order: Array<'parametricEq' | 'eq' | 'compressor' | 'reverb' | 'softClipper' | 'stereoExpander'>;
 }
 
 export interface RecordingUserConfig {

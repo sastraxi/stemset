@@ -2,6 +2,7 @@ import { Pause, Play, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { VuMeter } from "./VuMeter";
 import type { VuMeterLevels } from "../hooks/useVuMeter";
+import type { ClipDetectorState } from "../hooks/useClipDetector";
 
 interface VCRDisplayProps {
 	currentTime: number;
@@ -15,6 +16,7 @@ interface VCRDisplayProps {
 	onStop: () => void;
 	disabled?: boolean;
 	vuMeterLevels: VuMeterLevels;
+	clipDetector?: ClipDetectorState;
 }
 
 export function VCRDisplay({
@@ -29,6 +31,7 @@ export function VCRDisplay({
 	onStop,
 	disabled = false,
 	vuMeterLevels,
+	clipDetector,
 }: VCRDisplayProps) {
 	return (
 		<div className="vcr-display">
@@ -45,7 +48,12 @@ export function VCRDisplay({
 						? `-${formatTime(duration - currentTime)}`
 						: formatTime(currentTime)}
 				</div>
-				<VuMeter levels={vuMeterLevels} />
+				<VuMeter
+					levels={vuMeterLevels}
+					leftClipping={clipDetector?.leftClipping}
+					rightClipping={clipDetector?.rightClipping}
+					onResetClip={clipDetector?.reset}
+				/>
 				<div className="flex gap-2 justify-stretch pt-1 relative z-[1]">
 					<Button
 						type="button"
@@ -72,7 +80,12 @@ export function VCRDisplay({
 
 			{/* Mobile: Centered layout with flanking buttons */}
 			<div className="vcr-mobile-layout">
-				<VuMeter levels={vuMeterLevels} />
+				<VuMeter
+					levels={vuMeterLevels}
+					leftClipping={clipDetector?.leftClipping}
+					rightClipping={clipDetector?.rightClipping}
+					onResetClip={clipDetector?.reset}
+				/>
 				<Button
 					type="button"
 					onClick={isPlaying ? onPause : onPlay}

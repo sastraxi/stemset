@@ -1,5 +1,5 @@
 // file: limiter-processor.js
-// Professional brick-wall limiter with smooth envelope following
+// Professional brick-wall limiter with smooth envelope following and adaptive makeup gain
 // Based on best practices from Signalsmith Audio and mastering literature
 class MasterLimiterProcessor extends AudioWorkletProcessor {
 	static get parameterDescriptors() {
@@ -52,7 +52,10 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 				? parameters.threshold[0]
 				: parameters.threshold;
 		const threshold = 10 ** (thresholdDb / 20);
-		const makeupGainDb = parameters.makeupGain[0] || 0;
+
+		// Makeup gain calculation: compensate for threshold reduction
+		// This makes the limiter useful for making mixes louder/fuller
+		const makeupGainDb = -thresholdDb; // If threshold is -6dB, add +6dB makeup
 		const makeup = 10 ** (makeupGainDb / 20);
 
 		const attackTime = parameters.attack[0];
@@ -64,9 +67,10 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 		const holdSamples = Math.floor(holdTime * sampleRate);
 		const releaseSamples = Math.max(1, Math.floor(releaseTime * sampleRate));
 
-		// Calculate coefficients for exponential smoothing
+		// Improved coefficients for exponential + linear blend (more musical release)
 		const attackCoef = Math.exp(-1 / attackSamples);
 		const releaseCoef = Math.exp(-1 / releaseSamples);
+		const linearBlend = 0.15; // 15% linear component for smoother release
 
 		let maxReduction = 0;
 
@@ -95,9 +99,10 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 				// Hold phase - maintain current gain
 				this.holdCounter--;
 			} else {
-				// Release phase (slow recovery)
-				this.currentGain =
-					targetGain + releaseCoef * (this.currentGain - targetGain);
+				// Release phase (improved: exponential + linear blend for smoother recovery)
+				const exponentialRelease = targetGain + releaseCoef * (this.currentGain - targetGain);
+				const linearRelease = this.currentGain + (targetGain - this.currentGain) / releaseSamples;
+				this.currentGain = exponentialRelease * (1 - linearBlend) + linearRelease * linearBlend;
 			}
 
 			// Track gain reduction for metering
@@ -125,7 +130,7 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 			}
 		}
 
-		// Smooth gain reduction for metering and send to main thread
+		// Smooth gain reduction for metering
 		this.currentReduction =
 			this.currentReduction * (1 - this.reductionSmoothingAlpha) +
 			maxReduction * this.reductionSmoothingAlpha;

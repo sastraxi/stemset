@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import type { StemResponse } from "@/api/generated";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import { useAudioSession } from "../hooks/useAudioSession";
+import { useClipDetector } from "../hooks/useClipDetector";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useStemPlayer } from "../hooks/useStemPlayer";
 import { useVuMeter } from "../hooks/useVuMeter";
@@ -144,6 +145,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			resetCompressor,
 			updateReverb,
 			resetReverb,
+			updateSoftClipper,
+			resetSoftClipper,
 			// updateStereoExpander,
 			// resetStereoExpander,
 			compressorGainReduction,
@@ -155,6 +158,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 
 		// VU Meter for master output
 		const vuMeterLevels = useVuMeter(
+			audioContext ? getMasterOutput() : null,
+			audioContext,
+			isPlaying,
+		);
+
+		// Clip detector for master output
+		const clipDetector = useClipDetector(
 			audioContext ? getMasterOutput() : null,
 			audioContext,
 			isPlaying,
@@ -331,6 +341,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			onStop: stop,
 			disabled: stemOrder.length === 0 || isLoading,
 			vuMeterLevels,
+			clipDetector,
 		};
 
 		// Render VCR portals (always render, even during loading)
@@ -372,10 +383,10 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 				{vcrPortals}
 				{/* Flex container for waveforms + effects to fill vertical space */}
 				<div className="player-content-flex">
-					{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
 					<div
 						className="stem-player"
 						ref={playerRef}
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar
 						tabIndex={0}
 						style={{ "--stem-count": stemOrder.length } as React.CSSProperties}
 					>
@@ -526,6 +537,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							<MasterVolumeControl
 								volume={masterVolume}
 								onVolumeChange={setMasterVolume}
+								softClipperConfig={effectsConfig.softClipper}
+								onSoftClipperUpdate={updateSoftClipper}
+								onSoftClipperReset={resetSoftClipper}
 							/>
 							<ParametricEqPanel
 								config={effectsConfig.parametricEq}

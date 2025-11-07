@@ -4,6 +4,7 @@ import type {
 	EqConfig,
 	ParametricEqConfig,
 	ReverbConfig,
+	SoftClipperConfig,
 	StereoExpanderConfig,
 } from "@/types";
 import type { UseCompressorEffectResult } from "./effects/useCompressorEffect";
@@ -14,6 +15,8 @@ import type { UseParametricEqEffectResult } from "./effects/useParametricEqEffec
 import { useParametricEqEffect } from "./effects/useParametricEqEffect";
 import type { UseReverbEffectResult } from "./effects/useReverbEffect";
 import { useReverbEffect } from "./effects/useReverbEffect";
+import type { UseSoftClipperEffectResult } from "./effects/useSoftClipperEffect";
+import { useSoftClipperEffect } from "./effects/useSoftClipperEffect";
 import type { UseStereoExpanderEffectResult } from "./effects/useStereoExpanderEffect";
 import { useStereoExpanderEffect } from "./effects/useStereoExpanderEffect";
 
@@ -22,6 +25,7 @@ export interface AudioEffectsConfig {
 	eqConfig?: EqConfig;
 	compressorConfig?: CompressorConfig;
 	reverbConfig?: ReverbConfig;
+	softClipperConfig?: SoftClipperConfig;
 	stereoExpanderConfig?: StereoExpanderConfig;
 }
 
@@ -43,6 +47,10 @@ export interface UseAudioEffectsResult {
 		"inputNode" | "outputNode" | "isReady"
 	>;
 	reverb: Omit<UseReverbEffectResult, "inputNode" | "outputNode" | "isReady">;
+	softClipper: Omit<
+		UseSoftClipperEffectResult,
+		"inputNode" | "outputNode" | "isReady"
+	>;
 	stereoExpander: Omit<
 		UseStereoExpanderEffectResult,
 		"inputNode" | "outputNode" | "isReady"
@@ -53,7 +61,10 @@ export interface UseAudioEffectsResult {
  * Audio effects orchestrator hook.
  *
  * Composes all effect hooks and manages the audio graph routing:
- * masterInput → parametricEQ → EQ → stereoExpander → reverb → compressor → masterOutput
+ * masterInput → parametricEQ → EQ → stereoExpander → reverb → softClipper → compressor → masterOutput
+ *
+ * The soft clipper is placed before the limiter to provide musical saturation
+ * and prevent harsh digital clipping before final peak limiting.
  *
  * Each effect now manages its own persistence directly via useConfigPersistence.
  */
@@ -83,12 +94,17 @@ export function useAudioEffects({
 		recordingId,
 	});
 
+	const softClipper = useSoftClipperEffect({
+		audioContext,
+		recordingId,
+	});
+
 	const compressor = useCompressorEffect({
 		audioContext,
 		recordingId,
 	});
 
-	const allEffects = [parametricEq, eq, stereoExpander, reverb, compressor];
+	const allEffects = [parametricEq, eq, stereoExpander, reverb, softClipper, compressor];
 
 	// The Grand Central Wiring Effect
 	useEffect(() => {
@@ -193,6 +209,8 @@ export function useAudioEffects({
 		stereoExpander.config.enabled,
 		reverb.isReady,
 		reverb.config.enabled,
+		softClipper.isReady,
+		softClipper.config.enabled,
 		compressor.isReady,
 		compressor.config.enabled,
 		// Note: We don't need the nodes themselves in the dependency array because
@@ -205,6 +223,7 @@ export function useAudioEffects({
 		eq,
 		compressor,
 		reverb,
+		softClipper,
 		stereoExpander,
 	};
 }

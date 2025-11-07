@@ -10,7 +10,7 @@
 	justify-content: space-between;
 	align-items: center;
 	pointer-events: none;
-	z-index: 0;
+	z-index: 2;
 }
 
 /* Desktop: VU meter aligned with timecode */
@@ -43,10 +43,41 @@
 	border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Clip indicators need pointer events enabled and higher z-index than timecode */
+.clip-indicator {
+	pointer-events: auto;
+	position: relative;
+	z-index: 10;
+	/* Make taller and easier to click */
+	height: 100%;
+	padding: 1rem 0.5rem;
+	margin: -1rem -0.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Make button background transparent */
+	background: transparent !important;
+	box-shadow: none !important;
+	border: none !important;
+}
+
+/* The actual LED circle inside the clickable area */
+.clip-indicator::before {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	/* These will be set via inline styles on the button element */
+	background-color: var(--clip-bg, #2a2a2a);
+	box-shadow: var(--clip-shadow, none);
+	border: 1px solid #1a1a1a;
+	transition: background-color 0.1s, box-shadow 0.1s;
+}
+
 /* Desktop: Taller segments for more visual impact */
 @media (min-width: 769px) {
 	.vu-meter-segment {
-		width: 10px;
+		width: 7px;
 		height: 36px;
 	}
 }

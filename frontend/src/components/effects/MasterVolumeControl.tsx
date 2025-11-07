@@ -1,10 +1,14 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useState } from "react";
 import { VolumeSlider } from "../VolumeSlider";
+import type { SoftClipperConfig, SoftClipperCurve } from "@/types";
 
 export interface MasterVolumeControlProps {
 	volume: number; // 0 to 1 (linear)
 	onVolumeChange: (volume: number) => void;
+	softClipperConfig?: SoftClipperConfig;
+	onSoftClipperUpdate?: (changes: Partial<SoftClipperConfig>) => void;
+	onSoftClipperReset?: () => void;
 }
 
 /**
@@ -30,6 +34,9 @@ function volumeToDb(volume: number): string {
 export function MasterVolumeControl({
 	volume,
 	onVolumeChange,
+	softClipperConfig,
+	onSoftClipperUpdate,
+	onSoftClipperReset,
 }: MasterVolumeControlProps) {
 	const [volumeBeforeMute, setVolumeBeforeMute] = useState(1);
 
@@ -57,6 +64,12 @@ export function MasterVolumeControl({
 		},
 		[isMuted, onVolumeChange],
 	);
+
+	const curveOptions: { value: SoftClipperCurve; label: string; description: string }[] = [
+		{ value: "tanh", label: "Tanh", description: "Smooth, natural tape-like saturation" },
+		{ value: "atan", label: "Atan", description: "Gentler, more transparent saturation" },
+		{ value: "cubic", label: "Cubic", description: "Classic analog-style with pleasant harmonics" },
+	];
 
 	return (
 		<div className="master-volume-section">
@@ -91,6 +104,114 @@ export function MasterVolumeControl({
 					{isMuted ? "Muted" : `${volumeToDb(volume)} dB`}
 				</div>
 			</div>
+
+			{/* Soft Clipper Controls */}
+			{softClipperConfig && onSoftClipperUpdate && (
+				<div className="soft-clipper-section">
+					<div className="effect-header">
+						<h5>Soft Clipper</h5>
+						<div className="effect-controls">
+							<button
+								type="button"
+								onClick={() => onSoftClipperUpdate({ enabled: !softClipperConfig.enabled })}
+								className={`enable-button ${softClipperConfig.enabled ? "enabled" : ""}`}
+								title={softClipperConfig.enabled ? "Disable soft clipper" : "Enable soft clipper"}
+							>
+								{softClipperConfig.enabled ? "ON" : "OFF"}
+							</button>
+							{onSoftClipperReset && (
+								<button
+									type="button"
+									onClick={onSoftClipperReset}
+									className="reset-button"
+									title="Reset to defaults"
+								>
+									Reset
+								</button>
+							)}
+						</div>
+					</div>
+
+					{softClipperConfig.enabled && (
+						<div className="soft-clipper-controls">
+							{/* Threshold */}
+							<div className="control-row">
+								<div className="control-label">
+									Threshold: {(softClipperConfig.threshold * 100).toFixed(0)}%
+								</div>
+								<input
+									type="range"
+									min="10"
+									max="100"
+									step="1"
+									value={softClipperConfig.threshold * 100}
+									onChange={(e) =>
+										onSoftClipperUpdate({ threshold: Number.parseInt(e.target.value, 10) / 100 })
+									}
+									className="range-slider"
+									aria-label="Soft clipper threshold"
+								/>
+							</div>
+
+							{/* Drive */}
+							<div className="control-row">
+								<div className="control-label">
+									Drive: {softClipperConfig.drive.toFixed(1)}x
+								</div>
+								<input
+									type="range"
+									min="10"
+									max="100"
+									step="1"
+									value={(softClipperConfig.drive - 1) * 100 / 9}
+									onChange={(e) =>
+										onSoftClipperUpdate({ drive: 1 + (Number.parseInt(e.target.value, 10) / 100) * 9 })
+									}
+									className="range-slider"
+									aria-label="Soft clipper drive"
+								/>
+							</div>
+
+							{/* Mix */}
+							<div className="control-row">
+								<div className="control-label">
+									Mix: {(softClipperConfig.mix * 100).toFixed(0)}%
+								</div>
+								<input
+									type="range"
+									min="0"
+									max="100"
+									step="1"
+									value={softClipperConfig.mix * 100}
+									onChange={(e) =>
+										onSoftClipperUpdate({ mix: Number.parseInt(e.target.value, 10) / 100 })
+									}
+									className="range-slider"
+									aria-label="Soft clipper dry/wet mix"
+								/>
+							</div>
+
+							{/* Curve selector */}
+							<div className="control-row">
+								<div className="control-label">Curve</div>
+								<div className="curve-selector">
+									{curveOptions.map((option) => (
+										<button
+											key={option.value}
+											type="button"
+											onClick={() => onSoftClipperUpdate({ curve: option.value })}
+											className={`curve-button ${softClipperConfig.curve === option.value ? "active" : ""}`}
+											title={option.description}
+										>
+											{option.label}
+										</button>
+									))}
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

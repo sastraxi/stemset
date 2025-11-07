@@ -1,47 +1,51 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CompressorConfig } from "@/types";
+import type { SoftClipperConfig, SoftClipperCurve } from "@/types";
 import { useConfigPersistence } from "../useConfigPersistence";
 
-export interface UseCompressorEffectOptions {
+export interface UseSoftClipperEffectOptions {
 	audioContext: AudioContext | null;
 	recordingId: string;
 }
 
-export interface UseCompressorEffectResult {
+export interface UseSoftClipperEffectResult {
 	isReady: boolean;
 	inputNode: AudioWorkletNode | null;
 	outputNode: AudioWorkletNode | null;
-	config: CompressorConfig;
-	update: (changes: Partial<CompressorConfig>) => void;
+	config: SoftClipperConfig;
+	update: (changes: Partial<SoftClipperConfig>) => void;
 	reset: () => void;
 	setEnabled: (enabled: boolean) => void;
-	gainReduction: number;
 }
 
-export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
-	threshold: -6,
-	attack: 0.005,
-	hold: 0.02,
-	release: 0.1,
+export const DEFAULT_SOFT_CLIPPER_CONFIG: SoftClipperConfig = {
+	threshold: 0.8,
+	drive: 1.0,
+	curve: "tanh",
+	mix: 1.0,
 	enabled: false,
 };
 
-export function useCompressorEffect({
+const CURVE_TO_INDEX: Record<SoftClipperCurve, number> = {
+	tanh: 0,
+	atan: 1,
+	cubic: 2,
+};
+
+export function useSoftClipperEffect({
 	audioContext,
 	recordingId,
-}: UseCompressorEffectOptions): UseCompressorEffectResult {
+}: UseSoftClipperEffectOptions): UseSoftClipperEffectResult {
 	// Persist config directly to database
 	const { config, setConfig } = useConfigPersistence({
 		recordingId,
-		configKey: "compressor",
-		defaultValue: DEFAULT_COMPRESSOR_CONFIG,
+		configKey: "softClipper",
+		defaultValue: DEFAULT_SOFT_CLIPPER_CONFIG,
 		debounceMs: 500,
 	});
 
 	const [isReady, setIsReady] = useState(false);
 	const workletNodeRef = useRef<AudioWorkletNode | null>(null);
 	const workletLoadedRef = useRef(false);
-	const [gainReduction, setGainReduction] = useState(0);
 
 	useEffect(() => {
 		if (!audioContext || workletLoadedRef.current) return;
@@ -52,41 +56,35 @@ export function useCompressorEffect({
 					throw new Error("AudioContext is null");
 				}
 
-				await audioContext.audioWorklet.addModule("/limiter-processor.js");
+				await audioContext.audioWorklet.addModule("/soft-clipper-processor.js");
 				workletLoadedRef.current = true;
 
 				const node = new AudioWorkletNode(
 					audioContext,
-					"master-limiter-processor",
+					"soft-clipper-processor",
 					{ outputChannelCount: [2] },
 				);
-
-				node.port.onmessage = (event) => {
-					if (event.data.type === "gainReduction") {
-						setGainReduction(event.data.value);
-					}
-				};
 
 				workletNodeRef.current = node;
 				setIsReady(true);
 			} catch (error) {
 				console.error(
-					"[useCompressorEffect] Failed to load AudioWorklet:",
+					"[useSoftClipperEffect] Failed to load AudioWorklet:",
 					error,
 				);
 				console.error(
-					"[useCompressorEffect] AudioContext state:",
+					"[useSoftClipperEffect] AudioContext state:",
 					audioContext?.state,
 				);
 				console.error(
-					"[useCompressorEffect] AudioContext sample rate:",
+					"[useSoftClipperEffect] AudioContext sample rate:",
 					audioContext?.sampleRate,
 				);
 				console.error(
-					"[useCompressorEffect] Worklet loaded ref:",
+					"[useSoftClipperEffect] Worklet loaded ref:",
 					workletLoadedRef.current,
 				);
-				console.error("[useCompressorEffect] Error details:", {
+				console.error("[useSoftClipperEffect] Error details:", {
 					name: error instanceof Error ? error.name : "Unknown",
 					message: error instanceof Error ? error.message : String(error),
 					stack: error instanceof Error ? error.stack : "No stack trace",
@@ -97,7 +95,6 @@ export function useCompressorEffect({
 		loadWorklet();
 
 		return () => {
-			workletNodeRef.current?.port.close();
 			workletNodeRef.current?.disconnect();
 			setIsReady(false);
 		};
@@ -107,36 +104,47 @@ export function useCompressorEffect({
 	useEffect(() => {
 		if (!audioContext || !isReady || !workletNodeRef.current) return;
 
-		const { threshold, attack, hold, release } = config;
+		const { threshold, drive, curve, mix, enabled } = config;
+
+		// Set enabled parameter (1 for enabled, 0 for disabled)
+		workletNodeRef.current.parameters
+			.get("enabled")
+			?.setTargetAtTime(enabled ? 1 : 0, audioContext.currentTime, 0.01);
+
 		workletNodeRef.current.parameters
 			.get("threshold")
 			?.setTargetAtTime(threshold, audioContext.currentTime, 0.01);
-		workletNodeRef.current.parameters
-			.get("attack")
-			?.setTargetAtTime(attack, audioContext.currentTime, 0.01);
-		workletNodeRef.current.parameters
-			.get("hold")
-			?.setTargetAtTime(hold, audioContext.currentTime, 0.01);
-		workletNodeRef.current.parameters
-			.get("release")
-			?.setTargetAtTime(release, audioContext.currentTime, 0.01);
 
-		if (!config.enabled) {
-			setGainReduction(0);
-		}
+		workletNodeRef.current.parameters
+			.get("drive")
+			?.setTargetAtTime(drive, audioContext.currentTime, 0.01);
+
+		workletNodeRef.current.parameters
+			.get("curve")
+			?.setTargetAtTime(CURVE_TO_INDEX[curve], audioContext.currentTime, 0.01);
+
+		workletNodeRef.current.parameters
+			.get("mix")
+			?.setTargetAtTime(mix, audioContext.currentTime, 0.01);
 	}, [config, audioContext, isReady]);
 
-	const update = useCallback((changes: Partial<CompressorConfig>) => {
-		setConfig((prev) => ({ ...prev, ...changes }));
-	}, []);
+	const update = useCallback(
+		(changes: Partial<SoftClipperConfig>) => {
+			setConfig((prev) => ({ ...prev, ...changes }));
+		},
+		[setConfig],
+	);
 
 	const reset = useCallback(() => {
-		setConfig(DEFAULT_COMPRESSOR_CONFIG);
-	}, []);
+		setConfig(DEFAULT_SOFT_CLIPPER_CONFIG);
+	}, [setConfig]);
 
-	const setEnabled = useCallback((enabled: boolean) => {
-		setConfig((prev) => ({ ...prev, enabled }));
-	}, []);
+	const setEnabled = useCallback(
+		(enabled: boolean) => {
+			setConfig((prev) => ({ ...prev, enabled }));
+		},
+		[setConfig],
+	);
 
 	return {
 		isReady,
@@ -146,6 +154,5 @@ export function useCompressorEffect({
 		update,
 		reset,
 		setEnabled,
-		gainReduction,
 	};
 }
