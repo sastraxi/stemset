@@ -11,7 +11,7 @@ export interface VerticalDragControlProps {
 	className?: string;
 }
 
-const DRAG_HEIGHT = 160; // pixels for full range
+const DRAG_HEIGHT = 90; // pixels for full range
 
 /**
  * Reusable vertical drag control component.

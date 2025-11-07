@@ -512,7 +512,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 						</div>
 					</div>
 					<div className="player-panel master-effects">
-						<div className="master-effects-row">
+						<div className="master-effects-row tweed-purple tweed-subtle">
 							<MasterVolumeControl
 								volume={masterVolume}
 								onVolumeChange={setMasterVolume}

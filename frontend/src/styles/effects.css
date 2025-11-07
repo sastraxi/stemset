@@ -1,4 +1,5 @@
 /* Master Effects Styles */
+@import './tweed-pattern.css';
 .master-effects {
 	padding: 0;
 	margin: 0;
@@ -29,7 +30,7 @@
 
 	/* Padding to give space from edges */
 	padding: 1.75rem;
-	padding-top: 1rem; /* Less padding on top since border provides visual separation */
+	padding-top: 1.5rem; /* Less padding on top since border provides visual separation */
 
 	/* Smooth scrolling for better UX */
 	scroll-behavior: smooth;
@@ -43,16 +44,13 @@
 	scrollbar-width: thin;
 	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 
-	border-top: 1px solid rgba(255, 255, 255, 0.14);
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
 
-	background-color: rgba(26, 26, 26, 0.8);
-	background-image:
-		linear-gradient(45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%),
-		linear-gradient(-45deg, rgba(8, 8, 8, 0.15) 25%, transparent 25%),
-		linear-gradient(45deg, transparent 75%, rgba(8, 8, 8, 0.1) 75%),
-		linear-gradient(-45deg, transparent 75%, rgba(8, 8, 8, 0.1) 75%);
-	background-size: 20px 20px;
-	background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+	/* Tweed amp grill cloth pattern - try .tweed-authentic for stronger texture */
+	--tweed-base-color: rgba(35, 27, 46, 1.0);
+	--tweed-scale: 1.8;
+	--tweed-aspect: 2.5;
+	box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .master-effects-row::-webkit-scrollbar {
@@ -78,9 +76,10 @@
 .limiter-section,
 .reverb-section,
 .master-volume-section,
-.stereo-expander-section{
+.stereo-expander-section {
 	background: rgba(0, 0, 0, 0.3);
-	backdrop-filter: blur(7px);
+	backdrop-filter: blur(3px);
+	box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.25);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 8px;
 	padding: 0.85rem 1rem 1rem;
@@ -536,8 +535,8 @@
 
 .parametric-band-sliders {
 	display: flex;
-	flex-direction: column;
-	gap: 0;
+	flex-direction: row;
+	gap: 0.75rem;
 	flex: 1;
 }
 
@@ -554,6 +553,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.25rem;
+	flex: 1;
+	min-width: 0;
 }
 
 .parametric-slider-label {
@@ -638,8 +639,8 @@
 }
 
 .vertical-drag-button {
-	width: 3.5rem;
-	height: 3.5rem;
+	width: 2.5rem;
+	height: 2.5rem;
 	border: 2px solid;
 	border-radius: 8px;
 	cursor: grab;
