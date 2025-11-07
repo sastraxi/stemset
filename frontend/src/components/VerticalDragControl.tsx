@@ -9,6 +9,7 @@ export interface VerticalDragControlProps {
 	formatValue?: (value: number) => string; // Optional value formatter
 	logarithmic?: boolean; // Use logarithmic scaling
 	className?: string;
+	filterPosition?: "low" | "mid" | "high"; // Position offset for filter visualization
 }
 
 const DRAG_HEIGHT = 90; // pixels for full range
@@ -26,6 +27,7 @@ export function VerticalDragControl({
 	formatValue,
 	logarithmic = false,
 	className = "",
+	filterPosition,
 }: VerticalDragControlProps) {
 	const uniqueId = useId();
 	const [isDragging, setIsDragging] = useState(false);
@@ -190,12 +192,19 @@ export function VerticalDragControl({
 
 	// Generate filter curve visualization for Q control
 	// Lower Q = wider bell curve, Higher Q = narrower/sharper peak
-	const generateFilterCurve = (): string => {
+	const generateFilterCurve = (): { path: string; fillPath: string } => {
 		// Normalize Q value (0.3-8) to 0-1 range for easier calculation
 		const normalizedQ = logarithmic ? valueToLinear(value) : (value - min) / (max - min);
 
 		// Wider viewbox to accommodate wider control (200x100 for 2:1 aspect ratio)
-		const centerX = 100;
+		// Offset centerX based on filter position
+		let centerX = 100; // Default center
+		if (filterPosition === "low") {
+			centerX = 70; // Offset left
+		} else if (filterPosition === "high") {
+			centerX = 130; // Offset right
+		}
+
 		const centerY = 80;
 		const peakHeight = 70;
 
@@ -220,10 +229,17 @@ export function VerticalDragControl({
 			points.push(`${x},${y}`);
 		}
 
-		return `M ${points.join(" L ")}`;
+		const path = `M ${points.join(" L ")}`;
+
+		// Create filled path that goes down to baseline
+		const firstPoint = points[0].split(",");
+		const lastPoint = points[points.length - 1].split(",");
+		const fillPath = `${path} L ${lastPoint[0]},${centerY} L ${firstPoint[0]},${centerY} Z`;
+
+		return { path, fillPath };
 	};
 
-	const filterCurve = label === "Q" ? generateFilterCurve() : null;
+	const filterCurve = label === "Q" && filterPosition ? generateFilterCurve() : null;
 
 	return (
 		<div
@@ -273,25 +289,22 @@ export function VerticalDragControl({
 							{/* Baseline for filter visualization */}
 							<line x1="20" y1="80" x2="180" y2="80" stroke="currentColor" strokeWidth="1" opacity="0.3" />
 
-							{/* Filter curve - unfilled (background) */}
+							{/* Fill area below curve - clipped by value */}
 							<path
-								d={filterCurve}
-								fill="none"
-								stroke="#555"
-								strokeWidth="2"
-								strokeLinecap="round"
-								strokeLinejoin="round"
+								d={filterCurve.fillPath}
+								fill={`url(#vertical-gradient-${uniqueId})`}
+								opacity="0.25"
+								clipPath={`url(#vertical-clip-${uniqueId})`}
 							/>
 
-							{/* Filter curve - filled with gradient */}
+							{/* Filter curve stroke - matches border color */}
 							<path
-								d={filterCurve}
+								d={filterCurve.path}
 								fill="none"
-								stroke={`url(#vertical-gradient-${uniqueId})`}
-								strokeWidth="2"
+								stroke={color}
+								strokeWidth="3"
 								strokeLinecap="round"
 								strokeLinejoin="round"
-								clipPath={`url(#vertical-clip-${uniqueId})`}
 							/>
 						</>
 					) : (

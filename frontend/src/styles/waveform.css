@@ -172,7 +172,7 @@
 		height: clamp(
 			100px,  /* Reduced minimum */
 			calc(
-				(100vh - 9.25rem - 60px - 48px - 360px) /
+				(100vh - 9.25rem - 60px - 48px - 378px) /
 					var(--stem-count)
 			),
 			160px  /* Reduced maximum - stems stay compact */

@@ -56,6 +56,8 @@ function ParametricBand({
 	freqMax,
 	onUpdate,
 }: ParametricBandProps) {
+	// Map bandKey to filter position
+	const filterPosition = bandKey === "lowBand" ? "low" : bandKey === "highBand" ? "high" : "mid";
 	// Convert frequency to/from logarithmic scale for slider
 	const freqToLinear = (freq: number): number => {
 		const logMin = Math.log10(freqMin);
@@ -84,6 +86,7 @@ function ParametricBand({
 					formatValue={formatQ}
 					logarithmic={true}
 					className="parametric-q-control"
+					filterPosition={filterPosition}
 				/>
 			</div>
 
