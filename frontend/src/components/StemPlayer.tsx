@@ -14,6 +14,7 @@ import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useMediaSession } from "../hooks/useMediaSession";
 import { useStemPlayer } from "../hooks/useStemPlayer";
+import { useVuMeter } from "../hooks/useVuMeter";
 import { CompressionIcon } from "./CompressionIcon";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { EqIcon } from "./EqIcon";
@@ -147,9 +148,17 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			// resetStereoExpander,
 			compressorGainReduction,
 			audioContext,
+			getMasterOutput,
 		} = useStemPlayer({ profileName, fileName, stemsData, recordingId });
 
 		const { initializeAudioSession } = useAudioSession(audioContext);
+
+		// VU Meter for master output
+		const vuMeterLevels = useVuMeter(
+			audioContext ? getMasterOutput() : null,
+			audioContext,
+			isPlaying,
+		);
 
 		const handlePlay = useCallback(() => {
 			initializeAudioSession();
@@ -321,6 +330,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			onPause: handlePause,
 			onStop: stop,
 			disabled: stemOrder.length === 0 || isLoading,
+			vuMeterLevels,
 		};
 
 		// Render VCR portals (always render, even during loading)

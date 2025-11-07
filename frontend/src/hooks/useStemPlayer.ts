@@ -95,6 +95,7 @@ export interface UseStemPlayerResult {
 	resetStereoExpander: () => void;
 	compressorGainReduction: number;
 	audioContext: AudioContext | null;
+	getMasterOutput: () => GainNode;
 }
 
 export function useStemPlayer({
@@ -529,5 +530,6 @@ export function useStemPlayer({
 		resetStereoExpander: stereoExpander.reset,
 		compressorGainReduction: compressor.gainReduction,
 		audioContext,
+		getMasterOutput,
 	};
 }

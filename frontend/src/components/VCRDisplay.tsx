@@ -1,5 +1,7 @@
 import { Pause, Play, Square } from "lucide-react";
 import { Button } from "./ui/button";
+import { VuMeter } from "./VuMeter";
+import type { VuMeterLevels } from "../hooks/useVuMeter";
 
 interface VCRDisplayProps {
 	currentTime: number;
@@ -12,6 +14,7 @@ interface VCRDisplayProps {
 	onPause: () => void;
 	onStop: () => void;
 	disabled?: boolean;
+	vuMeterLevels: VuMeterLevels;
 }
 
 export function VCRDisplay({
@@ -25,6 +28,7 @@ export function VCRDisplay({
 	onPause,
 	onStop,
 	disabled = false,
+	vuMeterLevels,
 }: VCRDisplayProps) {
 	return (
 		<div className="vcr-display">
@@ -41,6 +45,7 @@ export function VCRDisplay({
 						? `-${formatTime(duration - currentTime)}`
 						: formatTime(currentTime)}
 				</div>
+				<VuMeter levels={vuMeterLevels} />
 				<div className="vcr-actions">
 					<Button
 						type="button"
@@ -67,6 +72,7 @@ export function VCRDisplay({
 
 			{/* Mobile: Centered layout with flanking buttons */}
 			<div className="vcr-mobile-layout">
+				<VuMeter levels={vuMeterLevels} />
 				<Button
 					type="button"
 					onClick={isPlaying ? onPause : onPlay}
