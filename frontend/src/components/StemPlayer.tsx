@@ -305,7 +305,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		const playbackControlsContainer = document.getElementById(
 			"playback-controls-container",
 		);
-		const sidebarVcrContainer = document.getElementById("sidebar-vcr-container");
+		const sidebarVcrContainer = document.getElementById(
+			"sidebar-vcr-container",
+		);
 
 		// Common VCR props
 		const vcrProps = {
@@ -367,184 +369,184 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 						tabIndex={0}
 						style={{ "--stem-count": stemOrder.length } as React.CSSProperties}
 					>
-					<div className="waveforms-section">
-						{/* Ruler row */}
-						<div className="waveform-row" ref={containerRef}>
-							<div className="waveform-controls">
-								{/* Empty controls area to maintain alignment */}
-							</div>
-							<Ruler
-								currentTime={currentTime}
-								duration={duration}
-								previewTime={previewTime || undefined}
-								onSeek={seek}
-								onPreview={setPreviewTime}
-								height={48}
-							/>
-						</div>
-
-						{stemOrder.map((stemName, stemIndex) => {
-							const stem = stems[stemName];
-							return (
-								<div key={stemName} className={"waveform-row"}>
-									<div className="waveform-controls">
-										<label
-											htmlFor={`stem-${stemName}-gain`}
-											className="waveform-stem-label"
-										>
-											{stemName}
-										</label>
-										<div className="waveform-volume-control">
-											<VolumeSlider
-												volume={stem.gain}
-												onVolumeChange={(volume) =>
-													setStemGain(stemName, volume)
-												}
-												size="small"
-												isMuted={stem.muted}
-												onDoubleClick={() => resetStemGain(stemName)}
-												showUnityMarker={true}
-											/>
-											<span className="volume-label">
-												{stem.muted ? "Muted" : `${volumeToDb(stem.gain)} dB`}
-											</span>
-										</div>
-										<div className="waveform-control-buttons flex gap-1">
-											<MobileVolumeControl
-												volume={stem.gain}
-												onVolumeChange={(volume) =>
-													setStemGain(stemName, volume)
-												}
-												isMuted={stem.muted}
-												onToggleMute={() => toggleMute(stemName)}
-											/>
-											<button
-												type="button"
-												onClick={() => toggleMute(stemName)}
-												className={`mute-button ${stem.muted ? "muted" : ""}`}
-												title={stem.muted ? "Unmute" : "Mute"}
-											>
-												{stem.muted ? (
-													<VolumeX className="h-4 w-4" color="#ff6666" />
-												) : (
-													<Volume2 className="h-4 w-4" color="currentColor" />
-												)}
-											</button>
-											<button
-												type="button"
-												onClick={() => toggleSolo(stemName)}
-												className={`solo-button ${stem.soloed ? "soloed" : ""}`}
-												title={stem.soloed ? "Unsolo" : "Solo"}
-											>
-												<Music
-													className="h-4 w-4"
-													color={stem.soloed ? "#ffb347" : "currentColor"}
-												/>
-											</button>
-											<button
-												type="button"
-												onClick={() => cycleStemCompression(stemName)}
-												className={`compression-button ${stem.compression}`}
-												title={`Compression: ${stem.compression}`}
-											>
-												<CompressionIcon
-													level={stem.compression}
-													className="h-4 w-4"
-												/>
-											</button>
-											<button
-												type="button"
-												onClick={() => cycleStemEqLow(stemName)}
-												className={`eq-low-button ${stem.eqLow}`}
-												title={`Low EQ: ${stem.eqLow}`}
-											>
-												<EqIcon
-													band="low"
-													level={stem.eqLow}
-													className="h-4 w-4"
-												/>
-											</button>
-											<button
-												type="button"
-												onClick={() => cycleStemEqMid(stemName)}
-												className={`eq-mid-button ${stem.eqMid}`}
-												title={`Mid EQ: ${stem.eqMid}`}
-											>
-												<EqIcon
-													band="mid"
-													level={stem.eqMid}
-													className="h-4 w-4"
-												/>
-											</button>
-											<button
-												type="button"
-												onClick={() => cycleStemEqHigh(stemName)}
-												className={`eq-high-button ${stem.eqHigh}`}
-												title={`High EQ: ${stem.eqHigh}`}
-											>
-												<EqIcon
-													band="high"
-													level={stem.eqHigh}
-													className="h-4 w-4"
-												/>
-											</button>
-										</div>
-									</div>
-									<WaveformVisualization
-										waveformUrl={stem.waveformUrl}
-										stemName={stemName}
-										currentTime={currentTime}
-										duration={duration}
-										previewTime={previewTime || undefined}
-										onSeek={seek}
-										onPreview={setPreviewTime}
-										waveformClasses={
-											stemIndex === stemOrder.length - 1
-												? "rounded-b-lg overflow-hidden"
-												: ""
-										}
-									/>
+						<div className="waveforms-section">
+							{/* Ruler row */}
+							<div className="waveform-row" ref={containerRef}>
+								<div className="waveform-controls">
+									{/* Empty controls area to maintain alignment */}
 								</div>
-							);
-						})}
+								<Ruler
+									currentTime={currentTime}
+									duration={duration}
+									previewTime={previewTime || undefined}
+									onSeek={seek}
+									onPreview={setPreviewTime}
+									height={48}
+								/>
+							</div>
+
+							{stemOrder.map((stemName, stemIndex) => {
+								const stem = stems[stemName];
+								return (
+									<div key={stemName} className={"waveform-row"}>
+										<div className="waveform-controls">
+											<label
+												htmlFor={`stem-${stemName}-gain`}
+												className="waveform-stem-label"
+											>
+												{stemName}
+											</label>
+											<div className="waveform-volume-control">
+												<VolumeSlider
+													volume={stem.gain}
+													onVolumeChange={(volume) =>
+														setStemGain(stemName, volume)
+													}
+													size="small"
+													isMuted={stem.muted}
+													onDoubleClick={() => resetStemGain(stemName)}
+													showUnityMarker={true}
+												/>
+												<span className="volume-label">
+													{stem.muted ? "Muted" : `${volumeToDb(stem.gain)} dB`}
+												</span>
+											</div>
+											<div className="waveform-control-buttons flex gap-1">
+												<MobileVolumeControl
+													volume={stem.gain}
+													onVolumeChange={(volume) =>
+														setStemGain(stemName, volume)
+													}
+													isMuted={stem.muted}
+													onToggleMute={() => toggleMute(stemName)}
+												/>
+												<button
+													type="button"
+													onClick={() => toggleMute(stemName)}
+													className={`mute-button ${stem.muted ? "muted" : ""}`}
+													title={stem.muted ? "Unmute" : "Mute"}
+												>
+													{stem.muted ? (
+														<VolumeX className="h-4 w-4" color="#ff6666" />
+													) : (
+														<Volume2 className="h-4 w-4" color="currentColor" />
+													)}
+												</button>
+												<button
+													type="button"
+													onClick={() => toggleSolo(stemName)}
+													className={`solo-button ${stem.soloed ? "soloed" : ""}`}
+													title={stem.soloed ? "Unsolo" : "Solo"}
+												>
+													<Music
+														className="h-4 w-4"
+														color={stem.soloed ? "#ffb347" : "currentColor"}
+													/>
+												</button>
+												<button
+													type="button"
+													onClick={() => cycleStemCompression(stemName)}
+													className={`compression-button ${stem.compression}`}
+													title={`Compression: ${stem.compression}`}
+												>
+													<CompressionIcon
+														level={stem.compression}
+														className="h-4 w-4"
+													/>
+												</button>
+												<button
+													type="button"
+													onClick={() => cycleStemEqLow(stemName)}
+													className={`eq-low-button ${stem.eqLow}`}
+													title={`Low EQ: ${stem.eqLow}`}
+												>
+													<EqIcon
+														band="low"
+														level={stem.eqLow}
+														className="h-4 w-4"
+													/>
+												</button>
+												<button
+													type="button"
+													onClick={() => cycleStemEqMid(stemName)}
+													className={`eq-mid-button ${stem.eqMid}`}
+													title={`Mid EQ: ${stem.eqMid}`}
+												>
+													<EqIcon
+														band="mid"
+														level={stem.eqMid}
+														className="h-4 w-4"
+													/>
+												</button>
+												<button
+													type="button"
+													onClick={() => cycleStemEqHigh(stemName)}
+													className={`eq-high-button ${stem.eqHigh}`}
+													title={`High EQ: ${stem.eqHigh}`}
+												>
+													<EqIcon
+														band="high"
+														level={stem.eqHigh}
+														className="h-4 w-4"
+													/>
+												</button>
+											</div>
+										</div>
+										<WaveformVisualization
+											waveformUrl={stem.waveformUrl}
+											stemName={stemName}
+											currentTime={currentTime}
+											duration={duration}
+											previewTime={previewTime || undefined}
+											onSeek={seek}
+											onPreview={setPreviewTime}
+											waveformClasses={
+												stemIndex === stemOrder.length - 1
+													? "rounded-b-lg overflow-hidden"
+													: ""
+											}
+										/>
+									</div>
+								);
+							})}
+						</div>
 					</div>
-				</div>
-				<div className="player-panel master-effects">
-					<div className="master-effects-row">
-						<MasterVolumeControl
-							volume={masterVolume}
-							onVolumeChange={setMasterVolume}
-						/>
-						<ParametricEqPanel
-							config={effectsConfig.parametricEq}
-							onUpdate={updateParametricEqBand}
-							onSetEnabled={setParametricEqEnabled}
-							onReset={resetParametricEq}
-						/>
-						<EqPanel
-							config={effectsConfig.eq}
-							onUpdateBand={updateEqBand}
-							onSetEnabled={setEqEnabled}
-							onReset={resetEq}
-						/>
-						{/* <StereoExpanderPanel
+					<div className="player-panel master-effects">
+						<div className="master-effects-row">
+							<MasterVolumeControl
+								volume={masterVolume}
+								onVolumeChange={setMasterVolume}
+							/>
+							<ParametricEqPanel
+								config={effectsConfig.parametricEq}
+								onUpdate={updateParametricEqBand}
+								onSetEnabled={setParametricEqEnabled}
+								onReset={resetParametricEq}
+							/>
+							<EqPanel
+								config={effectsConfig.eq}
+								onUpdateBand={updateEqBand}
+								onSetEnabled={setEqEnabled}
+								onReset={resetEq}
+							/>
+							{/* <StereoExpanderPanel
               config={effectsConfig.stereoExpander}
               onUpdate={updateStereoExpander}
               onReset={resetStereoExpander}
             /> */}
-						<ReverbPanel
-							config={effectsConfig.reverb}
-							onUpdate={updateReverb}
-							onReset={resetReverb}
-						/>
-						<CompressorPanel
-							config={effectsConfig.compressor}
-							gainReduction={compressorGainReduction}
-							onUpdate={updateCompressor}
-							onReset={resetCompressor}
-						/>
+							<ReverbPanel
+								config={effectsConfig.reverb}
+								onUpdate={updateReverb}
+								onReset={resetReverb}
+							/>
+							<CompressorPanel
+								config={effectsConfig.compressor}
+								gainReduction={compressorGainReduction}
+								onUpdate={updateCompressor}
+								onReset={resetCompressor}
+							/>
+						</div>
 					</div>
-				</div>
 				</div>
 
 				{/* Delete Confirmation Modal */}
