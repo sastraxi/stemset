@@ -1,6 +1,25 @@
 /* VCR Display Styles */
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
+/* Mobile vs Desktop VCR visibility control */
+.vcr-mobile-only {
+	display: block;
+}
+
+.vcr-desktop-only {
+	display: none;
+}
+
+@media (min-width: 769px) {
+	.vcr-mobile-only {
+		display: none;
+	}
+
+	.vcr-desktop-only {
+		display: block;
+	}
+}
+
 .vcr-display {
 	background: linear-gradient(
 		180deg,

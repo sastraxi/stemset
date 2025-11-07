@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RulerProps {
-	containerRef: React.RefObject<HTMLDivElement>;
 	currentTime: number;
 	duration: number;
 	previewTime?: number; // Optional preview time for scrubbing visualization
@@ -21,7 +20,6 @@ interface RulerProps {
  * - Same interaction logic as WaveformVisualization
  */
 export function Ruler({
-	containerRef,
 	currentTime,
 	duration,
 	previewTime,
@@ -47,11 +45,8 @@ export function Ruler({
 		const ctx = canvas.getContext("2d", { alpha: true });
 		if (!ctx) return;
 
-		const container = containerRef.current;
-		if (!container) return;
-
-		// Set canvas size to match container (responsive)
-		const rect = container.getBoundingClientRect();
+		// Set canvas size to match its own dimensions (responsive)
+		const rect = canvas.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
 
 		canvas.width = rect.width * dpr * 1;
@@ -149,28 +144,28 @@ export function Ruler({
 			ctx.closePath();
 			ctx.fill();
 		}
-	}, [containerRef]);
+	}, [currentTime, previewTime, duration, height]);
 
 	// Re-render on time change, preview time change, or window resize
 	useEffect(() => {
 		renderRuler();
 	}, [currentTime, previewTime, duration, height]);
 
-	// Watch for container size changes using ResizeObserver
+	// Watch for canvas parent size changes using ResizeObserver
 	useEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
+		const canvas = canvasRef.current;
+		if (!canvas || !canvas.parentElement) return;
 
 		const resizeObserver = new ResizeObserver(() => {
 			renderRuler();
 		});
 
-		resizeObserver.observe(container);
+		resizeObserver.observe(canvas.parentElement);
 
 		return () => {
 			resizeObserver.disconnect();
 		};
-	}, []);
+	}, [renderRuler]);
 
 	// Real-time scrubbing handlers (same logic as WaveformVisualization)
 	const getSeekTime = (clientX: number) => {

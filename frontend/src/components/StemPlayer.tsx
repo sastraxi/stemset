@@ -29,7 +29,6 @@ import { VCRDisplay } from "./VCRDisplay";
 import { VolumeSlider } from "./VolumeSlider";
 import { WaveformVisualization } from "./WaveformVisualization";
 import "../styles/vcr-display.css";
-import { InteractivePanel } from "./InteractivePanel";
 
 /**
  * Convert linear volume (0-2) to dB.
@@ -300,38 +299,65 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			}
 		}
 
-		// Render VCR display in header (before loading check so it shows immediately)
+		// Render VCR display (before loading check so it shows immediately)
+		// Mobile: Portal to header (fixed to bottom)
+		// Desktop: Will be rendered in sidebar
 		const playbackControlsContainer = document.getElementById(
 			"playback-controls-container",
 		);
-		const vcrDisplay = (
-			<VCRDisplay
-				currentTime={currentTime}
-				duration={duration}
-				formatTime={formatTime}
-				showTimeRemaining={showTimeRemaining}
-				onToggleTimeDisplay={() => setShowTimeRemaining(!showTimeRemaining)}
-				isPlaying={isPlaying}
-				onPlay={handlePlay}
-				onPause={handlePause}
-				onStop={stop}
-				disabled={stemOrder.length === 0 || isLoading}
-			/>
+		const sidebarVcrContainer = document.getElementById("sidebar-vcr-container");
+
+		// Common VCR props
+		const vcrProps = {
+			currentTime,
+			duration,
+			formatTime,
+			showTimeRemaining,
+			onToggleTimeDisplay: () => setShowTimeRemaining(!showTimeRemaining),
+			isPlaying,
+			onPlay: handlePlay,
+			onPause: handlePause,
+			onStop: stop,
+			disabled: stemOrder.length === 0 || isLoading,
+		};
+
+		// Render VCR portals (always render, even during loading)
+		const vcrPortals = (
+			<>
+				{/* Mobile: Portal to header (fixed to bottom) */}
+				{playbackControlsContainer &&
+					createPortal(
+						<div className="vcr-mobile-only">
+							<VCRDisplay {...vcrProps} />
+						</div>,
+						playbackControlsContainer,
+					)}
+				{/* Desktop: Portal to sidebar */}
+				{sidebarVcrContainer &&
+					createPortal(
+						<div className="vcr-desktop-only">
+							<VCRDisplay {...vcrProps} />
+						</div>,
+						sidebarVcrContainer,
+					)}
+			</>
 		);
 
 		if (isLoading) {
 			return (
-				<div className="stem-player loading">
-					<Spinner size="lg" />
-					<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
-				</div>
+				<>
+					{vcrPortals}
+					<div className="stem-player loading">
+						<Spinner size="lg" />
+						<p style={{ marginTop: "1rem", color: "#888" }}>Loading stems...</p>
+					</div>
+				</>
 			);
 		}
 
 		return (
 			<>
-				{playbackControlsContainer &&
-					createPortal(vcrDisplay, playbackControlsContainer)}
+				{vcrPortals}
 				{/** biome-ignore lint/a11y/noNoninteractiveTabindex: Spacebar */}
 				<div
 					className="stem-player ml-[-1rem] md:ml-0"
@@ -346,7 +372,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 								{/* Empty controls area to maintain alignment */}
 							</div>
 							<Ruler
-								containerRef={containerRef}
 								currentTime={currentTime}
 								duration={duration}
 								previewTime={previewTime || undefined}
@@ -483,10 +508,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					</div>
 				</div>
 				<div className="player-panel master-effects">
-					<InteractivePanel
-						className="master-effects-row"
-						selector="main.player-area"
-					>
+					<div className="master-effects-row">
 						<MasterVolumeControl
 							volume={masterVolume}
 							onVolumeChange={setMasterVolume}
@@ -519,7 +541,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							onUpdate={updateCompressor}
 							onReset={resetCompressor}
 						/>
-					</InteractivePanel>
+					</div>
 				</div>
 
 				{/* Delete Confirmation Modal */}

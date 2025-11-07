@@ -1,4 +1,4 @@
-import { MoreVertical, QrCode, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, QrCode, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
 	DropdownMenu,
@@ -27,31 +27,31 @@ export function RecordingMenu({
 			<div className="recording-menu-desktop">
 				<Button
 					variant="outline"
-					size="icon"
+					size="sm"
 					onClick={onShowQR}
 					disabled={disabled}
 					title="Share recording"
-					className="recording-menu-button"
+					className="recording-menu-button px-2"
 				>
 					<QrCode className="h-5 w-5" />
 				</Button>
 				<Button
 					variant="outline"
-					size="icon"
+					size="sm"
 					onClick={onEdit}
 					disabled={disabled}
 					title="Edit metadata"
-					className="recording-menu-button"
+					className="recording-menu-button px-2"
 				>
 					<Pencil className="h-4 w-4" />
 				</Button>
 				<Button
-					variant="outline"
-					size="icon"
+					variant="destructive"
+					size="sm"
 					onClick={onDelete}
 					disabled={disabled}
 					title="Delete recording"
-					className="recording-menu-button recording-menu-button-delete"
+					className="recording-menu-button recording-menu-button-delete px-2"
 				>
 					<Trash2 className="h-4 w-4" />
 				</Button>

@@ -379,6 +379,9 @@ export function AuthenticatedApp({
 							</ul>
 						)}
 					</div>
+
+					{/* VCR player container for desktop (fixed/sticky to sidebar) */}
+					<div id="sidebar-vcr-container" className="sidebar-vcr-container" />
 				</aside>
 
 				<main

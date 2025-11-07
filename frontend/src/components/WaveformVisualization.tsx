@@ -144,7 +144,7 @@ export function WaveformVisualization({
 		}
 
 		canvas.width = rect.width * dpr * 1;
-		canvas.height = rect.height * dpr;
+		canvas.height = rect.height * dpr * 1;
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 

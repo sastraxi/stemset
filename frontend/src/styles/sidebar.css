@@ -64,10 +64,23 @@ button:disabled {
 .file-list {
 	flex: 1;
 	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
-.file-list ul {
-	/* This prevents the flash by giving a stable container */
+.file-list > div:first-child {
+	/* Header with title and refresh button - fixed, doesn't scroll */
+	flex-shrink: 0;
+}
+
+.file-list ul,
+.file-list .empty-state,
+.file-list > div:not(:first-child) {
+	/* Scrollable content area */
+	overflow-y: auto;
+	overflow-x: hidden;
+	flex: 1;
 	min-height: 0;
 }
 
@@ -114,3 +127,21 @@ button:disabled {
 	color: rgba(255, 255, 255, 0.4);
 	white-space: nowrap;
 }
+
+/* VCR Player in Sidebar */
+.sidebar-vcr-container {
+	flex-shrink: 0;
+	padding: 1rem 1.75rem;
+	background: linear-gradient(to top,
+		rgba(26, 26, 26, 0.9) 0%, 
+		rgba(26, 26, 26, 0.7) 10%,
+		rgba(26, 26, 26, 0.3) 20%,
+		rgba(26, 26, 26, 0.12) 25%,
+		rgba(26, 26, 26, 0.1) 30%,
+		transparent 50%,
+		transparent 100%
+	);
+	margin: -1.75rem;
+}
+
+/* Note: Container is always rendered, visibility controlled by child .vcr-desktop-only class */
