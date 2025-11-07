@@ -157,11 +157,6 @@ function ParametricBand({
 					</div>
 				</div>
 			</div>
-
-			{/* Right column: Reserved for future effect */}
-			<div className="parametric-band-effect">
-				<div className="parametric-effect-placeholder">...</div>
-			</div>
 		</div>
 	);
 }

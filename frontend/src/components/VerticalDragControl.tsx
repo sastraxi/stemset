@@ -188,6 +188,43 @@ export function VerticalDragControl({
 	const color = getColor(fillPercentage);
 	const displayValue = formatValue ? formatValue(value) : value.toFixed(1);
 
+	// Generate filter curve visualization for Q control
+	// Lower Q = wider bell curve, Higher Q = narrower/sharper peak
+	const generateFilterCurve = (): string => {
+		// Normalize Q value (0.3-8) to 0-1 range for easier calculation
+		const normalizedQ = logarithmic ? valueToLinear(value) : (value - min) / (max - min);
+
+		// Wider viewbox to accommodate wider control (200x100 for 2:1 aspect ratio)
+		const centerX = 100;
+		const centerY = 80;
+		const peakHeight = 70;
+
+		// Width of the bell curve - inverse of Q (lower Q = wider)
+		// Map from very wide (low Q) to very narrow (high Q)
+		const bandwidth = 80 - (normalizedQ * 65); // 80px to 15px width
+
+		// Create bell curve using quadratic bezier curves
+		// Symmetrical bell shape
+		const points = [];
+		const steps = 20;
+
+		for (let i = 0; i <= steps; i++) {
+			const t = i / steps;
+			const x = centerX + (t - 0.5) * bandwidth * 2;
+
+			// Gaussian-like bell curve
+			const variance = bandwidth / 2;
+			const distance = (t - 0.5) * bandwidth;
+			const y = centerY - peakHeight * Math.exp(-(distance * distance) / (2 * variance * variance / 8));
+
+			points.push(`${x},${y}`);
+		}
+
+		return `M ${points.join(" L ")}`;
+	};
+
+	const filterCurve = label === "Q" ? generateFilterCurve() : null;
+
 	return (
 		<div
 			ref={containerRef}
@@ -202,7 +239,7 @@ export function VerticalDragControl({
 					borderColor: color,
 				}}
 			>
-				<svg width="100%" height="100%" viewBox="0 0 100 100">
+				<svg width="100%" height="100%" viewBox="0 0 200 100">
 					<defs>
 						<linearGradient id={`vertical-gradient-${uniqueId}`} x1="0%" y1="100%" x2="0%" y2="0%">
 							<stop offset="0%" stopColor="#4a9eff" />
@@ -215,7 +252,7 @@ export function VerticalDragControl({
 							<rect
 								x="0"
 								y={100 - fillPercentage}
-								width="100"
+								width="200"
 								height={fillPercentage}
 							/>
 						</clipPath>
@@ -224,37 +261,68 @@ export function VerticalDragControl({
 					<rect
 						x="0"
 						y="0"
-						width="100"
+						width="200"
 						height="100"
 						fill={`url(#vertical-gradient-${uniqueId})`}
 						opacity="0.2"
 						clipPath={`url(#vertical-clip-${uniqueId})`}
 					/>
-					{/* Background icon (unfilled) */}
-					<text
-						x="50"
-						y="50"
-						textAnchor="middle"
-						dominantBaseline="central"
-						fill="#555"
-						fontSize="42"
-						fontWeight="bold"
-					>
-						{label}
-					</text>
-					{/* Foreground icon (filled from bottom with gradient) */}
-					<text
-						x="50"
-						y="50"
-						textAnchor="middle"
-						dominantBaseline="central"
-						fill={`url(#vertical-gradient-${uniqueId})`}
-						fontSize="42"
-						fontWeight="bold"
-						clipPath={`url(#vertical-clip-${uniqueId})`}
-					>
-						{label}
-					</text>
+
+					{filterCurve ? (
+						<>
+							{/* Baseline for filter visualization */}
+							<line x1="20" y1="80" x2="180" y2="80" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+
+							{/* Filter curve - unfilled (background) */}
+							<path
+								d={filterCurve}
+								fill="none"
+								stroke="#555"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+
+							{/* Filter curve - filled with gradient */}
+							<path
+								d={filterCurve}
+								fill="none"
+								stroke={`url(#vertical-gradient-${uniqueId})`}
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								clipPath={`url(#vertical-clip-${uniqueId})`}
+							/>
+						</>
+					) : (
+						<>
+							{/* Background icon (unfilled) */}
+							<text
+								x="100"
+								y="50"
+								textAnchor="middle"
+								dominantBaseline="central"
+								fill="#555"
+								fontSize="42"
+								fontWeight="bold"
+							>
+								{label}
+							</text>
+							{/* Foreground icon (filled from bottom with gradient) */}
+							<text
+								x="100"
+								y="50"
+								textAnchor="middle"
+								dominantBaseline="central"
+								fill={`url(#vertical-gradient-${uniqueId})`}
+								fontSize="42"
+								fontWeight="bold"
+								clipPath={`url(#vertical-clip-${uniqueId})`}
+							>
+								{label}
+							</text>
+						</>
+					)}
 				</svg>
 			</div>
 			<div className="vertical-drag-value" style={{ color: "#888" }}>
