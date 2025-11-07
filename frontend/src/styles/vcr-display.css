@@ -4,15 +4,30 @@
 /* VU Meter Styles */
 .vu-meter {
 	position: absolute;
-	top: 0;
 	left: 0;
 	right: 0;
-	bottom: 0;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	pointer-events: none;
 	z-index: 0;
+}
+
+/* Desktop: VU meter aligned with timecode */
+.vcr-desktop-layout .vu-meter {
+	top: -0.5rem;
+	height: 4rem;
+	left: 0;
+	right: 0;
+}
+
+/* Mobile: VU meter positioned between buttons/timecode */
+.vcr-mobile-layout .vu-meter {
+	top: 80%;
+	transform: translateX(-50%);
+	left: 50%;
+	justify-content: center;
+	gap:  8px;
 }
 
 .vu-meter-channel {
@@ -28,7 +43,7 @@
 
 .vu-meter-segment {
 	width: 8px;
-	height: 24px;
+	height: 36px;
 	border-radius: 2px;
 	transition: all 0.1s ease-out;
 	background-color: #2a2a2a;
@@ -54,8 +69,8 @@
 	}
 
 	.vu-meter-segment {
-		width: 6px;
-		height: 16px;
+		width: 8px;
+		height: 4px;
 	}
 }
 
@@ -145,8 +160,11 @@
 	transition: all 0.25s ease;
 	padding: 0.75rem 0;
 	font-variant-numeric: tabular-nums;
-	position: relative;
 }
+
+	.vcr-desktop-layout .vcr-timecode {
+		padding-top: 0.25rem;
+	}
 
 .vcr-timecode::after {
 	content: '';
@@ -335,6 +353,7 @@
 		flex: 0 0 auto;
 		padding: 0.5rem 1rem;
 		position: relative;
+		top: -0.5rem;
 		z-index: 1;
 	}
 
