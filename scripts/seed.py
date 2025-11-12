@@ -2,7 +2,8 @@
 """Seed the database with initial data.
 
 Usage:
-    python scripts/seed.py
+    python scripts/seed.py                  # Uses .env (default)
+    python scripts/seed.py .env.production  # Uses specific env file
 """
 
 from __future__ import annotations
@@ -16,7 +17,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Use provided env file or default to .env
+env_file = sys.argv[1] if len(sys.argv) > 1 else ".env"
+env_path = Path(env_file)
+
+if not env_path.exists():
+    print(f"Error: {env_file} file not found")
+    sys.exit(1)
+
+print(f"Loading environment from {env_file}...")
+load_dotenv(env_path)
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession

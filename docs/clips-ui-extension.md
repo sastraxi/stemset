@@ -155,62 +155,76 @@ Recording (1) ← (N) Clip
 
 ---
 
-### Phase 7: Song-Based Clip View
+### Phase 7: Song Page
 
-**Goal:** Dedicated view to see all clips for a specific song across multiple recordings.
+**Goal:** Dedicated page for each song showing all clips and recordings.
 
-#### Use Case
-- User records "Song X" at multiple rehearsals/performances
-- Want to compare different takes/versions
-- Current UI only shows clips per-recording
+#### Use Cases
+- View all clips/recordings of a song across different sessions
+- Compare different takes/performances
+- Currently: Songs only visible via recording metadata, no dedicated view
 
 #### Implementation
 
-1. **Route** (`frontend/src/routes/p/$profileName/songs/$songId/clips.tsx`)
-   ```tsx
-   import { useParams } from "@tanstack/react-router";
-   import { useQuery } from "@tanstack/react-query";
-   import { apiSongsSongIdClipsGetSongClips } from "@/api/generated";
+**Route** (`frontend/src/routes/p/$profileName/songs/$songId/index.tsx`)
+```tsx
+import { useParams } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { apiSongsSongIdClipsGetSongClips } from "@/api/generated";
 
-   export function SongClipsView() {
-     const { songId, profileName } = useParams({ strict: false });
+export function SongPage() {
+  const { songId, profileName } = useParams({ strict: false });
 
-     const { data: clips, isLoading } = useQuery({
-       queryKey: ['song-clips', songId],
-       queryFn: () => apiSongsSongIdClipsGetSongClips({
-         path: { song_id: songId }
-       })
-     });
+  const { data: clips } = useQuery({
+    queryKey: ['song-clips', songId],
+    queryFn: () => apiSongsSongIdClipsGetSongClips({
+      path: { song_id: songId }
+    })
+  });
 
-     return (
-       <div className="container mx-auto p-4">
-         <SongHeader songId={songId} />
-         <h2>All Clips</h2>
-         {clips?.data.map(clip => (
-           <ClipCard
-             key={clip.id}
-             clip={clip}
-             showRecordingInfo={true}  // Show which recording this clip is from
-           />
-         ))}
-       </div>
-     );
-   }
-   ```
+  return (
+    <div className="container mx-auto p-4">
+      {/* Song title/header (from first clip's song metadata) */}
+      <h1 className="text-2xl font-bold mb-4">
+        {clips?.data[0]?.song?.title || "Untitled Song"}
+      </h1>
 
-2. **ClipCard Component** (extend ClipsList for card layout)
-   - Show clip name, duration, time range
-   - **Show recording metadata**: date recorded, location
-   - Link to clip player
-   - Play button for inline preview?
+      {/* List of clips with recording context */}
+      <div className="space-y-2">
+        {clips?.data.map(clip => (
+          <ClipCard
+            key={clip.id}
+            clip={clip}
+            profileName={profileName}
+            showRecordingInfo={true}  // Show date, location
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
 
-3. **Navigation**
-   - Add link from SongMetadata component
-   - Breadcrumb: Profile → Songs → Song X → Clips
+**Components Needed**
+- **ClipCard**: Extend existing ClipsList items to show recording context
+  - Clip name, duration, time range
+  - Recording date and location
+  - Link to clip player
 
-#### Backend Already Complete
+**Navigation**
+- From recording metadata: Click song name → Navigate to song page
+- From clips sidebar: Show song name (if set), click to visit song page
+- Add to sidebar navigation or breadcrumb
+
+**Backend Already Complete**
 - `GET /api/songs/{song_id}/clips` exists in `profile_routes.py`
 - Returns all clips for a song across all recordings
+
+**Future Enhancements** (when needed)
+- Edit song metadata (title, artist, key, tempo)
+- User-provided lyrics
+- Song structure notes (verse/chorus markers)
+- All recordings list (not just clips)
 
 ---
 
