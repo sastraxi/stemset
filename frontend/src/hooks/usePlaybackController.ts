@@ -6,6 +6,8 @@ export interface UsePlaybackControllerOptions {
 	duration: number;
 	stemNodes: Map<string, StemAudioNode>;
 	initialPosition?: number; // Initial playback position in seconds
+	startTimeSec?: number; // Clip start time (default: 0)
+	endTimeSec?: number; // Clip end time (default: duration)
 }
 
 export interface UsePlaybackControllerResult {
@@ -37,26 +39,42 @@ export function usePlaybackController({
 	duration,
 	stemNodes,
 	initialPosition = 0,
+	startTimeSec = 0,
+	endTimeSec,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
+	// Calculate effective bounds
+	const effectiveStart = Math.max(0, startTimeSec);
+	const effectiveEnd = Math.min(endTimeSec ?? duration, duration);
+
+	// Clamp initial position to clip bounds
+	const clampedInitialPosition = Math.max(
+		effectiveStart,
+		Math.min(initialPosition, effectiveEnd),
+	);
+
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [currentTime, setCurrentTime] = useState(initialPosition);
-	const lastInitialPositionRef = useRef(initialPosition);
+	const [currentTime, setCurrentTime] = useState(clampedInitialPosition);
+	const lastInitialPositionRef = useRef(clampedInitialPosition);
 
 	// Update currentTime when initialPosition changes (e.g., loaded from config)
 	useEffect(() => {
-		if (initialPosition !== lastInitialPositionRef.current) {
-			setCurrentTime(initialPosition);
-			pausedAtRef.current = initialPosition;
-			lastInitialPositionRef.current = initialPosition;
+		const newClampedPosition = Math.max(
+			effectiveStart,
+			Math.min(initialPosition, effectiveEnd),
+		);
+		if (newClampedPosition !== lastInitialPositionRef.current) {
+			setCurrentTime(newClampedPosition);
+			pausedAtRef.current = newClampedPosition;
+			lastInitialPositionRef.current = newClampedPosition;
 		}
-	}, [initialPosition]);
+	}, [initialPosition, effectiveStart, effectiveEnd]);
 
 	// Audio source management
 	const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
 
 	// Timing state
 	const startTimeRef = useRef<number>(0); // AudioContext.currentTime - offset when play starts
-	const pausedAtRef = useRef<number>(initialPosition); // Position in seconds when paused
+	const pausedAtRef = useRef<number>(clampedInitialPosition); // Position in seconds when paused
 
 	// RAF and playback management
 	const rafRef = useRef<number | null>(null);
@@ -122,9 +140,9 @@ export function usePlaybackController({
 						endedRef.current = true;
 						setIsPlaying(false);
 						isPlayingRef.current = false;
-						pausedAtRef.current = 0;
+						pausedAtRef.current = effectiveStart; // Reset to clip start
 						startTimeRef.current = audioContext.currentTime;
-						setCurrentTime(0);
+						setCurrentTime(effectiveStart);
 					}
 				};
 
@@ -153,16 +171,31 @@ export function usePlaybackController({
 				if (!isPlayingRef.current) return;
 
 				const elapsed = audioContext.currentTime - startTimeRef.current;
-				setCurrentTime(elapsed >= duration ? duration : elapsed);
 
-				if (elapsed < duration) {
-					rafRef.current = requestAnimationFrame(tick);
+				// Stop at clip end
+				if (elapsed >= effectiveEnd) {
+					setCurrentTime(effectiveEnd);
+					setIsPlaying(false);
+					isPlayingRef.current = false;
+					pausedAtRef.current = effectiveStart; // Loop back to start
+					return;
 				}
+
+				setCurrentTime(elapsed);
+
+				rafRef.current = requestAnimationFrame(tick);
 			};
 
 			rafRef.current = requestAnimationFrame(tick);
 		},
-		[audioContext, duration, stemNodes, stopAllSources],
+		[
+			audioContext,
+			duration,
+			stemNodes,
+			stopAllSources,
+			effectiveEnd,
+			effectiveStart,
+		],
 	);
 
 	const play = useCallback(() => {
@@ -202,12 +235,12 @@ export function usePlaybackController({
 	const stop = useCallback(() => {
 		if (!audioContext) return;
 
-		pausedAtRef.current = 0;
+		pausedAtRef.current = effectiveStart; // Reset to clip start
 		manualEndModeRef.current = "stop";
 		isPlayingRef.current = false;
 		stopAllSources();
 		setIsPlaying(false);
-		setCurrentTime(0);
+		setCurrentTime(effectiveStart);
 
 		if (rafRef.current) {
 			cancelAnimationFrame(rafRef.current);
@@ -215,11 +248,12 @@ export function usePlaybackController({
 		}
 
 		playbackGenRef.current += 1;
-	}, [audioContext, stopAllSources]);
+	}, [audioContext, stopAllSources, effectiveStart]);
 
 	const seek = useCallback(
 		(seconds: number) => {
-			const clamped = Math.max(0, Math.min(seconds, duration));
+			// Clamp to clip bounds
+			const clamped = Math.max(effectiveStart, Math.min(seconds, effectiveEnd));
 			pausedAtRef.current = clamped;
 			setCurrentTime(clamped);
 
@@ -227,7 +261,7 @@ export function usePlaybackController({
 				startSources(clamped);
 			}
 		},
-		[duration, startSources],
+		[effectiveStart, effectiveEnd, startSources],
 	);
 
 	const formatTime = useCallback((seconds: number) => {

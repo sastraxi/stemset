@@ -120,3 +120,50 @@ class RecordingStatusResponse(BaseModel):
     display_name: str
     stems: list[dict[str, str | float | int]]
     config: RecordingConfigData | None = None
+
+
+class ClipResponse(BaseModel):
+    """Clip information response."""
+
+    id: str  # clip UUID
+    recording_id: str
+    song_id: str | None = None
+    start_time_sec: float
+    end_time_sec: float
+    display_name: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class ClipWithStemsResponse(BaseModel):
+    """Clip with associated recording stems."""
+
+    id: str
+    recording_id: str
+    song_id: str | None = None
+    start_time_sec: float
+    end_time_sec: float
+    display_name: str | None = None
+    created_at: str
+    updated_at: str
+    recording_output_name: str
+    stems: list[StemResponse]
+
+
+class CreateClipRequest(BaseModel):
+    """Request to create a new clip."""
+
+    recording_id: str
+    start_time_sec: float
+    end_time_sec: float
+    song_id: str | None = None
+    display_name: str | None = None
+
+
+class UpdateClipRequest(BaseModel):
+    """Request to update a clip."""
+
+    start_time_sec: float | None = None
+    end_time_sec: float | None = None
+    song_id: str | None = None
+    display_name: str | None = None

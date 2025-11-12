@@ -15,6 +15,55 @@ export type AuthStatusResponse = {
 };
 
 /**
+ * ClipBoundary
+ */
+export type ClipBoundary = {
+  start_time_sec: number;
+  end_time_sec: number;
+};
+
+/**
+ * ClipResponse
+ */
+export type ClipResponse = {
+  id: string;
+  recording_id: string;
+  song_id?: string | null;
+  start_time_sec: number;
+  end_time_sec: number;
+  display_name?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ClipWithStemsResponse
+ */
+export type ClipWithStemsResponse = {
+  id: string;
+  recording_id: string;
+  song_id?: string | null;
+  start_time_sec: number;
+  end_time_sec: number;
+  display_name?: string | null;
+  created_at: string;
+  updated_at: string;
+  recording_output_name: string;
+  stems: Array<StemResponse>;
+};
+
+/**
+ * CreateClipRequest
+ */
+export type CreateClipRequest = {
+  recording_id: string;
+  start_time_sec: number;
+  end_time_sec: number;
+  song_id?: string | null;
+  display_name?: string | null;
+};
+
+/**
  * CreateLocationRequest
  */
 export type CreateLocationRequest = {
@@ -75,6 +124,7 @@ export type ProcessingCallbackPayload = {
   status: string;
   stems?: Array<StemDataModel> | null;
   error?: string | null;
+  clip_boundaries?: Array<ClipBoundary> | null;
 };
 
 /**
@@ -99,10 +149,16 @@ export type RecordingConfigData = {
   eq?: {
     [key: string]: unknown;
   } | null;
+  parametricEq?: {
+    [key: string]: unknown;
+  } | null;
   compressor?: {
     [key: string]: unknown;
   } | null;
   reverb?: {
+    [key: string]: unknown;
+  } | null;
+  softClipper?: {
     [key: string]: unknown;
   } | null;
   stereoExpander?: {
@@ -168,6 +224,16 @@ export type StemResponse = {
   waveform_url: string;
   file_size_bytes: number;
   duration_seconds: number;
+};
+
+/**
+ * UpdateClipRequest
+ */
+export type UpdateClipRequest = {
+  start_time_sec?: number | null;
+  end_time_sec?: number | null;
+  song_id?: string | null;
+  display_name?: string | null;
 };
 
 /**
@@ -720,6 +786,234 @@ export type ApiProfilesProfileIdLocationsCreateLocationResponses = {
 
 export type ApiProfilesProfileIdLocationsCreateLocationResponse =
   ApiProfilesProfileIdLocationsCreateLocationResponses[keyof ApiProfilesProfileIdLocationsCreateLocationResponses];
+
+export type ApiRecordingsRecordingIdClipsGetRecordingClipsData = {
+  body?: never;
+  path: {
+    recording_id: string;
+  };
+  query?: never;
+  url: "/api/recordings/{recording_id}/clips";
+};
+
+export type ApiRecordingsRecordingIdClipsGetRecordingClipsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiRecordingsRecordingIdClipsGetRecordingClipsError =
+  ApiRecordingsRecordingIdClipsGetRecordingClipsErrors[keyof ApiRecordingsRecordingIdClipsGetRecordingClipsErrors];
+
+export type ApiRecordingsRecordingIdClipsGetRecordingClipsResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<ClipResponse>;
+};
+
+export type ApiRecordingsRecordingIdClipsGetRecordingClipsResponse =
+  ApiRecordingsRecordingIdClipsGetRecordingClipsResponses[keyof ApiRecordingsRecordingIdClipsGetRecordingClipsResponses];
+
+export type ApiRecordingsRecordingIdClipsCreateClipEndpointData = {
+  body: CreateClipRequest;
+  path: {
+    recording_id: string;
+  };
+  query?: never;
+  url: "/api/recordings/{recording_id}/clips";
+};
+
+export type ApiRecordingsRecordingIdClipsCreateClipEndpointErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiRecordingsRecordingIdClipsCreateClipEndpointError =
+  ApiRecordingsRecordingIdClipsCreateClipEndpointErrors[keyof ApiRecordingsRecordingIdClipsCreateClipEndpointErrors];
+
+export type ApiRecordingsRecordingIdClipsCreateClipEndpointResponses = {
+  /**
+   * Document created, URL follows
+   */
+  201: ClipResponse;
+};
+
+export type ApiRecordingsRecordingIdClipsCreateClipEndpointResponse =
+  ApiRecordingsRecordingIdClipsCreateClipEndpointResponses[keyof ApiRecordingsRecordingIdClipsCreateClipEndpointResponses];
+
+export type ApiSongsSongIdClipsGetSongClipsData = {
+  body?: never;
+  path: {
+    song_id: string;
+  };
+  query?: never;
+  url: "/api/songs/{song_id}/clips";
+};
+
+export type ApiSongsSongIdClipsGetSongClipsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiSongsSongIdClipsGetSongClipsError =
+  ApiSongsSongIdClipsGetSongClipsErrors[keyof ApiSongsSongIdClipsGetSongClipsErrors];
+
+export type ApiSongsSongIdClipsGetSongClipsResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<ClipWithStemsResponse>;
+};
+
+export type ApiSongsSongIdClipsGetSongClipsResponse =
+  ApiSongsSongIdClipsGetSongClipsResponses[keyof ApiSongsSongIdClipsGetSongClipsResponses];
+
+export type ApiClipsClipIdDeleteClipEndpointData = {
+  body?: never;
+  path: {
+    clip_id: string;
+  };
+  query?: never;
+  url: "/api/clips/{clip_id}";
+};
+
+export type ApiClipsClipIdDeleteClipEndpointErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiClipsClipIdDeleteClipEndpointError =
+  ApiClipsClipIdDeleteClipEndpointErrors[keyof ApiClipsClipIdDeleteClipEndpointErrors];
+
+export type ApiClipsClipIdDeleteClipEndpointResponses = {
+  /**
+   * Request fulfilled, nothing follows
+   */
+  204: void;
+};
+
+export type ApiClipsClipIdDeleteClipEndpointResponse =
+  ApiClipsClipIdDeleteClipEndpointResponses[keyof ApiClipsClipIdDeleteClipEndpointResponses];
+
+export type ApiClipsClipIdGetClipEndpointData = {
+  body?: never;
+  path: {
+    clip_id: string;
+  };
+  query?: never;
+  url: "/api/clips/{clip_id}";
+};
+
+export type ApiClipsClipIdGetClipEndpointErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiClipsClipIdGetClipEndpointError =
+  ApiClipsClipIdGetClipEndpointErrors[keyof ApiClipsClipIdGetClipEndpointErrors];
+
+export type ApiClipsClipIdGetClipEndpointResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: ClipWithStemsResponse;
+};
+
+export type ApiClipsClipIdGetClipEndpointResponse =
+  ApiClipsClipIdGetClipEndpointResponses[keyof ApiClipsClipIdGetClipEndpointResponses];
+
+export type ApiClipsClipIdUpdateClipEndpointData = {
+  body: UpdateClipRequest;
+  path: {
+    clip_id: string;
+  };
+  query?: never;
+  url: "/api/clips/{clip_id}";
+};
+
+export type ApiClipsClipIdUpdateClipEndpointErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiClipsClipIdUpdateClipEndpointError =
+  ApiClipsClipIdUpdateClipEndpointErrors[keyof ApiClipsClipIdUpdateClipEndpointErrors];
+
+export type ApiClipsClipIdUpdateClipEndpointResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: ClipResponse;
+};
+
+export type ApiClipsClipIdUpdateClipEndpointResponse =
+  ApiClipsClipIdUpdateClipEndpointResponses[keyof ApiClipsClipIdUpdateClipEndpointResponses];
 
 export type ApiUploadProfileNameUploadFileData = {
   body: {

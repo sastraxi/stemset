@@ -23,10 +23,16 @@ from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .config_routes import update_recording_config
 from .location_routes import create_location, get_profile_locations
 from .profile_routes import (
+    create_clip_endpoint,
+    delete_clip_endpoint,
     delete_recording_endpoint,
+    get_clip_endpoint,
     get_profile,
     get_profile_files,
     get_profiles,
+    get_recording_clips,
+    get_song_clips,
+    update_clip_endpoint,
     update_display_name,
 )
 from .song_routes import create_song, get_profile_songs
@@ -148,6 +154,12 @@ app = Litestar(
         create_song,
         get_profile_locations,
         create_location,
+        get_recording_clips,
+        get_song_clips,
+        get_clip_endpoint,
+        create_clip_endpoint,
+        update_clip_endpoint,
+        delete_clip_endpoint,
         upload_file,
         recording_complete,
         get_recording_status,

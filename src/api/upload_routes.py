@@ -440,6 +440,21 @@ async def recording_complete(
         else:
             audio_file.duration_seconds = -1.0  # Sentinel value
 
+        # Create clips from clip_boundaries provided by worker
+        from src.db.models import Clip
+
+        clip_boundaries = data.clip_boundaries or []
+        print(f"Creating {len(clip_boundaries)} clips from worker boundaries")
+        for boundary in clip_boundaries:
+            clip = Clip(
+                recording_id=recording.id,
+                song_id=recording.song_id,
+                start_time_sec=boundary.start_time_sec,
+                end_time_sec=boundary.end_time_sec,
+                display_name=None,
+            )
+            session.add(clip)
+
         await session.commit()
 
         print(f"Recording {recording_id} completed: {len(stems_data)} stems created")

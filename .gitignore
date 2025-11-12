@@ -53,6 +53,7 @@ frontend/build/
 *.db
 *.sqlite
 *.sqlite3
+.postgres-data/
 
 # Logs
 *.log

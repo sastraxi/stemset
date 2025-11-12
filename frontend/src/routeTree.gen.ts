@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PProfileNameRouteImport } from './routes/p/$profileName'
 import { Route as PProfileNameIndexRouteImport } from './routes/p/$profileName/index'
 import { Route as PProfileNameRecordingNameRouteImport } from './routes/p/$profileName/$recordingName'
+import { Route as PProfileNameClipsClipIdRouteImport } from './routes/p/$profileName/clips/$clipId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,17 +36,24 @@ const PProfileNameRecordingNameRoute =
     path: '/$recordingName',
     getParentRoute: () => PProfileNameRoute,
   } as any)
+const PProfileNameClipsClipIdRoute = PProfileNameClipsClipIdRouteImport.update({
+  id: '/clips/$clipId',
+  path: '/clips/$clipId',
+  getParentRoute: () => PProfileNameRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/p/$profileName': typeof PProfileNameRouteWithChildren
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName/': typeof PProfileNameIndexRoute
+  '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName': typeof PProfileNameIndexRoute
+  '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,6 +61,7 @@ export interface FileRoutesById {
   '/p/$profileName': typeof PProfileNameRouteWithChildren
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName/': typeof PProfileNameIndexRoute
+  '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -61,14 +70,20 @@ export interface FileRouteTypes {
     | '/p/$profileName'
     | '/p/$profileName/$recordingName'
     | '/p/$profileName/'
+    | '/p/$profileName/clips/$clipId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/p/$profileName/$recordingName' | '/p/$profileName'
+  to:
+    | '/'
+    | '/p/$profileName/$recordingName'
+    | '/p/$profileName'
+    | '/p/$profileName/clips/$clipId'
   id:
     | '__root__'
     | '/'
     | '/p/$profileName'
     | '/p/$profileName/$recordingName'
     | '/p/$profileName/'
+    | '/p/$profileName/clips/$clipId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,17 +121,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProfileNameRecordingNameRouteImport
       parentRoute: typeof PProfileNameRoute
     }
+    '/p/$profileName/clips/$clipId': {
+      id: '/p/$profileName/clips/$clipId'
+      path: '/clips/$clipId'
+      fullPath: '/p/$profileName/clips/$clipId'
+      preLoaderRoute: typeof PProfileNameClipsClipIdRouteImport
+      parentRoute: typeof PProfileNameRoute
+    }
   }
 }
 
 interface PProfileNameRouteChildren {
   PProfileNameRecordingNameRoute: typeof PProfileNameRecordingNameRoute
   PProfileNameIndexRoute: typeof PProfileNameIndexRoute
+  PProfileNameClipsClipIdRoute: typeof PProfileNameClipsClipIdRoute
 }
 
 const PProfileNameRouteChildren: PProfileNameRouteChildren = {
   PProfileNameRecordingNameRoute: PProfileNameRecordingNameRoute,
   PProfileNameIndexRoute: PProfileNameIndexRoute,
+  PProfileNameClipsClipIdRoute: PProfileNameClipsClipIdRoute,
 }
 
 const PProfileNameRouteWithChildren = PProfileNameRoute._addFileChildren(

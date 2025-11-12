@@ -8,6 +8,15 @@ import {
 } from "./client";
 import { client } from "./client.gen";
 import type {
+  ApiClipsClipIdDeleteClipEndpointData,
+  ApiClipsClipIdDeleteClipEndpointErrors,
+  ApiClipsClipIdDeleteClipEndpointResponses,
+  ApiClipsClipIdGetClipEndpointData,
+  ApiClipsClipIdGetClipEndpointErrors,
+  ApiClipsClipIdGetClipEndpointResponses,
+  ApiClipsClipIdUpdateClipEndpointData,
+  ApiClipsClipIdUpdateClipEndpointErrors,
+  ApiClipsClipIdUpdateClipEndpointResponses,
   ApiProcessProcessLocalData,
   ApiProcessProcessLocalErrors,
   ApiProcessProcessLocalResponses,
@@ -34,6 +43,12 @@ import type {
   ApiProfilesProfileNameGetProfileData,
   ApiProfilesProfileNameGetProfileErrors,
   ApiProfilesProfileNameGetProfileResponses,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointData,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointErrors,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointResponses,
+  ApiRecordingsRecordingIdClipsGetRecordingClipsData,
+  ApiRecordingsRecordingIdClipsGetRecordingClipsErrors,
+  ApiRecordingsRecordingIdClipsGetRecordingClipsResponses,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteData,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteErrors,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteResponses,
@@ -49,6 +64,9 @@ import type {
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData,
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataErrors,
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses,
+  ApiSongsSongIdClipsGetSongClipsData,
+  ApiSongsSongIdClipsGetSongClipsErrors,
+  ApiSongsSongIdClipsGetSongClipsResponses,
   ApiUploadProfileNameUploadFileData,
   ApiUploadProfileNameUploadFileErrors,
   ApiUploadProfileNameUploadFileResponses,
@@ -368,6 +386,128 @@ export const apiProfilesProfileIdLocationsCreateLocation = <
     ThrowOnError
   >({
     url: "/api/profiles/{profile_id}/locations",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * GetRecordingClips
+ */
+export const apiRecordingsRecordingIdClipsGetRecordingClips = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiRecordingsRecordingIdClipsGetRecordingClipsData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ApiRecordingsRecordingIdClipsGetRecordingClipsResponses,
+    ApiRecordingsRecordingIdClipsGetRecordingClipsErrors,
+    ThrowOnError
+  >({
+    url: "/api/recordings/{recording_id}/clips",
+    ...options,
+  });
+};
+
+/**
+ * CreateClipEndpoint
+ */
+export const apiRecordingsRecordingIdClipsCreateClipEndpoint = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiRecordingsRecordingIdClipsCreateClipEndpointData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApiRecordingsRecordingIdClipsCreateClipEndpointResponses,
+    ApiRecordingsRecordingIdClipsCreateClipEndpointErrors,
+    ThrowOnError
+  >({
+    url: "/api/recordings/{recording_id}/clips",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * GetSongClips
+ */
+export const apiSongsSongIdClipsGetSongClips = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiSongsSongIdClipsGetSongClipsData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    ApiSongsSongIdClipsGetSongClipsResponses,
+    ApiSongsSongIdClipsGetSongClipsErrors,
+    ThrowOnError
+  >({
+    url: "/api/songs/{song_id}/clips",
+    ...options,
+  });
+};
+
+/**
+ * DeleteClipEndpoint
+ */
+export const apiClipsClipIdDeleteClipEndpoint = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiClipsClipIdDeleteClipEndpointData, ThrowOnError>,
+) => {
+  return (options.client ?? client).delete<
+    ApiClipsClipIdDeleteClipEndpointResponses,
+    ApiClipsClipIdDeleteClipEndpointErrors,
+    ThrowOnError
+  >({
+    url: "/api/clips/{clip_id}",
+    ...options,
+  });
+};
+
+/**
+ * GetClipEndpoint
+ */
+export const apiClipsClipIdGetClipEndpoint = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiClipsClipIdGetClipEndpointData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    ApiClipsClipIdGetClipEndpointResponses,
+    ApiClipsClipIdGetClipEndpointErrors,
+    ThrowOnError
+  >({
+    url: "/api/clips/{clip_id}",
+    ...options,
+  });
+};
+
+/**
+ * UpdateClipEndpoint
+ */
+export const apiClipsClipIdUpdateClipEndpoint = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<ApiClipsClipIdUpdateClipEndpointData, ThrowOnError>,
+) => {
+  return (options.client ?? client).patch<
+    ApiClipsClipIdUpdateClipEndpointResponses,
+    ApiClipsClipIdUpdateClipEndpointErrors,
+    ThrowOnError
+  >({
+    url: "/api/clips/{clip_id}",
     ...options,
     headers: {
       "Content-Type": "application/json",

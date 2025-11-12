@@ -52,6 +52,8 @@ interface StemPlayerProps {
 	onDurationChange?: (duration: number) => void;
 	onCurrentTimeChange?: (currentTime: number) => void;
 	recordingId: string;
+	startTimeSec?: number; // Clip start time (optional)
+	endTimeSec?: number; // Clip end time (optional)
 }
 
 export interface StemPlayerHandle {
@@ -73,6 +75,8 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			onDurationChange,
 			onCurrentTimeChange,
 			recordingId,
+			startTimeSec,
+			endTimeSec,
 		},
 		ref,
 	) => {
@@ -152,7 +156,14 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			compressorGainReduction,
 			audioContext,
 			getMasterOutput,
-		} = useStemPlayer({ profileName, fileName, stemsData, recordingId });
+		} = useStemPlayer({
+			profileName,
+			fileName,
+			stemsData,
+			recordingId,
+			startTimeSec,
+			endTimeSec,
+		});
 
 		const { initializeAudioSession } = useAudioSession(audioContext);
 

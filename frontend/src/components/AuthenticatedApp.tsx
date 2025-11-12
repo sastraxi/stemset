@@ -2,6 +2,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { apiRecordingsRecordingIdClipsGetRecordingClips } from "@/api/generated";
 import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
 import { cn, getRelativeTime } from "../lib/utils";
@@ -21,7 +23,8 @@ import { QRCodeModal } from "./QRCodeModal";
 import { QRUploadOverlay } from "./QRUploadOverlay";
 import { SongMetadata } from "./SongMetadata";
 import { Spinner } from "./Spinner";
-import { StemPlayer, type StemPlayerHandle } from "./StemPlayer";
+import { RecordingPlayer } from "./RecordingPlayer";
+import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
 import { UserNav } from "./UserNav";
 import { Button } from "./ui/button";
@@ -83,6 +86,16 @@ export function AuthenticatedApp({
 	// Fetch the full recording data (with config) when we have a selected file
 	// This primes the React Query cache for useConfigPersistence
 	useRecording(selectedFile?.id);
+
+	// Fetch clips for the selected recording
+	const { data: clips } = useQuery({
+		queryKey: ["recording-clips", selectedFile?.id],
+		queryFn: () =>
+			apiRecordingsRecordingIdClipsGetRecordingClips({
+				path: { recording_id: selectedFile!.id },
+			}),
+		enabled: !!selectedFile?.id,
+	});
 
 	// Set selected profile based on initial or first available
 	useEffect(() => {
@@ -461,7 +474,50 @@ export function AuthenticatedApp({
 										/>
 									</>
 								)}
-								<StemPlayer
+								{/* Clips List */}
+								{clips?.data && clips.data.length > 0 && (
+									<div className="clips-sidebar" style={{
+										padding: "1rem",
+										borderBottom: "1px solid #e0e0e0",
+										backgroundColor: "#f9f9f9"
+									}}>
+										<h3 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
+											Clips ({clips.data.length})
+										</h3>
+										<div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+											{clips.data.map((clip) => (
+												<Link
+													key={clip.id}
+													to="/p/$profileName/clips/$clipId"
+													params={{
+														profileName: selectedProfile,
+														clipId: clip.id
+													}}
+													style={{
+														display: "block",
+														padding: "0.5rem",
+														backgroundColor: "white",
+														border: "1px solid #ddd",
+														borderRadius: "4px",
+														textDecoration: "none",
+														color: "inherit",
+														cursor: "pointer",
+														transition: "all 0.2s"
+													}}
+													className="clip-link"
+												>
+													<div style={{ fontWeight: "500", fontSize: "0.85rem" }}>
+														{clip.display_name || `Clip ${clip.start_time_sec.toFixed(1)}s - ${clip.end_time_sec.toFixed(1)}s`}
+													</div>
+													<div style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.25rem" }}>
+														{clip.start_time_sec.toFixed(1)}s → {clip.end_time_sec.toFixed(1)}s
+													</div>
+												</Link>
+											))}
+										</div>
+									</div>
+								)}
+								<RecordingPlayer
 									key={`${selectedProfile}::${selectedFile.name}`}
 									ref={stemPlayerRef}
 									profileName={selectedProfile}

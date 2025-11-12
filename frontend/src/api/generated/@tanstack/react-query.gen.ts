@@ -4,6 +4,9 @@ import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
 
 import { client } from "../client.gen";
 import {
+  apiClipsClipIdDeleteClipEndpoint,
+  apiClipsClipIdGetClipEndpoint,
+  apiClipsClipIdUpdateClipEndpoint,
   apiProcessProcessLocal,
   apiProfilesGetProfiles,
   apiProfilesProfileIdLocationsCreateLocation,
@@ -13,11 +16,14 @@ import {
   apiProfilesProfileNameFilesGetProfileFiles,
   apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName,
   apiProfilesProfileNameGetProfile,
+  apiRecordingsRecordingIdClipsCreateClipEndpoint,
+  apiRecordingsRecordingIdClipsGetRecordingClips,
   apiRecordingsRecordingIdCompleteVerificationTokenRecordingComplete,
   apiRecordingsRecordingIdConfigUpdateRecordingConfig,
   apiRecordingsRecordingIdDeleteRecordingEndpoint,
   apiRecordingsRecordingIdGetRecordingStatus,
   apiRecordingsRecordingIdMetadataUpdateRecordingMetadata,
+  apiSongsSongIdClipsGetSongClips,
   apiUploadProfileNameUploadFile,
   authCallbackAuthCallback,
   authLoginAuthLogin,
@@ -26,6 +32,13 @@ import {
   type Options,
 } from "../sdk.gen";
 import type {
+  ApiClipsClipIdDeleteClipEndpointData,
+  ApiClipsClipIdDeleteClipEndpointError,
+  ApiClipsClipIdDeleteClipEndpointResponse,
+  ApiClipsClipIdGetClipEndpointData,
+  ApiClipsClipIdUpdateClipEndpointData,
+  ApiClipsClipIdUpdateClipEndpointError,
+  ApiClipsClipIdUpdateClipEndpointResponse,
   ApiProcessProcessLocalData,
   ApiProcessProcessLocalError,
   ApiProcessProcessLocalResponse,
@@ -43,6 +56,10 @@ import type {
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameError,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponse,
   ApiProfilesProfileNameGetProfileData,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointData,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointError,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointResponse,
+  ApiRecordingsRecordingIdClipsGetRecordingClipsData,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteData,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteError,
   ApiRecordingsRecordingIdCompleteVerificationTokenRecordingCompleteResponse,
@@ -56,6 +73,7 @@ import type {
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataData,
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataError,
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse,
+  ApiSongsSongIdClipsGetSongClipsData,
   ApiUploadProfileNameUploadFileData,
   ApiUploadProfileNameUploadFileError,
   ApiUploadProfileNameUploadFileResponse,
@@ -482,6 +500,161 @@ export const apiProfilesProfileIdLocationsCreateLocationMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await apiProfilesProfileIdLocationsCreateLocation({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const apiRecordingsRecordingIdClipsGetRecordingClipsQueryKey = (
+  options: Options<ApiRecordingsRecordingIdClipsGetRecordingClipsData>,
+) => createQueryKey("apiRecordingsRecordingIdClipsGetRecordingClips", options);
+
+/**
+ * GetRecordingClips
+ */
+export const apiRecordingsRecordingIdClipsGetRecordingClipsOptions = (
+  options: Options<ApiRecordingsRecordingIdClipsGetRecordingClipsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiRecordingsRecordingIdClipsGetRecordingClips({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiRecordingsRecordingIdClipsGetRecordingClipsQueryKey(options),
+  });
+};
+
+/**
+ * CreateClipEndpoint
+ */
+export const apiRecordingsRecordingIdClipsCreateClipEndpointMutation = (
+  options?: Partial<
+    Options<ApiRecordingsRecordingIdClipsCreateClipEndpointData>
+  >,
+): UseMutationOptions<
+  ApiRecordingsRecordingIdClipsCreateClipEndpointResponse,
+  ApiRecordingsRecordingIdClipsCreateClipEndpointError,
+  Options<ApiRecordingsRecordingIdClipsCreateClipEndpointData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiRecordingsRecordingIdClipsCreateClipEndpointResponse,
+    ApiRecordingsRecordingIdClipsCreateClipEndpointError,
+    Options<ApiRecordingsRecordingIdClipsCreateClipEndpointData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiRecordingsRecordingIdClipsCreateClipEndpoint({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const apiSongsSongIdClipsGetSongClipsQueryKey = (
+  options: Options<ApiSongsSongIdClipsGetSongClipsData>,
+) => createQueryKey("apiSongsSongIdClipsGetSongClips", options);
+
+/**
+ * GetSongClips
+ */
+export const apiSongsSongIdClipsGetSongClipsOptions = (
+  options: Options<ApiSongsSongIdClipsGetSongClipsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiSongsSongIdClipsGetSongClips({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiSongsSongIdClipsGetSongClipsQueryKey(options),
+  });
+};
+
+/**
+ * DeleteClipEndpoint
+ */
+export const apiClipsClipIdDeleteClipEndpointMutation = (
+  options?: Partial<Options<ApiClipsClipIdDeleteClipEndpointData>>,
+): UseMutationOptions<
+  ApiClipsClipIdDeleteClipEndpointResponse,
+  ApiClipsClipIdDeleteClipEndpointError,
+  Options<ApiClipsClipIdDeleteClipEndpointData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiClipsClipIdDeleteClipEndpointResponse,
+    ApiClipsClipIdDeleteClipEndpointError,
+    Options<ApiClipsClipIdDeleteClipEndpointData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiClipsClipIdDeleteClipEndpoint({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const apiClipsClipIdGetClipEndpointQueryKey = (
+  options: Options<ApiClipsClipIdGetClipEndpointData>,
+) => createQueryKey("apiClipsClipIdGetClipEndpoint", options);
+
+/**
+ * GetClipEndpoint
+ */
+export const apiClipsClipIdGetClipEndpointOptions = (
+  options: Options<ApiClipsClipIdGetClipEndpointData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiClipsClipIdGetClipEndpoint({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiClipsClipIdGetClipEndpointQueryKey(options),
+  });
+};
+
+/**
+ * UpdateClipEndpoint
+ */
+export const apiClipsClipIdUpdateClipEndpointMutation = (
+  options?: Partial<Options<ApiClipsClipIdUpdateClipEndpointData>>,
+): UseMutationOptions<
+  ApiClipsClipIdUpdateClipEndpointResponse,
+  ApiClipsClipIdUpdateClipEndpointError,
+  Options<ApiClipsClipIdUpdateClipEndpointData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiClipsClipIdUpdateClipEndpointResponse,
+    ApiClipsClipIdUpdateClipEndpointError,
+    Options<ApiClipsClipIdUpdateClipEndpointData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiClipsClipIdUpdateClipEndpoint({
         ...options,
         ...fnOptions,
         throwOnError: true,

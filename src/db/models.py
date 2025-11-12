@@ -143,6 +143,7 @@ class Song(SQLModel, table=True):
     recordings: list["Recording"] = Relationship(
         back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
     )
+    clips: list["Clip"] = Relationship(sa_relationship_kwargs={"lazy": "noload"})
 
     # Unique constraint on (profile_id, name)
     __table_args__ = (sa.UniqueConstraint("profile_id", "name", name="uq_profile_song_name"),)
@@ -206,11 +207,44 @@ class Recording(SQLModel, table=True):
     stems: list["Stem"] = Relationship(
         back_populates="recording", sa_relationship_kwargs={"lazy": "noload"}
     )
+    clips: list["Clip"] = Relationship(
+        back_populates="recording", sa_relationship_kwargs={"lazy": "noload"}
+    )
     song: Song | None = Relationship(
         back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
     )
     location: Location | None = Relationship(
         back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
+    )
+
+
+class Clip(SQLModel, table=True):
+    """Timed portion of a recording [startTime ... endTime]."""
+
+    __tablename__: ClassVar[Any] = "clips"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    recording_id: UUID = Field(foreign_key="recordings.id", index=True)
+    song_id: UUID | None = Field(default=None, foreign_key="songs.id", index=True)
+    start_time_sec: float = Field(default=0.0, ge=0.0)  # Seconds from start (32-bit float)
+    end_time_sec: float = Field(ge=0.0)  # Seconds from start (32-bit float)
+    display_name: str | None = None  # User-editable label (e.g., "Verse 1")
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+
+    # Relationships
+    recording: "Recording" = Relationship(
+        back_populates="clips", sa_relationship_kwargs={"lazy": "noload"}
+    )
+    song: Song | None = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+
+    # Constraint: end_time_sec must be greater than start_time_sec
+    __table_args__ = (
+        sa.CheckConstraint("end_time_sec > start_time_sec", name="ck_clip_time_range"),
     )
 
 

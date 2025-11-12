@@ -24,6 +24,8 @@ export interface UseStemPlayerOptions {
 	stemsData: StemResponse[];
 	sampleRate?: number;
 	recordingId: string;
+	startTimeSec?: number; // Clip start time (optional)
+	endTimeSec?: number; // Clip end time (optional)
 }
 
 export interface UseStemPlayerResult {
@@ -107,6 +109,8 @@ export function useStemPlayer({
 	stemsData,
 	sampleRate = 44100,
 	recordingId,
+	startTimeSec,
+	endTimeSec,
 }: UseStemPlayerOptions): UseStemPlayerResult {
 	// 1. Audio context and master gain
 	const {
@@ -329,6 +333,8 @@ export function useStemPlayer({
 			duration,
 			stemNodes,
 			initialPosition: playbackPositionConfig.position,
+			startTimeSec,
+			endTimeSec,
 		});
 
 	const playbackPositionInitializedRef = useRef(false);

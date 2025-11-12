@@ -94,3 +94,44 @@ The `_` key specifies which model to use. Other keys map that model's output slo
 - Pay-per-second billing with no idle charges
 - See `docs/modal-deployment.md` for full deployment guide
 
+## Frontend Development
+
+### Type Generation
+
+The frontend uses two code generation tools:
+
+1. **OpenAPI Client Generation** (API types and hooks)
+   ```bash
+   cd frontend
+   npm run generate          # One-time generation
+   npm run generate:watch    # Watch mode (auto-regenerates)
+   ```
+   - Fetches OpenAPI schema from `http://localhost:8000/schema/openapi.json`
+   - Generates TypeScript types and React Query hooks in `src/api/generated/`
+   - Config: `openapi-ts.config.ts`
+   - Run this after changing backend API models or endpoints
+
+2. **TanStack Router Generation** (route types)
+   ```bash
+   cd frontend
+   npm run generate:routes   # Generate route types
+   ```
+   - Scans `src/routes/` directory for route files
+   - Generates TypeScript types for type-safe routing in `src/routeTree.gen.ts`
+   - Run this after adding/removing/renaming route files
+   - **Important**: This must run for TypeScript to recognize new routes
+
+### Development Workflow
+
+When adding new API endpoints:
+1. Update backend models in `src/api/models.py`
+2. Add/update route handlers in `src/api/*_routes.py`
+3. Register handlers in `src/api/app.py`
+4. Start backend: `uv run litestar run --reload` (if not running)
+5. Regenerate frontend types: `cd frontend && npm run generate`
+
+When adding new frontend routes:
+1. Create route file in `src/routes/` (e.g., `src/routes/p/$profileName/clips/$clipId.tsx`)
+2. Regenerate route types: `npm run generate:routes`
+3. TypeScript will now recognize the new route paths
+

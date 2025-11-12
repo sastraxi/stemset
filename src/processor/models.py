@@ -33,12 +33,20 @@ class StemDataModel(BaseModel):
     duration_seconds: float
 
 
+class ClipBoundary(BaseModel):
+    """Time boundary for a detected clip within a recording."""
+
+    start_time_sec: float
+    end_time_sec: float
+
+
 class ProcessingCallbackPayload(BaseModel):
     """Payload sent to callback endpoint after processing."""
 
     status: str  # "complete" or "error"
     stems: list[StemDataModel] | None = None  # Only present when status="complete"
     error: str | None = None  # Only present when status="error"
+    clip_boundaries: list[ClipBoundary] | None = None  # Optional clip detection results
 
 
 class WorkerJobPayload(BaseModel):

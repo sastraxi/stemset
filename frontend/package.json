@@ -9,6 +9,7 @@
 		"preview": "vite preview",
 		"generate": "openapi-ts",
 		"generate:watch": "openapi-ts --watch",
+		"generate:routes": "bun x @tanstack/router-cli generate",
 		"format": "biome format --write .",
 		"lint": "biome lint .",
 		"check": "biome check ."

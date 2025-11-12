@@ -172,10 +172,16 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
                     r2_waveform_key,
                 )
 
-            # Call back to API with stem data
+            # Call back to API with stem data and default clip boundary
+            # For now, always report one clip covering the full duration
+            duration_seconds = stem_data_list[0]["duration_seconds"] if stem_data_list else 0.0
+
+            from src.processor.models import ClipBoundary
+
             callback_payload = ProcessingCallbackPayload(
                 status="complete",
                 stems=[StemDataModel(**stem) for stem in stem_data_list],
+                clip_boundaries=[ClipBoundary(start_time_sec=0.0, end_time_sec=duration_seconds)],
             )
 
             print(f"Calling back to: {callback_url}")

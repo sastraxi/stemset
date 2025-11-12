@@ -14,9 +14,27 @@ from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
-from ..db.models import Location, Profile as DBProfile, Recording, Song
-from ..db.operations import delete_recording
-from .models import FileWithStems, LocationMetadata, ProfileResponse, SongMetadata, StemResponse
+from ..db.models import Clip, Location, Profile as DBProfile, Recording, Song
+from ..db.operations import (
+    create_clip,
+    delete_clip,
+    delete_recording,
+    get_clip,
+    get_clips_for_recording,
+    get_clips_for_song,
+    update_clip,
+)
+from .models import (
+    ClipResponse,
+    ClipWithStemsResponse,
+    CreateClipRequest,
+    FileWithStems,
+    LocationMetadata,
+    ProfileResponse,
+    SongMetadata,
+    StemResponse,
+    UpdateClipRequest,
+)
 
 
 @get("/api/profiles")
@@ -192,6 +210,261 @@ async def delete_recording_endpoint(recording_id: UUID) -> None:
     async with AsyncSession(engine, expire_on_commit=False) as session:
         try:
             _ = await delete_recording(session, recording_id)
+        except ValueError as e:
+            raise NotFoundException(detail=str(e))
+
+        return None
+
+
+# Clip endpoints
+
+
+@get("/api/recordings/{recording_id:uuid}/clips")
+async def get_recording_clips(recording_id: UUID) -> list[ClipResponse]:
+    """Get all clips for a recording."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        clips = await get_clips_for_recording(session, recording_id)
+
+        return [
+            ClipResponse(
+                id=str(clip.id),
+                recording_id=str(clip.recording_id),
+                song_id=str(clip.song_id) if clip.song_id else None,
+                start_time_sec=clip.start_time_sec,
+                end_time_sec=clip.end_time_sec,
+                display_name=clip.display_name,
+                created_at=clip.created_at.isoformat(),
+                updated_at=clip.updated_at.isoformat(),
+            )
+            for clip in clips
+        ]
+
+
+@get("/api/songs/{song_id:uuid}/clips")
+async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
+    """Get all clips for a song, with recording stems."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        clips = await get_clips_for_song(session, song_id)
+
+        # Get storage backend for generating URLs
+        from ..storage import get_storage
+
+        storage = get_storage()
+
+        responses = []
+        for clip in clips:
+            # Fetch recording with stems
+            stmt = (
+                select(Recording)
+                .where(Recording.id == clip.recording_id)
+                .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+            )
+            result = await session.exec(stmt)
+            recording = result.first()
+
+            if recording is None:
+                continue  # Skip clips with missing recordings
+
+            # Get profile for URL generation
+            profile_result = await session.exec(
+                select(DBProfile).where(DBProfile.id == recording.profile_id)
+            )
+            profile = profile_result.first()
+            if profile is None:
+                continue
+
+            stems = [
+                StemResponse(
+                    stem_type=stem.stem_type,
+                    measured_lufs=stem.measured_lufs,
+                    peak_amplitude=stem.peak_amplitude,
+                    stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
+                    audio_url=storage.get_file_url(
+                        profile.name, recording.output_name, stem.stem_type, Path(stem.audio_url).suffix
+                    ),
+                    waveform_url=storage.get_waveform_url(
+                        profile.name, recording.output_name, stem.stem_type
+                    ),
+                    file_size_bytes=stem.file_size_bytes,
+                    duration_seconds=stem.duration_seconds,
+                )
+                for stem in recording.stems
+            ]
+
+            responses.append(
+                ClipWithStemsResponse(
+                    id=str(clip.id),
+                    recording_id=str(clip.recording_id),
+                    song_id=str(clip.song_id) if clip.song_id else None,
+                    start_time_sec=clip.start_time_sec,
+                    end_time_sec=clip.end_time_sec,
+                    display_name=clip.display_name,
+                    created_at=clip.created_at.isoformat(),
+                    updated_at=clip.updated_at.isoformat(),
+                    recording_output_name=recording.output_name,
+                    stems=stems,
+                )
+            )
+
+        return responses
+
+
+from litestar import post
+
+
+@post("/api/recordings/{recording_id:uuid}/clips")
+async def create_clip_endpoint(recording_id: UUID, data: CreateClipRequest) -> ClipResponse:
+    """Create a new clip for a recording."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Validate recording exists
+        stmt = select(Recording).where(Recording.id == recording_id)
+        result = await session.exec(stmt)
+        recording = result.first()
+        if recording is None:
+            raise NotFoundException(detail=f"Recording {recording_id} not found")
+
+        # Create clip
+        try:
+            clip = await create_clip(
+                session,
+                recording_id=recording_id,
+                start_time_sec=data.start_time_sec,
+                end_time_sec=data.end_time_sec,
+                song_id=UUID(data.song_id) if data.song_id else None,
+                display_name=data.display_name,
+            )
+        except ValueError as e:
+            from litestar.exceptions import ValidationException
+
+            raise ValidationException(detail=str(e))
+
+        return ClipResponse(
+            id=str(clip.id),
+            recording_id=str(clip.recording_id),
+            song_id=str(clip.song_id) if clip.song_id else None,
+            start_time_sec=clip.start_time_sec,
+            end_time_sec=clip.end_time_sec,
+            display_name=clip.display_name,
+            created_at=clip.created_at.isoformat(),
+            updated_at=clip.updated_at.isoformat(),
+        )
+
+
+@get("/api/clips/{clip_id:uuid}")
+async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
+    """Get a single clip with its recording stems."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        clip = await get_clip(session, clip_id)
+        if clip is None:
+            raise NotFoundException(detail=f"Clip {clip_id} not found")
+
+        # Fetch recording with stems
+        stmt = (
+            select(Recording)
+            .where(Recording.id == clip.recording_id)
+            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+        )
+        result = await session.exec(stmt)
+        recording = result.first()
+
+        if recording is None:
+            raise NotFoundException(detail=f"Recording {clip.recording_id} not found")
+
+        # Get profile for URL generation
+        profile_result = await session.exec(
+            select(DBProfile).where(DBProfile.id == recording.profile_id)
+        )
+        profile = profile_result.first()
+        if profile is None:
+            raise NotFoundException(detail=f"Profile not found for recording {recording.id}")
+
+        # Get storage backend for generating URLs
+        from ..storage import get_storage
+
+        storage = get_storage()
+
+        stems = [
+            StemResponse(
+                stem_type=stem.stem_type,
+                measured_lufs=stem.measured_lufs,
+                peak_amplitude=stem.peak_amplitude,
+                stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
+                audio_url=storage.get_file_url(
+                    profile.name, recording.output_name, stem.stem_type, Path(stem.audio_url).suffix
+                ),
+                waveform_url=storage.get_waveform_url(
+                    profile.name, recording.output_name, stem.stem_type
+                ),
+                file_size_bytes=stem.file_size_bytes,
+                duration_seconds=stem.duration_seconds,
+            )
+            for stem in recording.stems
+        ]
+
+        return ClipWithStemsResponse(
+            id=str(clip.id),
+            recording_id=str(clip.recording_id),
+            song_id=str(clip.song_id) if clip.song_id else None,
+            start_time_sec=clip.start_time_sec,
+            end_time_sec=clip.end_time_sec,
+            display_name=clip.display_name,
+            created_at=clip.created_at.isoformat(),
+            updated_at=clip.updated_at.isoformat(),
+            recording_output_name=recording.output_name,
+            stems=stems,
+        )
+
+
+@patch("/api/clips/{clip_id:uuid}")
+async def update_clip_endpoint(clip_id: UUID, data: UpdateClipRequest) -> ClipResponse:
+    """Update a clip's properties."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        try:
+            clip = await update_clip(
+                session,
+                clip_id=clip_id,
+                start_time_sec=data.start_time_sec,
+                end_time_sec=data.end_time_sec,
+                song_id=UUID(data.song_id) if data.song_id else None,
+                display_name=data.display_name,
+            )
+        except ValueError as e:
+            if "not found" in str(e):
+                raise NotFoundException(detail=str(e))
+            from litestar.exceptions import ValidationException
+
+            raise ValidationException(detail=str(e))
+
+        return ClipResponse(
+            id=str(clip.id),
+            recording_id=str(clip.recording_id),
+            song_id=str(clip.song_id) if clip.song_id else None,
+            start_time_sec=clip.start_time_sec,
+            end_time_sec=clip.end_time_sec,
+            display_name=clip.display_name,
+            created_at=clip.created_at.isoformat(),
+            updated_at=clip.updated_at.isoformat(),
+        )
+
+
+@delete("/api/clips/{clip_id:uuid}")
+async def delete_clip_endpoint(clip_id: UUID) -> None:
+    """Delete a clip."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        try:
+            _ = await delete_clip(session, clip_id)
         except ValueError as e:
             raise NotFoundException(detail=str(e))
 
