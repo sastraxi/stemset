@@ -50,7 +50,7 @@ def upgrade() -> None:
             r.id AS recording_id,
             r.song_id,
             0.0 AS start_time_sec,
-            s.duration_seconds AS end_time_sec,
+            MAX(s.duration_seconds) AS end_time_sec,
             NULL AS display_name,
             NOW() AS created_at,
             NOW() AS updated_at

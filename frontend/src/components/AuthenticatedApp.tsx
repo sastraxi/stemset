@@ -26,6 +26,7 @@ import { Spinner } from "./Spinner";
 import { RecordingPlayer } from "./RecordingPlayer";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
+import { ClipsList } from "./ClipsList";
 import { UserNav } from "./UserNav";
 import { Button } from "./ui/button";
 
@@ -476,46 +477,11 @@ export function AuthenticatedApp({
 								)}
 								{/* Clips List */}
 								{clips?.data && clips.data.length > 0 && (
-									<div className="clips-sidebar" style={{
-										padding: "1rem",
-										borderBottom: "1px solid #e0e0e0",
-										backgroundColor: "#f9f9f9"
-									}}>
-										<h3 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", fontWeight: "600" }}>
-											Clips ({clips.data.length})
-										</h3>
-										<div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-											{clips.data.map((clip) => (
-												<Link
-													key={clip.id}
-													to="/p/$profileName/clips/$clipId"
-													params={{
-														profileName: selectedProfile,
-														clipId: clip.id
-													}}
-													style={{
-														display: "block",
-														padding: "0.5rem",
-														backgroundColor: "white",
-														border: "1px solid #ddd",
-														borderRadius: "4px",
-														textDecoration: "none",
-														color: "inherit",
-														cursor: "pointer",
-														transition: "all 0.2s"
-													}}
-													className="clip-link"
-												>
-													<div style={{ fontWeight: "500", fontSize: "0.85rem" }}>
-														{clip.display_name || `Clip ${clip.start_time_sec.toFixed(1)}s - ${clip.end_time_sec.toFixed(1)}s`}
-													</div>
-													<div style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.25rem" }}>
-														{clip.start_time_sec.toFixed(1)}s → {clip.end_time_sec.toFixed(1)}s
-													</div>
-												</Link>
-											))}
-										</div>
-									</div>
+									<ClipsList
+										clips={clips.data}
+										profileName={selectedProfile}
+										recordingId={selectedFile.id}
+									/>
 								)}
 								<RecordingPlayer
 									key={`${selectedProfile}::${selectedFile.name}`}

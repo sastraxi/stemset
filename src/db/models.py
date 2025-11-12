@@ -240,7 +240,7 @@ class Clip(SQLModel, table=True):
     recording: "Recording" = Relationship(
         back_populates="clips", sa_relationship_kwargs={"lazy": "noload"}
     )
-    song: Song | None = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    song: Song | None = Relationship(sa_relationship_kwargs={"lazy": "noload", "overlaps": "clips"})
 
     # Constraint: end_time_sec must be greater than start_time_sec
     __table_args__ = (

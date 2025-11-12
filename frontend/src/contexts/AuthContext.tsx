@@ -1,14 +1,14 @@
 import {
 	createContext,
+	type ReactNode,
 	useContext,
 	useEffect,
 	useState,
-	ReactNode,
 } from "react";
 import {
+	clearToken as clearStoredToken,
 	getToken as getStoredToken,
 	setToken as setStoredToken,
-	clearToken as clearStoredToken,
 } from "../lib/storage";
 
 // Use environment variable for API URL in production, fallback to root for local dev

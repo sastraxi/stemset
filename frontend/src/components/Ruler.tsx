@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRangeSelection } from "../contexts/RangeSelectionContext";
 
 interface RulerProps {
 	currentTime: number;
@@ -29,6 +30,16 @@ export function Ruler({
 }: RulerProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
+	const dragStartPos = useRef<{x: number; time: number} | null>(null);
+	const [dragMode, setDragMode] = useState<'seek' | 'select' | null>(null);
+
+	// Try to use range selection context if available (optional - not all uses of Ruler need it)
+	let rangeSelection = null;
+	try {
+		rangeSelection = useRangeSelection();
+	} catch {
+		// Not wrapped in RangeSelectionProvider - that's fine
+	}
 
 	// Format time in MM:SS format
 	const formatTime = (seconds: number): string => {
@@ -144,7 +155,43 @@ export function Ruler({
 			ctx.closePath();
 			ctx.fill();
 		}
-	}, [currentTime, previewTime, duration, height]);
+
+		// RANGE SELECTION: Highlight selected region if range selection is active
+		if (rangeSelection && duration > 0) {
+			const { selection } = rangeSelection;
+			const { startSec, endSec } = selection;
+
+			if (startSec !== null && endSec !== null) {
+				const startX = (startSec / duration) * canvas.width;
+				const endX = (endSec / duration) * canvas.width;
+				const regionWidth = endX - startX;
+
+				// Semi-transparent blue highlight
+				ctx.globalCompositeOperation = "source-over";
+				ctx.fillStyle = "rgba(59, 130, 246, 0.2)"; // Blue, 20% opacity
+				ctx.fillRect(startX, 0, regionWidth, canvas.height);
+
+				// Draw handles (circles) at start and end
+				const handleRadius = 8 * dpr;
+				const handleY = canvas.height / 2;
+
+				// Start handle
+				ctx.fillStyle = "#3b82f6"; // Blue
+				ctx.strokeStyle = "#ffffff"; // White border
+				ctx.lineWidth = 2 * dpr;
+				ctx.beginPath();
+				ctx.arc(startX, handleY, handleRadius, 0, 2 * Math.PI);
+				ctx.fill();
+				ctx.stroke();
+
+				// End handle
+				ctx.beginPath();
+				ctx.arc(endX, handleY, handleRadius, 0, 2 * Math.PI);
+				ctx.fill();
+				ctx.stroke();
+			}
+		}
+	}, [currentTime, previewTime, duration, height, rangeSelection?.selection]);
 
 	// Re-render on time change, preview time change, or window resize
 	useEffect(() => {
@@ -187,10 +234,20 @@ export function Ruler({
 
 		e.preventDefault();
 		setIsDragging(true);
+		setDragMode(null); // Will be determined on move
 		const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
 		const seekTime = getSeekTime(clientX);
+
 		if (seekTime !== null) {
-			onPreview(seekTime); // Start preview mode
+			dragStartPos.current = { x: clientX, time: seekTime };
+
+			// If range selection is available, start in selecting mode
+			if (rangeSelection) {
+				rangeSelection.setIsSelecting(true);
+			} else {
+				// No range selection context - default to seek mode
+				onPreview(seekTime);
+			}
 		}
 	};
 
@@ -199,75 +256,125 @@ export function Ruler({
 			| React.MouseEvent<HTMLCanvasElement>
 			| React.TouchEvent<HTMLCanvasElement>,
 	) => {
-		if (!isDragging || !onPreview) return;
+		if (!isDragging) return;
 
 		e.preventDefault();
 		const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
 		const seekTime = getSeekTime(clientX);
-		if (seekTime !== null) {
-			onPreview(seekTime); // Update preview
+
+		if (seekTime === null || !dragStartPos.current) return;
+
+		// Determine drag mode if not yet set (threshold: 5px)
+		if (dragMode === null) {
+			const dragDistance = Math.abs(clientX - dragStartPos.current.x);
+			if (dragDistance > 5) {
+				// User is dragging - determine mode based on context
+				if (rangeSelection) {
+					setDragMode('select');
+				} else {
+					setDragMode('seek');
+					if (onPreview) onPreview(dragStartPos.current.time);
+				}
+			}
+		}
+
+		// Handle based on mode
+		if (dragMode === 'select' && rangeSelection) {
+			// Update range selection
+			rangeSelection.setRange(dragStartPos.current.time, seekTime);
+		} else if (dragMode === 'seek' && onPreview) {
+			// Update preview for seeking
+			onPreview(seekTime);
 		}
 	};
 
 	const handleMouseUp = () => {
-		if (isDragging && onSeek && onPreview) {
-			// Get the final seek time and actually seek
-			const canvas = canvasRef.current;
-			if (canvas && previewTime !== undefined) {
-				onSeek(previewTime); // Actually seek to the preview position
+		if (isDragging) {
+			// If drag mode was never set, this was a click (not a drag)
+			if (dragMode === null && dragStartPos.current && onSeek) {
+				// Click to seek
+				onSeek(dragStartPos.current.time);
+			} else if (dragMode === 'seek' && onSeek && onPreview && previewTime !== undefined) {
+				// Drag was for seeking - commit the seek
+				onSeek(previewTime);
+				onPreview(null);
+			} else if (dragMode === 'select' && rangeSelection) {
+				// Drag was for range selection - selection already set, just end selecting mode
+				rangeSelection.setIsSelecting(false);
 			}
-			onPreview(null); // End preview mode
+
+			// Reset state
+			setIsDragging(false);
+			setDragMode(null);
+			dragStartPos.current = null;
 		}
-		setIsDragging(false);
 	};
 
 	const handleMouseLeave = () => {
-		if (isDragging && onPreview) {
-			onPreview(null); // End preview mode if mouse leaves
-		}
-		setIsDragging(false);
+		// Don't reset on mouse leave - global handlers will take care of this
+		// This allows dragging outside the canvas
 	};
 
 	// Global mouse up handler for when mouse leaves the canvas while dragging
 	useEffect(() => {
 		if (isDragging) {
 			const handleGlobalMouseUp = () => {
-				if (onSeek && onPreview && previewTime !== undefined) {
-					onSeek(previewTime); // Actually seek to preview position
-				}
-				if (onPreview) {
-					onPreview(null); // End preview mode
-				}
-				setIsDragging(false);
+				handleMouseUp();
 			};
 
 			const handleGlobalMouseMove = (e: MouseEvent) => {
-				if (onPreview) {
-					const seekTime = getSeekTime(e.clientX);
-					if (seekTime !== null) {
-						onPreview(seekTime); // Update preview
+				const seekTime = getSeekTime(e.clientX);
+				if (seekTime === null || !dragStartPos.current) return;
+
+				// Determine drag mode if not yet set
+				if (dragMode === null) {
+					const dragDistance = Math.abs(e.clientX - dragStartPos.current.x);
+					if (dragDistance > 5) {
+						if (rangeSelection) {
+							setDragMode('select');
+						} else {
+							setDragMode('seek');
+							if (onPreview) onPreview(dragStartPos.current.time);
+						}
 					}
+				}
+
+				// Handle based on mode
+				if (dragMode === 'select' && rangeSelection) {
+					rangeSelection.setRange(dragStartPos.current.time, seekTime);
+				} else if (dragMode === 'seek' && onPreview) {
+					onPreview(seekTime);
 				}
 			};
 
 			const handleGlobalTouchMove = (e: TouchEvent) => {
-				if (onPreview) {
-					e.preventDefault();
-					const seekTime = getSeekTime(e.touches[0].clientX);
-					if (seekTime !== null) {
-						onPreview(seekTime); // Update preview
+				e.preventDefault();
+				const seekTime = getSeekTime(e.touches[0].clientX);
+				if (seekTime === null || !dragStartPos.current) return;
+
+				// Determine drag mode if not yet set
+				if (dragMode === null) {
+					const dragDistance = Math.abs(e.touches[0].clientX - dragStartPos.current.x);
+					if (dragDistance > 5) {
+						if (rangeSelection) {
+							setDragMode('select');
+						} else {
+							setDragMode('seek');
+							if (onPreview) onPreview(dragStartPos.current.time);
+						}
 					}
+				}
+
+				// Handle based on mode
+				if (dragMode === 'select' && rangeSelection) {
+					rangeSelection.setRange(dragStartPos.current.time, seekTime);
+				} else if (dragMode === 'seek' && onPreview) {
+					onPreview(seekTime);
 				}
 			};
 
 			const handleGlobalTouchEnd = () => {
-				if (onSeek && onPreview && previewTime !== undefined) {
-					onSeek(previewTime);
-				}
-				if (onPreview) {
-					onPreview(null);
-				}
-				setIsDragging(false);
+				handleMouseUp();
 			};
 
 			document.addEventListener("mouseup", handleGlobalMouseUp);
@@ -284,7 +391,7 @@ export function Ruler({
 				document.removeEventListener("touchmove", handleGlobalTouchMove);
 			};
 		}
-	}, [isDragging, onSeek, onPreview, previewTime, duration]);
+	}, [isDragging, onSeek, onPreview, previewTime, duration, dragMode, rangeSelection]);
 
 	return (
 		<div className="ruler-container overflow-hidden">
