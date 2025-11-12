@@ -64,24 +64,24 @@ export function useParametricEqEffect({
 	useEffect(() => {
 		if (!audioContext || nodesRef.current.length > 0) return;
 
-		// Create three peaking filters
+		// Create three peaking filters with default values
 		const lowFilter = audioContext.createBiquadFilter();
 		lowFilter.type = "peaking";
-		lowFilter.frequency.value = config.lowBand.frequency;
-		lowFilter.Q.value = config.lowBand.q;
-		lowFilter.gain.value = config.lowBand.gain;
+		lowFilter.frequency.value = 100;
+		lowFilter.Q.value = 1.0;
+		lowFilter.gain.value = 0;
 
 		const midFilter = audioContext.createBiquadFilter();
 		midFilter.type = "peaking";
-		midFilter.frequency.value = config.midBand.frequency;
-		midFilter.Q.value = config.midBand.q;
-		midFilter.gain.value = config.midBand.gain;
+		midFilter.frequency.value = 1000;
+		midFilter.Q.value = 1.0;
+		midFilter.gain.value = 0;
 
 		const highFilter = audioContext.createBiquadFilter();
 		highFilter.type = "peaking";
-		highFilter.frequency.value = config.highBand.frequency;
-		highFilter.Q.value = config.highBand.q;
-		highFilter.gain.value = config.highBand.gain;
+		highFilter.frequency.value = 8000;
+		highFilter.Q.value = 1.0;
+		highFilter.gain.value = 0;
 
 		const createdNodes = [lowFilter, midFilter, highFilter];
 
@@ -123,7 +123,7 @@ export function useParametricEqEffect({
 			filter.Q.setTargetAtTime(band.q, audioContext.currentTime, 0.01);
 			filter.gain.setTargetAtTime(band.gain, audioContext.currentTime, 0.01);
 		});
-	}, [config.lowBand, config.midBand, config.highBand, audioContext, isReady]);
+	}, [config, audioContext, isReady]);
 
 	const updateBand = useCallback(
 		(
@@ -135,19 +135,16 @@ export function useParametricEqEffect({
 				[band]: { ...prev[band], ...changes },
 			}));
 		},
-		[setConfig],
+		[],
 	);
 
-	const setEnabled = useCallback(
-		(enabled: boolean) => {
-			setConfig((prev) => ({ ...prev, enabled }));
-		},
-		[setConfig],
-	);
+	const setEnabled = useCallback((enabled: boolean) => {
+		setConfig((prev) => ({ ...prev, enabled }));
+	}, []);
 
 	const reset = useCallback(() => {
 		setConfig(DEFAULT_PARAMETRIC_EQ_CONFIG);
-	}, [setConfig]);
+	}, []);
 
 	return {
 		isReady,

@@ -4,6 +4,7 @@
 class MasterLimiterProcessor extends AudioWorkletProcessor {
 	static get parameterDescriptors() {
 		return [
+			{ name: "preGain", defaultValue: 0, minValue: -96, maxValue: 0 },
 			{ name: "threshold", defaultValue: -6, minValue: -48, maxValue: 0 },
 			{ name: "attack", defaultValue: 0.005, minValue: 0.001, maxValue: 0.05 },
 			{ name: "hold", defaultValue: 0.02, minValue: 0.001, maxValue: 0.1 },
@@ -47,6 +48,9 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 		const frameCount = input[0].length;
 
 		// Get parameters
+		const preGainDb = parameters.preGain[0];
+		const preGainLinear = preGainDb <= -96 ? 0 : 10 ** (preGainDb / 20);
+
 		const thresholdDb =
 			parameters.threshold.length > 1
 				? parameters.threshold[0]
@@ -77,9 +81,10 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 		// Process each sample
 		for (let i = 0; i < frameCount; i++) {
 			// Find peak across all channels (at lookahead position)
+			// Apply preGain to input before peak detection
 			let peak = 0;
 			for (let ch = 0; ch < channelCount; ch++) {
-				const sample = input[ch][i];
+				const sample = input[ch][i] * preGainLinear;
 				peak = Math.max(peak, Math.abs(sample));
 			}
 
@@ -113,8 +118,8 @@ class MasterLimiterProcessor extends AudioWorkletProcessor {
 
 			// Apply gain to all channels with lookahead delay
 			for (let ch = 0; ch < channelCount; ch++) {
-				// Write current sample to delay buffer
-				this.lookaheadBuffers[ch][this.writeIndices[ch]] = input[ch][i];
+				// Write current sample to delay buffer (with preGain applied)
+				this.lookaheadBuffers[ch][this.writeIndices[ch]] = input[ch][i] * preGainLinear;
 
 				// Read delayed sample (from attackSamples ago)
 				const readIndex =

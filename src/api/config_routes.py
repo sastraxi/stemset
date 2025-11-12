@@ -23,7 +23,7 @@ from ..db.models import User
 class UpdateConfigRequest(BaseModel):
     """Request to update a specific config key."""
 
-    key: str  # 'playbackPosition', 'stems', 'eq', 'compressor', 'reverb', 'stereoExpander'
+    key: str  # 'playbackPosition', 'stems', 'eq', 'parametricEq', 'compressor', 'reverb', 'softClipper', 'stereoExpander'
     value: dict[str, Any]  # pyright: ignore[reportExplicitAny]
 
 
@@ -56,8 +56,10 @@ async def update_recording_config(
         "playbackPosition",
         "stems",
         "eq",
+        "parametricEq",
         "compressor",
         "reverb",
+        "softClipper",
         "stereoExpander",
     )
     if data.key not in valid_keys:

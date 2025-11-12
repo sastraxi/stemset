@@ -25,6 +25,7 @@ export interface StemAudioNode {
 // ============================================================================
 
 export interface CompressorConfig {
+	preGain: number; // dB, -Infinity to 0 (input gain before limiting)
 	threshold: number; // dB, -48 to 0
 	attack: number; // seconds, 0.001 to 0.05
 	hold: number; // seconds, 0.001 to 0.1

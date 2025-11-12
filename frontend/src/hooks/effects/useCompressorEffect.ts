@@ -19,6 +19,7 @@ export interface UseCompressorEffectResult {
 }
 
 export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
+	preGain: 0,
 	threshold: -6,
 	attack: 0.005,
 	hold: 0.02,
@@ -107,7 +108,12 @@ export function useCompressorEffect({
 	useEffect(() => {
 		if (!audioContext || !isReady || !workletNodeRef.current) return;
 
-		const { threshold, attack, hold, release } = config;
+		const { preGain, threshold, attack, hold, release } = config;
+		// Clamp -Infinity to -96 dB for AudioParam (can't accept non-finite values)
+		const preGainClamped = !isFinite(preGain) || preGain <= -96 ? -96 : preGain;
+		workletNodeRef.current.parameters
+			.get("preGain")
+			?.setTargetAtTime(preGainClamped, audioContext.currentTime, 0.01);
 		workletNodeRef.current.parameters
 			.get("threshold")
 			?.setTargetAtTime(threshold, audioContext.currentTime, 0.01);

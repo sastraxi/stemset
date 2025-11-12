@@ -253,7 +253,7 @@ class RecordingUserConfig(SQLModel, table=True):
     id: UUID = Field(default_factory=new_uuid, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", index=True)
     recording_id: UUID = Field(foreign_key="recordings.id", index=True)
-    config_key: str = Field(max_length=50)  # 'playbackPosition', 'stems', 'effects'
+    config_key: str = Field(max_length=50)  # 'playbackPosition', 'stems', 'eq', 'parametricEq', 'compressor', 'reverb', 'softClipper', 'stereoExpander'
     config_value: dict[str, float | str | bool] = Field(sa_column=Column(JSONB, nullable=False))
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)

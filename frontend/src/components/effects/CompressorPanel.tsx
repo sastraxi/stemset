@@ -38,6 +38,24 @@ export function CompressorPanel({
 			</div>
 			<div className="limiter-controls">
 				<div className="effect-control">
+					<label htmlFor="limiter-pregain">
+						Pre-Gain{" "}
+						{config.preGain <= -96 ? "-∞" : config.preGain.toFixed(1)} dB
+					</label>
+					<input
+						id="limiter-pregain"
+						type="range"
+						min={-96}
+						max={0}
+						step={0.1}
+						value={config.preGain <= -96 ? -96 : config.preGain}
+						onChange={(e) => {
+							const val = parseFloat(e.target.value);
+							onUpdate({ preGain: val <= -96 ? -Infinity : val });
+						}}
+					/>
+				</div>
+				<div className="effect-control">
 					<label htmlFor="limiter-threshold">
 						Threshold {config.threshold} dB
 					</label>
