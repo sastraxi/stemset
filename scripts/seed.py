@@ -12,6 +12,12 @@ import asyncio
 import sys
 from pathlib import Path
 
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.db.config import get_engine
+from src.db.models import Profile
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -26,13 +32,7 @@ if not env_path.exists():
     sys.exit(1)
 
 print(f"Loading environment from {env_file}...")
-load_dotenv(env_path)
-
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-
-from src.db.config import get_engine
-from src.db.models import Profile
+_ = load_dotenv(env_path)
 
 
 async def seed_database():
