@@ -9,14 +9,13 @@ import {
   apiClipsClipIdUpdateClipEndpoint,
   apiProcessProcessLocal,
   apiProfilesGetProfiles,
-  apiProfilesProfileIdLocationsCreateLocation,
-  apiProfilesProfileIdLocationsGetProfileLocations,
-  apiProfilesProfileIdSongsCreateSong,
-  apiProfilesProfileIdSongsGetProfileSongs,
   apiProfilesProfileNameClipsGetProfileClips,
   apiProfilesProfileNameFilesGetProfileFiles,
   apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName,
   apiProfilesProfileNameGetProfile,
+  apiProfilesProfileNameLocationsCreateLocation,
+  apiProfilesProfileNameLocationsGetProfileLocations,
+  apiProfilesProfileNameSongsCreateSong,
   apiProfilesProfileNameSongsGetProfileSongsByName,
   apiRecordingsRecordingIdClipsCreateClipEndpoint,
   apiRecordingsRecordingIdClipsGetRecordingClips,
@@ -45,20 +44,19 @@ import type {
   ApiProcessProcessLocalError,
   ApiProcessProcessLocalResponse,
   ApiProfilesGetProfilesData,
-  ApiProfilesProfileIdLocationsCreateLocationData,
-  ApiProfilesProfileIdLocationsCreateLocationError,
-  ApiProfilesProfileIdLocationsCreateLocationResponse,
-  ApiProfilesProfileIdLocationsGetProfileLocationsData,
-  ApiProfilesProfileIdSongsCreateSongData,
-  ApiProfilesProfileIdSongsCreateSongError,
-  ApiProfilesProfileIdSongsCreateSongResponse,
-  ApiProfilesProfileIdSongsGetProfileSongsData,
   ApiProfilesProfileNameClipsGetProfileClipsData,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameError,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponse,
   ApiProfilesProfileNameGetProfileData,
+  ApiProfilesProfileNameLocationsCreateLocationData,
+  ApiProfilesProfileNameLocationsCreateLocationError,
+  ApiProfilesProfileNameLocationsCreateLocationResponse,
+  ApiProfilesProfileNameLocationsGetProfileLocationsData,
+  ApiProfilesProfileNameSongsCreateSongData,
+  ApiProfilesProfileNameSongsCreateSongError,
+  ApiProfilesProfileNameSongsCreateSongResponse,
   ApiProfilesProfileNameSongsGetProfileSongsByNameData,
   ApiRecordingsRecordingIdClipsCreateClipEndpointData,
   ApiRecordingsRecordingIdClipsCreateClipEndpointError,
@@ -411,19 +409,20 @@ export const apiRecordingsRecordingIdConfigUpdateRecordingConfigMutation = (
   return mutationOptions;
 };
 
-export const apiProfilesProfileIdSongsGetProfileSongsQueryKey = (
-  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData>,
-) => createQueryKey("apiProfilesProfileIdSongsGetProfileSongs", options);
+export const apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey = (
+  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
+) =>
+  createQueryKey("apiProfilesProfileNameSongsGetProfileSongsByName", options);
 
 /**
- * GetProfileSongs
+ * GetProfileSongsByName
  */
-export const apiProfilesProfileIdSongsGetProfileSongsOptions = (
-  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData>,
+export const apiProfilesProfileNameSongsGetProfileSongsByNameOptions = (
+  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      const { data } = await apiProfilesProfileIdSongsGetProfileSongs({
+      const { data } = await apiProfilesProfileNameSongsGetProfileSongsByName({
         ...options,
         ...queryKey[0],
         signal,
@@ -431,27 +430,27 @@ export const apiProfilesProfileIdSongsGetProfileSongsOptions = (
       });
       return data;
     },
-    queryKey: apiProfilesProfileIdSongsGetProfileSongsQueryKey(options),
+    queryKey: apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey(options),
   });
 };
 
 /**
  * CreateSong
  */
-export const apiProfilesProfileIdSongsCreateSongMutation = (
-  options?: Partial<Options<ApiProfilesProfileIdSongsCreateSongData>>,
+export const apiProfilesProfileNameSongsCreateSongMutation = (
+  options?: Partial<Options<ApiProfilesProfileNameSongsCreateSongData>>,
 ): UseMutationOptions<
-  ApiProfilesProfileIdSongsCreateSongResponse,
-  ApiProfilesProfileIdSongsCreateSongError,
-  Options<ApiProfilesProfileIdSongsCreateSongData>
+  ApiProfilesProfileNameSongsCreateSongResponse,
+  ApiProfilesProfileNameSongsCreateSongError,
+  Options<ApiProfilesProfileNameSongsCreateSongData>
 > => {
   const mutationOptions: UseMutationOptions<
-    ApiProfilesProfileIdSongsCreateSongResponse,
-    ApiProfilesProfileIdSongsCreateSongError,
-    Options<ApiProfilesProfileIdSongsCreateSongData>
+    ApiProfilesProfileNameSongsCreateSongResponse,
+    ApiProfilesProfileNameSongsCreateSongError,
+    Options<ApiProfilesProfileNameSongsCreateSongData>
   > = {
     mutationFn: async (fnOptions) => {
-      const { data } = await apiProfilesProfileIdSongsCreateSong({
+      const { data } = await apiProfilesProfileNameSongsCreateSong({
         ...options,
         ...fnOptions,
         throwOnError: true,
@@ -462,48 +461,51 @@ export const apiProfilesProfileIdSongsCreateSongMutation = (
   return mutationOptions;
 };
 
-export const apiProfilesProfileIdLocationsGetProfileLocationsQueryKey = (
-  options: Options<ApiProfilesProfileIdLocationsGetProfileLocationsData>,
+export const apiProfilesProfileNameLocationsGetProfileLocationsQueryKey = (
+  options: Options<ApiProfilesProfileNameLocationsGetProfileLocationsData>,
 ) =>
-  createQueryKey("apiProfilesProfileIdLocationsGetProfileLocations", options);
+  createQueryKey("apiProfilesProfileNameLocationsGetProfileLocations", options);
 
 /**
  * GetProfileLocations
  */
-export const apiProfilesProfileIdLocationsGetProfileLocationsOptions = (
-  options: Options<ApiProfilesProfileIdLocationsGetProfileLocationsData>,
+export const apiProfilesProfileNameLocationsGetProfileLocationsOptions = (
+  options: Options<ApiProfilesProfileNameLocationsGetProfileLocationsData>,
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      const { data } = await apiProfilesProfileIdLocationsGetProfileLocations({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
+      const { data } = await apiProfilesProfileNameLocationsGetProfileLocations(
+        {
+          ...options,
+          ...queryKey[0],
+          signal,
+          throwOnError: true,
+        },
+      );
       return data;
     },
-    queryKey: apiProfilesProfileIdLocationsGetProfileLocationsQueryKey(options),
+    queryKey:
+      apiProfilesProfileNameLocationsGetProfileLocationsQueryKey(options),
   });
 };
 
 /**
  * CreateLocation
  */
-export const apiProfilesProfileIdLocationsCreateLocationMutation = (
-  options?: Partial<Options<ApiProfilesProfileIdLocationsCreateLocationData>>,
+export const apiProfilesProfileNameLocationsCreateLocationMutation = (
+  options?: Partial<Options<ApiProfilesProfileNameLocationsCreateLocationData>>,
 ): UseMutationOptions<
-  ApiProfilesProfileIdLocationsCreateLocationResponse,
-  ApiProfilesProfileIdLocationsCreateLocationError,
-  Options<ApiProfilesProfileIdLocationsCreateLocationData>
+  ApiProfilesProfileNameLocationsCreateLocationResponse,
+  ApiProfilesProfileNameLocationsCreateLocationError,
+  Options<ApiProfilesProfileNameLocationsCreateLocationData>
 > => {
   const mutationOptions: UseMutationOptions<
-    ApiProfilesProfileIdLocationsCreateLocationResponse,
-    ApiProfilesProfileIdLocationsCreateLocationError,
-    Options<ApiProfilesProfileIdLocationsCreateLocationData>
+    ApiProfilesProfileNameLocationsCreateLocationResponse,
+    ApiProfilesProfileNameLocationsCreateLocationError,
+    Options<ApiProfilesProfileNameLocationsCreateLocationData>
   > = {
     mutationFn: async (fnOptions) => {
-      const { data } = await apiProfilesProfileIdLocationsCreateLocation({
+      const { data } = await apiProfilesProfileNameLocationsCreateLocation({
         ...options,
         ...fnOptions,
         throwOnError: true,
@@ -690,31 +692,6 @@ export const apiProfilesProfileNameClipsGetProfileClipsOptions = (
       return data;
     },
     queryKey: apiProfilesProfileNameClipsGetProfileClipsQueryKey(options),
-  });
-};
-
-export const apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey = (
-  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
-) =>
-  createQueryKey("apiProfilesProfileNameSongsGetProfileSongsByName", options);
-
-/**
- * GetProfileSongsByName
- */
-export const apiProfilesProfileNameSongsGetProfileSongsByNameOptions = (
-  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
-) => {
-  return queryOptions({
-    queryFn: async ({ queryKey, signal }) => {
-      const { data } = await apiProfilesProfileNameSongsGetProfileSongsByName({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
-      return data;
-    },
-    queryKey: apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey(options),
   });
 };
 

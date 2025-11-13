@@ -645,16 +645,16 @@ export type ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses = {
 export type ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponse =
   ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses[keyof ApiRecordingsRecordingIdConfigUpdateRecordingConfigResponses];
 
-export type ApiProfilesProfileIdSongsGetProfileSongsData = {
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameData = {
   body?: never;
   path: {
-    profile_id: string;
+    profile_name: string;
   };
   query?: never;
-  url: "/api/profiles/{profile_id}/songs";
+  url: "/api/profiles/{profile_name}/songs";
 };
 
-export type ApiProfilesProfileIdSongsGetProfileSongsErrors = {
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameErrors = {
   /**
    * Validation Exception
    */
@@ -670,29 +670,29 @@ export type ApiProfilesProfileIdSongsGetProfileSongsErrors = {
   };
 };
 
-export type ApiProfilesProfileIdSongsGetProfileSongsError =
-  ApiProfilesProfileIdSongsGetProfileSongsErrors[keyof ApiProfilesProfileIdSongsGetProfileSongsErrors];
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameError =
+  ApiProfilesProfileNameSongsGetProfileSongsByNameErrors[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameErrors];
 
-export type ApiProfilesProfileIdSongsGetProfileSongsResponses = {
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponses = {
   /**
    * Request fulfilled, document follows
    */
-  200: Array<SongResponse>;
+  200: Array<SongWithClipCount>;
 };
 
-export type ApiProfilesProfileIdSongsGetProfileSongsResponse =
-  ApiProfilesProfileIdSongsGetProfileSongsResponses[keyof ApiProfilesProfileIdSongsGetProfileSongsResponses];
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponse =
+  ApiProfilesProfileNameSongsGetProfileSongsByNameResponses[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameResponses];
 
-export type ApiProfilesProfileIdSongsCreateSongData = {
+export type ApiProfilesProfileNameSongsCreateSongData = {
   body: CreateSongRequest;
   path: {
-    profile_id: string;
+    profile_name: string;
   };
   query?: never;
-  url: "/api/profiles/{profile_id}/songs";
+  url: "/api/profiles/{profile_name}/songs";
 };
 
-export type ApiProfilesProfileIdSongsCreateSongErrors = {
+export type ApiProfilesProfileNameSongsCreateSongErrors = {
   /**
    * Validation Exception
    */
@@ -708,29 +708,29 @@ export type ApiProfilesProfileIdSongsCreateSongErrors = {
   };
 };
 
-export type ApiProfilesProfileIdSongsCreateSongError =
-  ApiProfilesProfileIdSongsCreateSongErrors[keyof ApiProfilesProfileIdSongsCreateSongErrors];
+export type ApiProfilesProfileNameSongsCreateSongError =
+  ApiProfilesProfileNameSongsCreateSongErrors[keyof ApiProfilesProfileNameSongsCreateSongErrors];
 
-export type ApiProfilesProfileIdSongsCreateSongResponses = {
+export type ApiProfilesProfileNameSongsCreateSongResponses = {
   /**
    * Document created, URL follows
    */
   201: SongResponse;
 };
 
-export type ApiProfilesProfileIdSongsCreateSongResponse =
-  ApiProfilesProfileIdSongsCreateSongResponses[keyof ApiProfilesProfileIdSongsCreateSongResponses];
+export type ApiProfilesProfileNameSongsCreateSongResponse =
+  ApiProfilesProfileNameSongsCreateSongResponses[keyof ApiProfilesProfileNameSongsCreateSongResponses];
 
-export type ApiProfilesProfileIdLocationsGetProfileLocationsData = {
+export type ApiProfilesProfileNameLocationsGetProfileLocationsData = {
   body?: never;
   path: {
-    profile_id: string;
+    profile_name: string;
   };
   query?: never;
-  url: "/api/profiles/{profile_id}/locations";
+  url: "/api/profiles/{profile_name}/locations";
 };
 
-export type ApiProfilesProfileIdLocationsGetProfileLocationsErrors = {
+export type ApiProfilesProfileNameLocationsGetProfileLocationsErrors = {
   /**
    * Validation Exception
    */
@@ -746,29 +746,29 @@ export type ApiProfilesProfileIdLocationsGetProfileLocationsErrors = {
   };
 };
 
-export type ApiProfilesProfileIdLocationsGetProfileLocationsError =
-  ApiProfilesProfileIdLocationsGetProfileLocationsErrors[keyof ApiProfilesProfileIdLocationsGetProfileLocationsErrors];
+export type ApiProfilesProfileNameLocationsGetProfileLocationsError =
+  ApiProfilesProfileNameLocationsGetProfileLocationsErrors[keyof ApiProfilesProfileNameLocationsGetProfileLocationsErrors];
 
-export type ApiProfilesProfileIdLocationsGetProfileLocationsResponses = {
+export type ApiProfilesProfileNameLocationsGetProfileLocationsResponses = {
   /**
    * Request fulfilled, document follows
    */
   200: Array<LocationResponse>;
 };
 
-export type ApiProfilesProfileIdLocationsGetProfileLocationsResponse =
-  ApiProfilesProfileIdLocationsGetProfileLocationsResponses[keyof ApiProfilesProfileIdLocationsGetProfileLocationsResponses];
+export type ApiProfilesProfileNameLocationsGetProfileLocationsResponse =
+  ApiProfilesProfileNameLocationsGetProfileLocationsResponses[keyof ApiProfilesProfileNameLocationsGetProfileLocationsResponses];
 
-export type ApiProfilesProfileIdLocationsCreateLocationData = {
+export type ApiProfilesProfileNameLocationsCreateLocationData = {
   body: CreateLocationRequest;
   path: {
-    profile_id: string;
+    profile_name: string;
   };
   query?: never;
-  url: "/api/profiles/{profile_id}/locations";
+  url: "/api/profiles/{profile_name}/locations";
 };
 
-export type ApiProfilesProfileIdLocationsCreateLocationErrors = {
+export type ApiProfilesProfileNameLocationsCreateLocationErrors = {
   /**
    * Validation Exception
    */
@@ -784,18 +784,18 @@ export type ApiProfilesProfileIdLocationsCreateLocationErrors = {
   };
 };
 
-export type ApiProfilesProfileIdLocationsCreateLocationError =
-  ApiProfilesProfileIdLocationsCreateLocationErrors[keyof ApiProfilesProfileIdLocationsCreateLocationErrors];
+export type ApiProfilesProfileNameLocationsCreateLocationError =
+  ApiProfilesProfileNameLocationsCreateLocationErrors[keyof ApiProfilesProfileNameLocationsCreateLocationErrors];
 
-export type ApiProfilesProfileIdLocationsCreateLocationResponses = {
+export type ApiProfilesProfileNameLocationsCreateLocationResponses = {
   /**
    * Document created, URL follows
    */
   201: LocationResponse;
 };
 
-export type ApiProfilesProfileIdLocationsCreateLocationResponse =
-  ApiProfilesProfileIdLocationsCreateLocationResponses[keyof ApiProfilesProfileIdLocationsCreateLocationResponses];
+export type ApiProfilesProfileNameLocationsCreateLocationResponse =
+  ApiProfilesProfileNameLocationsCreateLocationResponses[keyof ApiProfilesProfileNameLocationsCreateLocationResponses];
 
 export type ApiRecordingsRecordingIdClipsGetRecordingClipsData = {
   body?: never;
@@ -1062,44 +1062,6 @@ export type ApiProfilesProfileNameClipsGetProfileClipsResponses = {
 
 export type ApiProfilesProfileNameClipsGetProfileClipsResponse =
   ApiProfilesProfileNameClipsGetProfileClipsResponses[keyof ApiProfilesProfileNameClipsGetProfileClipsResponses];
-
-export type ApiProfilesProfileNameSongsGetProfileSongsByNameData = {
-  body?: never;
-  path: {
-    profile_name: string;
-  };
-  query?: never;
-  url: "/api/profiles/{profile_name}/songs";
-};
-
-export type ApiProfilesProfileNameSongsGetProfileSongsByNameErrors = {
-  /**
-   * Validation Exception
-   */
-  400: {
-    status_code: number;
-    detail: string;
-    extra?:
-      | null
-      | {
-          [key: string]: unknown;
-        }
-      | Array<unknown>;
-  };
-};
-
-export type ApiProfilesProfileNameSongsGetProfileSongsByNameError =
-  ApiProfilesProfileNameSongsGetProfileSongsByNameErrors[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameErrors];
-
-export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponses = {
-  /**
-   * Request fulfilled, document follows
-   */
-  200: Array<SongWithClipCount>;
-};
-
-export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponse =
-  ApiProfilesProfileNameSongsGetProfileSongsByNameResponses[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameResponses];
 
 export type ApiUploadProfileNameUploadFileData = {
   body: {

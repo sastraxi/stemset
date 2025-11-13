@@ -1,5 +1,11 @@
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronDown, ChevronsUpDown, Sparkles } from "lucide-react";
+import {
+	CalendarIcon,
+	Check,
+	ChevronDown,
+	ChevronsUpDown,
+	Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,14 +30,11 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-	useCreateSong,
-	useProfileSongs,
-} from "@/hooks/queries";
+import { useCreateSong, useProfileSongs } from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 
 interface MetadataEditorProps {
-	profileId: string;
+	profileName: string;
 	displayName: string;
 	selectedSongId: string | null;
 	selectedLocationName: string | null;
@@ -49,7 +52,7 @@ interface MetadataEditorProps {
 }
 
 export function MetadataEditor({
-	profileId,
+	profileName,
 	displayName,
 	selectedSongId,
 	selectedLocationName,
@@ -65,7 +68,7 @@ export function MetadataEditor({
 	mode = "modal",
 	saveButtonText = "Save",
 }: MetadataEditorProps) {
-	const { data: songs = [] } = useProfileSongs(profileId);
+	const { data: songs = [] } = useProfileSongs(profileName);
 	const createSong = useCreateSong();
 
 	// Popover open states
@@ -93,7 +96,7 @@ export function MetadataEditor({
 
 	const handleCreateSong = async (name: string) => {
 		const result = await createSong.mutateAsync({
-			path: { profile_id: profileId },
+			path: { profile_name: profileName },
 			body: { name },
 		});
 		onSongChange(result.id);
@@ -103,7 +106,9 @@ export function MetadataEditor({
 
 	const handleAutoGenerateTitle = () => {
 		const selectedSong = songs.find((s) => s.id === selectedSongId);
-		const datePart = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "YYYY-MM-DD";
+		const datePart = selectedDate
+			? format(selectedDate, "yyyy-MM-dd")
+			: "YYYY-MM-DD";
 		const songPart = selectedSong ? selectedSong.name : "Song Name";
 		const locationPart = selectedLocationName || "Location";
 		const generated = `${datePart} - ${songPart} (${locationPart})`;
@@ -132,7 +137,7 @@ export function MetadataEditor({
 				}
 
 				const response = await fetch(
-					`https://us1.locationiq.com/v1/search?format=json&q=${encodeURIComponent(locationSearch)}&limit=8&addressdetails=1&key=${apiKey}`
+					`https://us1.locationiq.com/v1/search?format=json&q=${encodeURIComponent(locationSearch)}&limit=8&addressdetails=1&key=${apiKey}`,
 				);
 
 				if (!response.ok) {
@@ -212,7 +217,7 @@ export function MetadataEditor({
 										variant="outline"
 										className={cn(
 											"w-full justify-start text-left font-normal",
-											!selectedDate && "text-muted-foreground"
+											!selectedDate && "text-muted-foreground",
 										)}
 									>
 										<CalendarIcon className="mr-2 h-4 w-4" />
@@ -416,7 +421,10 @@ export function MetadataEditor({
 			{/* Action Buttons */}
 			<div className="metadata-editor-actions">
 				{mode === "modal" && onDelete && (
-					<DropdownMenu open={deleteDropdownOpen} onOpenChange={setDeleteDropdownOpen}>
+					<DropdownMenu
+						open={deleteDropdownOpen}
+						onOpenChange={setDeleteDropdownOpen}
+					>
 						<DropdownMenuTrigger asChild>
 							<Button
 								type="button"
@@ -428,17 +436,19 @@ export function MetadataEditor({
 								<ChevronDown className="ml-2 h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent className="w-full min-w-[300px]" align="start" side="top">
+						<DropdownMenuContent
+							className="w-full min-w-[300px]"
+							align="start"
+							side="top"
+						>
 							<DropdownMenuItem
 								disabled={deleteCountdown !== 0}
 								onSelect={handleConfirmDelete}
 								className="text-destructive focus:text-destructive cursor-pointer"
 							>
-								{deleteCountdown === null || deleteCountdown > 0 ? (
-									`Please wait ${deleteCountdown || 3} second${deleteCountdown === 1 ? "" : "s"}...`
-								) : (
-									"Click to permanently delete this recording"
-								)}
+								{deleteCountdown === null || deleteCountdown > 0
+									? `Please wait ${deleteCountdown || 3} second${deleteCountdown === 1 ? "" : "s"}...`
+									: "Click to permanently delete this recording"}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -449,7 +459,12 @@ export function MetadataEditor({
 							Cancel
 						</Button>
 					)}
-					<Button type="button" onClick={onSave} className={mode === "inline" ? "w-full" : ""} size={mode === "inline" ? "lg" : "default"}>
+					<Button
+						type="button"
+						onClick={onSave}
+						className={mode === "inline" ? "w-full" : ""}
+						size={mode === "inline" ? "lg" : "default"}
+					>
 						{saveButtonText}
 					</Button>
 				</div>

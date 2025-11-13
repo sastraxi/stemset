@@ -6,7 +6,12 @@ import {
 	apiClipsClipIdGetClipEndpoint,
 	apiSongsSongIdClipsGetSongClips,
 } from "@/api/generated";
-import { useProfileFiles, useProfiles, useRecording, useDeleteClip } from "../hooks/queries";
+import {
+	useDeleteClip,
+	useProfileFiles,
+	useProfiles,
+	useRecording,
+} from "../hooks/queries";
 import { useSortPreference } from "../hooks/useSortPreference";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
 import { getRelativeTime } from "../lib/utils";
@@ -34,8 +39,8 @@ import { SongsView } from "./SongsView";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
 import { UserNav } from "./UserNav";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Spinner } from "./ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface AuthenticatedAppProps {
 	user: { id: string; name: string; email: string; picture?: string };
@@ -81,7 +86,8 @@ export function AuthenticatedApp({
 	const [isDeleting, setIsDeleting] = useState(false);
 
 	// Clip-specific modal states
-	const [isClipMetadataEditorOpen, setIsClipMetadataEditorOpen] = useState(false);
+	const [isClipMetadataEditorOpen, setIsClipMetadataEditorOpen] =
+		useState(false);
 	const [isClipQRModalOpen, setIsClipQRModalOpen] = useState(false);
 	const [isClipDeleteModalOpen, setIsClipDeleteModalOpen] = useState(false);
 	const [isDeletingClip, setIsDeletingClip] = useState(false);
@@ -108,11 +114,19 @@ export function AuthenticatedApp({
 	const isOnSongRoute = !!initialSong;
 
 	// Track previous route to detect actual navigation changes
-	const prevRouteRef = useRef({ song: initialSong, clip: initialClip, recording: initialRecording });
+	const prevRouteRef = useRef({
+		song: initialSong,
+		clip: initialClip,
+		recording: initialRecording,
+	});
 
 	useEffect(() => {
 		const prev = prevRouteRef.current;
-		const current = { song: initialSong, clip: initialClip, recording: initialRecording };
+		const current = {
+			song: initialSong,
+			clip: initialClip,
+			recording: initialRecording,
+		};
 
 		// Only update tab if we actually navigated to a different item
 		const routeChanged =
@@ -467,7 +481,11 @@ export function AuthenticatedApp({
 					)}
 
 					<div className="file-list">
-						<Tabs value={sidebarTab} onValueChange={setSidebarTab} className="w-full">
+						<Tabs
+							value={sidebarTab}
+							onValueChange={setSidebarTab}
+							className="w-full"
+						>
 							<TabsList className="grid w-full grid-cols-3 mb-4">
 								<TabsTrigger value="recordings">Recordings</TabsTrigger>
 								<TabsTrigger value="clips">Clips</TabsTrigger>
@@ -589,40 +607,39 @@ export function AuthenticatedApp({
 							</div>
 
 							{/* Modals for clip */}
-							{clipRecordingData && selectedProfile && (
-								<>
-									<MetadataEditorModal
-										recording={clipRecordingData}
-										clip={{
-											id: clip.data.id,
-											display_name: clip.data.display_name,
-											song_id: clip.data.song_id,
-										}}
-										profileId={
-											profiles?.find((p) => p.name === selectedProfile)?.id ||
-											""
-										}
-										profileName={selectedProfile}
-										open={isClipMetadataEditorOpen}
-										onClose={() => setIsClipMetadataEditorOpen(false)}
-									/>
-									<QRCodeModal
-										isOpen={isClipQRModalOpen}
-										onClose={() => setIsClipQRModalOpen(false)}
-										url={encodeURI(
-											`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/clips/${clip.data.id}`,
-										)}
-										currentTime={audioCurrentTime}
-									/>
-									<DeleteConfirmationModal
-										isOpen={isClipDeleteModalOpen}
-										onClose={() => setIsClipDeleteModalOpen(false)}
-										onConfirm={handleDeleteClip}
-										recordingTitle={clip.data.display_name || "this clip"}
-										isDeleting={isDeletingClip}
-									/>
-								</>
-							)}
+							{clipRecordingData &&
+								selectedProfile &&
+								profiles &&
+								profiles.find((p) => p.name === selectedProfile)?.id && (
+									<>
+										<MetadataEditorModal
+											recording={clipRecordingData}
+											clip={{
+												id: clip.data.id,
+												display_name: clip.data.display_name,
+												song_id: clip.data.song_id,
+											}}
+											profileName={selectedProfile}
+											open={isClipMetadataEditorOpen}
+											onClose={() => setIsClipMetadataEditorOpen(false)}
+										/>
+										<QRCodeModal
+											isOpen={isClipQRModalOpen}
+											onClose={() => setIsClipQRModalOpen(false)}
+											url={encodeURI(
+												`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/clips/${clip.data.id}`,
+											)}
+											currentTime={audioCurrentTime}
+										/>
+										<DeleteConfirmationModal
+											isOpen={isClipDeleteModalOpen}
+											onClose={() => setIsClipDeleteModalOpen(false)}
+											onConfirm={handleDeleteClip}
+											recordingTitle={clip.data.display_name || "this clip"}
+											isDeleting={isDeletingClip}
+										/>
+									</>
+								)}
 
 							<RecordingPlayer
 								recordingId={clip.data.recording_id}
@@ -645,9 +662,7 @@ export function AuthenticatedApp({
 						(wasInitiallyProcessing && selectedFile.status === "complete") ? (
 							<MetadataPage
 								recording={selectedFile}
-								profileId={
-									profiles?.find((p) => p.name === selectedProfile)?.id || ""
-								}
+								profileName={selectedProfile}
 								wasInitiallyProcessing={wasInitiallyProcessing}
 								onContinue={() => {
 									setWasInitiallyProcessing(false);
@@ -688,10 +703,6 @@ export function AuthenticatedApp({
 									<>
 										<MetadataEditorModal
 											recording={selectedFile}
-											profileId={
-												profiles?.find((p) => p.name === selectedProfile)?.id ||
-												""
-											}
 											profileName={selectedProfile}
 											open={isMetadataEditorOpen}
 											onClose={() => setIsMetadataEditorOpen(false)}

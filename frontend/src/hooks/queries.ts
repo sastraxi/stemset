@@ -1,19 +1,19 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	apiClipsClipIdDeleteClipEndpointMutation,
+	apiClipsClipIdUpdateClipEndpointMutation,
 	apiProfilesGetProfilesOptions,
 	apiProfilesProfileNameFilesGetProfileFilesOptions,
 	apiProfilesProfileNameFilesGetProfileFilesQueryKey,
-	apiRecordingsRecordingIdGetRecordingStatusOptions,
 	apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameMutation,
-	apiProfilesProfileIdSongsGetProfileSongsOptions,
-	apiProfilesProfileIdSongsGetProfileSongsQueryKey,
-	apiProfilesProfileIdSongsCreateSongMutation,
-	apiProfilesProfileIdLocationsGetProfileLocationsOptions,
-	apiProfilesProfileIdLocationsGetProfileLocationsQueryKey,
-	apiProfilesProfileIdLocationsCreateLocationMutation,
+	apiProfilesProfileNameLocationsCreateLocationMutation,
+	apiProfilesProfileNameLocationsGetProfileLocationsOptions,
+	apiProfilesProfileNameLocationsGetProfileLocationsQueryKey,
+	apiProfilesProfileNameSongsCreateSongMutation,
+	apiProfilesProfileNameSongsGetProfileSongsByNameOptions,
+	apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey,
+	apiRecordingsRecordingIdGetRecordingStatusOptions,
 	apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation,
-	apiClipsClipIdUpdateClipEndpointMutation,
-	apiClipsClipIdDeleteClipEndpointMutation,
 } from "../api/generated/@tanstack/react-query.gen";
 
 export function useProfiles() {
@@ -71,7 +71,9 @@ export function useUpdateDisplayName() {
 					if (!oldData) return oldData;
 
 					// Only create new array if the file exists and display_name actually changed
-					const fileIndex = oldData.findIndex((file: any) => file.name === variables.path.output_name);
+					const fileIndex = oldData.findIndex(
+						(file: any) => file.name === variables.path.output_name,
+					);
 					if (fileIndex === -1) return oldData;
 
 					const oldFile = oldData[fileIndex];
@@ -81,60 +83,61 @@ export function useUpdateDisplayName() {
 					const newData = [...oldData];
 					newData[fileIndex] = { ...oldFile, display_name: data.display_name };
 					return newData;
-				}
+				},
 			);
 		},
 	});
 }
 
-export function useProfileSongs(profileId: string | undefined) {
-	const options = apiProfilesProfileIdSongsGetProfileSongsOptions({
-		path: { profile_id: profileId! },
+export function useProfileSongs(profileName: string | undefined) {
+	const options = apiProfilesProfileNameSongsGetProfileSongsByNameOptions({
+		path: { profile_name: profileName! },
 	});
 	return useQuery({
 		...options,
-		enabled: !!profileId,
+		enabled: !!profileName,
 		staleTime: 5 * 60 * 1000, // 5 minutes
 	});
 }
 
 export function useCreateSong() {
 	const queryClient = useQueryClient();
-	const mutationOptions = apiProfilesProfileIdSongsCreateSongMutation();
+	const mutationOptions = apiProfilesProfileNameSongsCreateSongMutation();
 
 	return useMutation({
 		...mutationOptions,
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({
-				queryKey: apiProfilesProfileIdSongsGetProfileSongsQueryKey({
-					path: { profile_id: variables.path.profile_id },
+				queryKey: apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey({
+					path: { profile_name: variables.path.profile_name },
 				}),
 			});
 		},
 	});
 }
 
-export function useProfileLocations(profileId: string | undefined) {
-	const options = apiProfilesProfileIdLocationsGetProfileLocationsOptions({
-		path: { profile_id: profileId! },
+export function useProfileLocations(profileName: string | undefined) {
+	const options = apiProfilesProfileNameLocationsGetProfileLocationsOptions({
+		path: { profile_name: profileName! },
 	});
 	return useQuery({
 		...options,
-		enabled: !!profileId,
+		enabled: !!profileName,
 		staleTime: 5 * 60 * 1000, // 5 minutes
 	});
 }
 
 export function useCreateLocation() {
 	const queryClient = useQueryClient();
-	const mutationOptions = apiProfilesProfileIdLocationsCreateLocationMutation();
+	const mutationOptions =
+		apiProfilesProfileNameLocationsCreateLocationMutation();
 
 	return useMutation({
 		...mutationOptions,
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({
-				queryKey: apiProfilesProfileIdLocationsGetProfileLocationsQueryKey({
-					path: { profile_id: variables.path.profile_id },
+				queryKey: apiProfilesProfileNameLocationsGetProfileLocationsQueryKey({
+					path: { profile_name: variables.path.profile_name },
 				}),
 			});
 		},
@@ -143,7 +146,8 @@ export function useCreateLocation() {
 
 export function useUpdateRecordingMetadata() {
 	const queryClient = useQueryClient();
-	const mutationOptions = apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation();
+	const mutationOptions =
+		apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation();
 
 	return useMutation({
 		...mutationOptions,

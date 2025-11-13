@@ -30,14 +30,13 @@ from .profile_routes import (
     get_profile,
     get_profile_clips,
     get_profile_files,
-    get_profile_songs_by_name,
     get_profiles,
     get_recording_clips,
     get_song_clips,
     update_clip_endpoint,
     update_display_name,
 )
-from .song_routes import create_song, get_profile_songs
+from .song_routes import create_song, get_profile_songs_by_name
 from .state import AppState
 from .upload_routes import (
     get_recording_status,
@@ -152,7 +151,6 @@ app = Litestar(
         update_display_name,
         delete_recording_endpoint,
         update_recording_config,
-        get_profile_songs,
         create_song,
         get_profile_locations,
         create_location,

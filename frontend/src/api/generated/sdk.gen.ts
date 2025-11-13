@@ -22,18 +22,6 @@ import type {
   ApiProcessProcessLocalResponses,
   ApiProfilesGetProfilesData,
   ApiProfilesGetProfilesResponses,
-  ApiProfilesProfileIdLocationsCreateLocationData,
-  ApiProfilesProfileIdLocationsCreateLocationErrors,
-  ApiProfilesProfileIdLocationsCreateLocationResponses,
-  ApiProfilesProfileIdLocationsGetProfileLocationsData,
-  ApiProfilesProfileIdLocationsGetProfileLocationsErrors,
-  ApiProfilesProfileIdLocationsGetProfileLocationsResponses,
-  ApiProfilesProfileIdSongsCreateSongData,
-  ApiProfilesProfileIdSongsCreateSongErrors,
-  ApiProfilesProfileIdSongsCreateSongResponses,
-  ApiProfilesProfileIdSongsGetProfileSongsData,
-  ApiProfilesProfileIdSongsGetProfileSongsErrors,
-  ApiProfilesProfileIdSongsGetProfileSongsResponses,
   ApiProfilesProfileNameClipsGetProfileClipsData,
   ApiProfilesProfileNameClipsGetProfileClipsErrors,
   ApiProfilesProfileNameClipsGetProfileClipsResponses,
@@ -46,6 +34,15 @@ import type {
   ApiProfilesProfileNameGetProfileData,
   ApiProfilesProfileNameGetProfileErrors,
   ApiProfilesProfileNameGetProfileResponses,
+  ApiProfilesProfileNameLocationsCreateLocationData,
+  ApiProfilesProfileNameLocationsCreateLocationErrors,
+  ApiProfilesProfileNameLocationsCreateLocationResponses,
+  ApiProfilesProfileNameLocationsGetProfileLocationsData,
+  ApiProfilesProfileNameLocationsGetProfileLocationsErrors,
+  ApiProfilesProfileNameLocationsGetProfileLocationsResponses,
+  ApiProfilesProfileNameSongsCreateSongData,
+  ApiProfilesProfileNameSongsCreateSongErrors,
+  ApiProfilesProfileNameSongsCreateSongResponses,
   ApiProfilesProfileNameSongsGetProfileSongsByNameData,
   ApiProfilesProfileNameSongsGetProfileSongsByNameErrors,
   ApiProfilesProfileNameSongsGetProfileSongsByNameResponses,
@@ -315,19 +312,22 @@ export const apiRecordingsRecordingIdConfigUpdateRecordingConfig = <
 };
 
 /**
- * GetProfileSongs
+ * GetProfileSongsByName
  */
-export const apiProfilesProfileIdSongsGetProfileSongs = <
+export const apiProfilesProfileNameSongsGetProfileSongsByName = <
   ThrowOnError extends boolean = false,
 >(
-  options: Options<ApiProfilesProfileIdSongsGetProfileSongsData, ThrowOnError>,
+  options: Options<
+    ApiProfilesProfileNameSongsGetProfileSongsByNameData,
+    ThrowOnError
+  >,
 ) => {
   return (options.client ?? client).get<
-    ApiProfilesProfileIdSongsGetProfileSongsResponses,
-    ApiProfilesProfileIdSongsGetProfileSongsErrors,
+    ApiProfilesProfileNameSongsGetProfileSongsByNameResponses,
+    ApiProfilesProfileNameSongsGetProfileSongsByNameErrors,
     ThrowOnError
   >({
-    url: "/api/profiles/{profile_id}/songs",
+    url: "/api/profiles/{profile_name}/songs",
     ...options,
   });
 };
@@ -335,17 +335,17 @@ export const apiProfilesProfileIdSongsGetProfileSongs = <
 /**
  * CreateSong
  */
-export const apiProfilesProfileIdSongsCreateSong = <
+export const apiProfilesProfileNameSongsCreateSong = <
   ThrowOnError extends boolean = false,
 >(
-  options: Options<ApiProfilesProfileIdSongsCreateSongData, ThrowOnError>,
+  options: Options<ApiProfilesProfileNameSongsCreateSongData, ThrowOnError>,
 ) => {
   return (options.client ?? client).post<
-    ApiProfilesProfileIdSongsCreateSongResponses,
-    ApiProfilesProfileIdSongsCreateSongErrors,
+    ApiProfilesProfileNameSongsCreateSongResponses,
+    ApiProfilesProfileNameSongsCreateSongErrors,
     ThrowOnError
   >({
-    url: "/api/profiles/{profile_id}/songs",
+    url: "/api/profiles/{profile_name}/songs",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -357,20 +357,20 @@ export const apiProfilesProfileIdSongsCreateSong = <
 /**
  * GetProfileLocations
  */
-export const apiProfilesProfileIdLocationsGetProfileLocations = <
+export const apiProfilesProfileNameLocationsGetProfileLocations = <
   ThrowOnError extends boolean = false,
 >(
   options: Options<
-    ApiProfilesProfileIdLocationsGetProfileLocationsData,
+    ApiProfilesProfileNameLocationsGetProfileLocationsData,
     ThrowOnError
   >,
 ) => {
   return (options.client ?? client).get<
-    ApiProfilesProfileIdLocationsGetProfileLocationsResponses,
-    ApiProfilesProfileIdLocationsGetProfileLocationsErrors,
+    ApiProfilesProfileNameLocationsGetProfileLocationsResponses,
+    ApiProfilesProfileNameLocationsGetProfileLocationsErrors,
     ThrowOnError
   >({
-    url: "/api/profiles/{profile_id}/locations",
+    url: "/api/profiles/{profile_name}/locations",
     ...options,
   });
 };
@@ -378,20 +378,20 @@ export const apiProfilesProfileIdLocationsGetProfileLocations = <
 /**
  * CreateLocation
  */
-export const apiProfilesProfileIdLocationsCreateLocation = <
+export const apiProfilesProfileNameLocationsCreateLocation = <
   ThrowOnError extends boolean = false,
 >(
   options: Options<
-    ApiProfilesProfileIdLocationsCreateLocationData,
+    ApiProfilesProfileNameLocationsCreateLocationData,
     ThrowOnError
   >,
 ) => {
   return (options.client ?? client).post<
-    ApiProfilesProfileIdLocationsCreateLocationResponses,
-    ApiProfilesProfileIdLocationsCreateLocationErrors,
+    ApiProfilesProfileNameLocationsCreateLocationResponses,
+    ApiProfilesProfileNameLocationsCreateLocationErrors,
     ThrowOnError
   >({
-    url: "/api/profiles/{profile_id}/locations",
+    url: "/api/profiles/{profile_name}/locations",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -539,27 +539,6 @@ export const apiProfilesProfileNameClipsGetProfileClips = <
     ThrowOnError
   >({
     url: "/api/profiles/{profile_name}/clips",
-    ...options,
-  });
-};
-
-/**
- * GetProfileSongsByName
- */
-export const apiProfilesProfileNameSongsGetProfileSongsByName = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApiProfilesProfileNameSongsGetProfileSongsByNameData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).get<
-    ApiProfilesProfileNameSongsGetProfileSongsByNameResponses,
-    ApiProfilesProfileNameSongsGetProfileSongsByNameErrors,
-    ThrowOnError
-  >({
-    url: "/api/profiles/{profile_name}/songs",
     ...options,
   });
 };

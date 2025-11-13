@@ -12,9 +12,9 @@ import {
 import {
 	useCreateLocation,
 	useProfileLocations,
+	useUpdateClip,
 	useUpdateDisplayName,
 	useUpdateRecordingMetadata,
-	useUpdateClip,
 } from "@/hooks/queries";
 import { MetadataEditor } from "./MetadataEditor";
 import "../styles/metadata-editor.css";
@@ -26,7 +26,6 @@ interface MetadataEditorModalProps {
 		display_name?: string | null;
 		song_id?: string | null;
 	};
-	profileId: string;
 	profileName: string;
 	open: boolean;
 	onClose: () => void;
@@ -36,7 +35,6 @@ interface MetadataEditorModalProps {
 export function MetadataEditorModal({
 	recording,
 	clip,
-	profileId,
 	profileName,
 	open,
 	onClose,
@@ -44,11 +42,14 @@ export function MetadataEditorModal({
 }: MetadataEditorModalProps) {
 	// Determine initial values from clip or recording
 	const initialDisplayName = clip?.display_name ?? recording.display_name;
-	const initialSongId = clip?.song_id ?? (recording.song ? recording.song.id : null);
+	const initialSongId =
+		clip?.song_id ?? (recording.song ? recording.song.id : null);
 
 	// Local state for form values
 	const [displayName, setDisplayName] = useState(initialDisplayName);
-	const [selectedSongId, setSelectedSongId] = useState<string | null>(initialSongId);
+	const [selectedSongId, setSelectedSongId] = useState<string | null>(
+		initialSongId,
+	);
 	// For OSM, we'll store the location name as a string
 	const [selectedLocationName, setSelectedLocationName] = useState<
 		string | null
@@ -58,7 +59,7 @@ export function MetadataEditorModal({
 	);
 
 	const queryClient = useQueryClient();
-	const { data: locations = [] } = useProfileLocations(profileId);
+	const { data: locations = [] } = useProfileLocations(profileName);
 	const updateDisplayNameMutation = useUpdateDisplayName();
 	const updateMetadata = useUpdateRecordingMetadata();
 	const updateClipMutation = useUpdateClip();
@@ -67,8 +68,12 @@ export function MetadataEditorModal({
 	// Sync local state with recording/clip props when they change
 	useEffect(() => {
 		setDisplayName(clip?.display_name ?? recording.display_name);
-		setSelectedSongId(clip?.song_id ?? (recording.song ? recording.song.id : null));
-		setSelectedLocationName(recording.location ? recording.location.name : null);
+		setSelectedSongId(
+			clip?.song_id ?? (recording.song ? recording.song.id : null),
+		);
+		setSelectedLocationName(
+			recording.location ? recording.location.name : null,
+		);
 		setSelectedDate(
 			recording.date_recorded ? new Date(recording.date_recorded) : new Date(),
 		);
@@ -111,7 +116,7 @@ export function MetadataEditorModal({
 					} else {
 						// Create new location from LocationIQ result
 						const newLocation = await createLocation.mutateAsync({
-							path: { profile_id: profileId },
+							path: { profile_name: profileName },
 							body: { name: selectedLocationName },
 						});
 						locationId = newLocation.id;
@@ -137,7 +142,9 @@ export function MetadataEditorModal({
 					display_name: displayName,
 					// song: updatedRecording.song,
 					// location: updatedRecording.location,
-					date_recorded: selectedDate ? format(selectedDate, "yyyy-MM-dd") : null,
+					date_recorded: selectedDate
+						? format(selectedDate, "yyyy-MM-dd")
+						: null,
 				};
 
 				// Update React Query cache with new data
@@ -169,7 +176,9 @@ export function MetadataEditorModal({
 	const handleCancel = () => {
 		// Reset to original values
 		setDisplayName(clip?.display_name ?? recording.display_name);
-		setSelectedSongId(clip?.song_id ?? (recording.song ? recording.song.id : null));
+		setSelectedSongId(
+			clip?.song_id ?? (recording.song ? recording.song.id : null),
+		);
 		setSelectedLocationName(
 			recording.location ? recording.location.name : null,
 		);
@@ -193,10 +202,12 @@ export function MetadataEditorModal({
 				onInteractOutside={handleCancel}
 			>
 				<DialogHeader>
-					<DialogTitle>{clip ? "Edit Clip Metadata" : "Edit Recording Metadata"}</DialogTitle>
+					<DialogTitle>
+						{clip ? "Edit Clip Metadata" : "Edit Recording Metadata"}
+					</DialogTitle>
 				</DialogHeader>
 				<MetadataEditor
-					profileId={profileId}
+					profileName={profileName}
 					displayName={displayName}
 					selectedSongId={selectedSongId}
 					selectedLocationName={selectedLocationName}

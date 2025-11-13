@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from uuid import UUID
-
 from litestar import get, post
 from litestar.exceptions import HTTPException, NotFoundException
 from litestar.status_codes import HTTP_409_CONFLICT
@@ -13,8 +11,8 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db.config import get_engine
+from ..db.models import Clip, Song
 from ..db.models import Profile as DBProfile
-from ..db.models import Song
 
 
 class SongResponse(BaseModel):
@@ -31,43 +29,67 @@ class CreateSongRequest(BaseModel):
     name: str
 
 
-@get("/api/profiles/{profile_id:uuid}/songs")
-async def get_profile_songs(profile_id: UUID) -> list[SongResponse]:
-    """Get all songs for a profile."""
+class SongWithClipCount(BaseModel):
+    """Song with clip count."""
+
+    id: str
+    name: str
+    created_at: str
+    clip_count: int
+
+
+@get("/api/profiles/{profile_name:str}/songs")
+async def get_profile_songs_by_name(profile_name: str) -> list[SongWithClipCount]:
+    """Get all songs in a profile with clip counts."""
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        # Verify profile exists
-        result = await session.exec(select(DBProfile).where(DBProfile.id == profile_id))
-        profile = result.first()
-        if profile is None:
-            raise NotFoundException(detail=f"Profile with ID '{profile_id}' not found")
-
-        # Get songs
-        stmt = select(Song).where(Song.profile_id == profile_id).order_by(Song.name)
+        # Get profile
+        stmt = select(DBProfile).where(DBProfile.name == profile_name)
         result = await session.exec(stmt)
-        songs = result.all()
+        profile = result.first()
+
+        if profile is None:
+            raise NotFoundException(f"Profile '{profile_name}' not found")
+
+        # Get all songs with clip counts in this profile
+        from sqlalchemy import func
+
+        stmt = (
+            select(Song, func.count(Clip.id).label("clip_count"))  # pyright: ignore[reportArgumentType]
+            .outerjoin(Clip)
+            .where(Song.profile_id == profile.id)
+            .group_by(Song.id)  # pyright: ignore[reportArgumentType]
+            .order_by(Song.name)
+        )
+        result = await session.exec(stmt)
+        rows = result.all()
 
         return [
-            SongResponse(id=str(song.id), name=song.name, created_at=song.created_at.isoformat())
-            for song in songs
+            SongWithClipCount(
+                id=str(song.id),
+                name=song.name,
+                created_at=song.created_at.isoformat(),
+                clip_count=clip_count,
+            )
+            for song, clip_count in rows
         ]
 
 
-@post("/api/profiles/{profile_id:uuid}/songs")
-async def create_song(profile_id: UUID, data: CreateSongRequest) -> SongResponse:
+@post("/api/profiles/{profile_name:str}/songs")
+async def create_song(profile_name: str, data: CreateSongRequest) -> SongResponse:
     """Create a new song for a profile."""
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
         # Verify profile exists
-        result = await session.exec(select(DBProfile).where(DBProfile.id == profile_id))
+        result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
         profile = result.first()
         if profile is None:
-            raise NotFoundException(detail=f"Profile with ID '{profile_id}' not found")
+            raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
         # Create song
-        song = Song(profile_id=profile_id, name=data.name)
+        song = Song(profile_id=profile.id, name=data.name)
 
         session.add(song)
         try:

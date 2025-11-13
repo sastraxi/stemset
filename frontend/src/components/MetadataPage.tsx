@@ -23,14 +23,14 @@ import "../styles/metadata-editor.css";
 
 interface MetadataPageProps {
 	recording: RecordingStatusResponse | FileWithStems;
-	profileId: string;
+	profileName: string;
 	wasInitiallyProcessing: boolean;
 	onContinue?: () => void;
 }
 
 export function MetadataPage({
 	recording,
-	profileId,
+	profileName,
 	wasInitiallyProcessing,
 	onContinue,
 }: MetadataPageProps) {
@@ -43,7 +43,7 @@ export function MetadataPage({
 	// Use polled recording if available, otherwise use prop
 	const currentRecording = polledRecording || recording;
 
-	const { data: locations = [] } = useProfileLocations(profileId);
+	const { data: locations = [] } = useProfileLocations(profileName);
 	const createLocation = useCreateLocation();
 	const updateMetadata = useUpdateRecordingMetadata();
 
@@ -89,7 +89,7 @@ export function MetadataPage({
 				} else {
 					// Create new location from LocationIQ result
 					const newLocation = await createLocation.mutateAsync({
-						path: { profile_id: profileId },
+						path: { profile_name: profileName },
 						body: { name: selectedLocationName },
 					});
 					locationId = newLocation.id;
@@ -140,7 +140,7 @@ export function MetadataPage({
 				</CardHeader>
 				<CardContent>
 					<MetadataEditor
-						profileId={profileId}
+						profileName={profileName}
 						displayName={displayName}
 						selectedSongId={selectedSongId}
 						selectedLocationName={selectedLocationName}
