@@ -286,10 +286,22 @@ async def _process_and_callback(
             strategy_name=strategy_name,
         )
 
+        # Detect clip boundaries from separated stems
+        from src.processor.clip_detection import detect_clip_boundaries
+
+        stems_dict = {
+            stem_dict["stem_type"]: output_dir / str(stem_dict["audio_url"])
+            for stem_dict in stem_data_list
+        }
+
+        clip_boundaries = detect_clip_boundaries(stems_dict)
+        print(f"[Local Worker] Detected {len(clip_boundaries)} clip(s)")
+
         # Call callback endpoint
         callback_payload = ProcessingCallbackPayload(
             status="complete",
             stems=[StemDataModel(**stem) for stem in stem_data_list],
+            clip_boundaries=clip_boundaries,
         )
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -443,15 +455,20 @@ async def recording_complete(
         # Create clips from clip_boundaries provided by worker
         from src.db.models import Clip
 
-        clip_boundaries = data.clip_boundaries or []
-        print(f"Creating {len(clip_boundaries)} clips from worker boundaries")
-        for boundary in clip_boundaries:
+        clip_boundaries = data.clip_boundaries or {}
+        print(f"Creating {len(clip_boundaries)} clip(s) from worker boundaries")
+
+        # If multiple clips detected, name them "Section 1", "Section 2", etc.
+        # If single clip detected, leave display_name as None (full recording)
+        for i, (clip_id, boundary) in enumerate(clip_boundaries.items(), start=1):
+            display_name = f"Section {i}" if len(clip_boundaries) > 1 else None
+
             clip = Clip(
                 recording_id=recording.id,
                 song_id=recording.song_id,
                 start_time_sec=boundary.start_time_sec,
                 end_time_sec=boundary.end_time_sec,
-                display_name=None,
+                display_name=display_name,
             )
             session.add(clip)
 

@@ -1,20 +1,27 @@
+import { Link } from "@tanstack/react-router";
 import type { FileWithStems } from "@/api/generated/types.gen";
 import { Badge } from "@/components/ui/badge";
 import { RecordingMenu } from "./RecordingMenu";
 
 export interface SongMetadataProps {
 	recording: FileWithStems;
+	profileName: string;
 	onEdit: () => void;
 	onShowQR: () => void;
 	onDelete: () => void;
+	onCreateClip?: () => void;
+	hasSelection?: boolean;
 	duration?: number;
 }
 
 export function SongMetadata({
 	recording,
+	profileName,
 	onEdit,
 	onShowQR,
 	onDelete,
+	onCreateClip,
+	hasSelection,
 	duration,
 }: SongMetadataProps) {
 	const formatDate = (dateString: string | null | undefined) => {
@@ -45,7 +52,20 @@ export function SongMetadata({
 				<h2 className="recording-name">{recording.display_name}</h2>
 				<div className="song-metadata-badges">
 					{recording.song ? (
-						<Badge variant="secondary">{recording.song.name}</Badge>
+						<Link
+							to="/p/$profileName/songs/$songId"
+							params={{
+								profileName,
+								songId: recording.song.id,
+							}}
+						>
+							<Badge
+								variant="secondary"
+								className="cursor-pointer hover:bg-primary/20 transition-colors"
+							>
+								{recording.song.name}
+							</Badge>
+						</Link>
 					) : (
 						<Badge variant="outline" className="text-muted-foreground">
 							No song
@@ -74,6 +94,8 @@ export function SongMetadata({
 				onShowQR={onShowQR}
 				onEdit={onEdit}
 				onDelete={onDelete}
+				onCreateClip={onCreateClip}
+				hasSelection={hasSelection}
 			/>
 		</div>
 	);

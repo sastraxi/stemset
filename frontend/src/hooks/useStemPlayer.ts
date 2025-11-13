@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { StemResponse } from "../api/generated/types.gen";
 import type {
 	EffectsChainConfig,
@@ -26,6 +26,7 @@ export interface UseStemPlayerOptions {
 	recordingId: string;
 	startTimeSec?: number; // Clip start time (optional)
 	endTimeSec?: number; // Clip end time (optional)
+	disablePositionPersistence?: boolean; // Don't persist playback position (for clips)
 }
 
 export interface UseStemPlayerResult {
@@ -36,7 +37,8 @@ export interface UseStemPlayerResult {
 	// Playback state
 	isPlaying: boolean;
 	currentTime: number;
-	duration: number;
+	duration: number; // Effective duration (clip duration for clips, full duration for recordings)
+	fullDuration: number; // Always the full recording duration
 
 	// Stem view models (merged metadata + user config)
 	stems: Record<string, StemViewModel>;
@@ -148,7 +150,7 @@ export function useStemPlayer({
 		isLoading,
 		loadingMetrics,
 		stems: loadedStems,
-		duration,
+		duration: fullDuration,
 	} = useAudioLoader({
 		profileName,
 		fileName,
@@ -326,7 +328,17 @@ export function useStemPlayer({
 			recordingId,
 		});
 
-	// 8. Playback control (use saved position or 0 if none)
+	// 8. Calculate effective duration for clips (what we report to UI)
+	const duration = useMemo(() => {
+		if (startTimeSec !== undefined && endTimeSec !== undefined) {
+			// Clip mode: return bounded duration
+			return Math.min(endTimeSec, fullDuration) - Math.max(0, startTimeSec);
+		}
+		// Full recording mode: return full duration
+		return fullDuration;
+	}, [fullDuration, startTimeSec, endTimeSec]);
+
+	// 9. Playback control (use saved position or 0 if none)
 	const { isPlaying, currentTime, play, pause, stop, seek, formatTime } =
 		usePlaybackController({
 			audioContext,
@@ -334,25 +346,11 @@ export function useStemPlayer({
 			stemNodes,
 			initialPosition: playbackPositionConfig.position,
 			startTimeSec,
-			endTimeSec,
 		});
 
-	const playbackPositionInitializedRef = useRef(false);
-	// Mark playback position as initialized after first render to avoid saving initial state
+	// Persist playback position when playback stops or pauses
 	useEffect(() => {
-		// Wait one tick to ensure currentTime has been updated from initialPosition
-		const timer = setTimeout(() => {
-			playbackPositionInitializedRef.current = true;
-		}, 100);
-		return () => clearTimeout(timer);
-	}, []);
-
-	// Persist playback position when playback stops or pauses (not during continuous playback)
-	useEffect(() => {
-		if (!playbackPositionInitializedRef.current) return; // Don't save until initialized
 		if (isPlaying) return; // Don't save while playing (too many updates)
-
-		// Save when paused/stopped or when user seeks while paused
 		setPlaybackPositionConfig({ position: currentTime });
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isPlaying, currentTime]); // Intentionally omit setPlaybackPositionConfig to avoid infinite loop
@@ -491,6 +489,7 @@ export function useStemPlayer({
 		isPlaying,
 		currentTime,
 		duration,
+		fullDuration,
 
 		// Stems
 		stems,

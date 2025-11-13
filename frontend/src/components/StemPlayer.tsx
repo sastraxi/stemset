@@ -26,7 +26,7 @@ import { ParametricEqPanel } from "./effects/ParametricEqPanel";
 import { ReverbPanel } from "./effects/ReverbPanel";
 import { MobileVolumeControl } from "./MobileVolumeControl";
 import { Ruler } from "./Ruler";
-import { Spinner } from "./Spinner";
+import { Spinner } from "./ui/spinner";
 import { VCRDisplay } from "./VCRDisplay";
 import { VolumeSlider } from "./VolumeSlider";
 import { WaveformVisualization } from "./WaveformVisualization";
@@ -54,6 +54,7 @@ interface StemPlayerProps {
 	recordingId: string;
 	startTimeSec?: number; // Clip start time (optional)
 	endTimeSec?: number; // Clip end time (optional)
+	disablePositionPersistence?: boolean; // Don't persist playback position (for clips)
 }
 
 export interface StemPlayerHandle {
@@ -77,6 +78,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			recordingId,
 			startTimeSec,
 			endTimeSec,
+			disablePositionPersistence,
 		},
 		ref,
 	) => {
@@ -121,6 +123,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			isPlaying,
 			currentTime,
 			duration,
+			fullDuration,
 			stems,
 			stemOrder,
 			play,
@@ -163,6 +166,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			recordingId,
 			startTimeSec,
 			endTimeSec,
+			disablePositionPersistence,
 		});
 
 		const { initializeAudioSession } = useAudioSession(audioContext);
@@ -532,6 +536,9 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 											previewTime={previewTime || undefined}
 											onSeek={seek}
 											onPreview={setPreviewTime}
+											startTimeSec={startTimeSec}
+											endTimeSec={endTimeSec}
+											fullDuration={fullDuration}
 											waveformClasses={
 												stemIndex === stemOrder.length - 1
 													? "rounded-b-lg overflow-hidden"

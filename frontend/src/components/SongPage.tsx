@@ -1,19 +1,18 @@
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { AuthenticatedApp } from "./AuthenticatedApp";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginPage } from "./LoginPage";
 import { Toaster } from "sonner";
 
 /**
- * ClipPage - Displays a single clip with authentication wrapper.
+ * SongPage - Displays a song's clips with authentication wrapper.
  *
- * Follows the same pattern as RecordingPage - wraps the clip view in AuthenticatedApp.
+ * Follows the same pattern as RecordingPage and ClipPage.
  */
-export function ClipPage() {
-	const { profileName, clipId } = useParams({
-		from: "/p/$profileName/clips/$clipId",
+export function SongPage() {
+	const { profileName, songId } = useParams({
+		from: "/p/$profileName/songs/$songId/",
 	});
-	const { t: timeParam } = useSearch({ from: "/p/$profileName/clips/$clipId" });
 	const { authStatus, loading: authLoading, logout } = useAuth();
 
 	// Show login page if not authenticated
@@ -32,8 +31,7 @@ export function ClipPage() {
 				user={authStatus.user!}
 				onLogout={logout}
 				initialProfile={profileName}
-				initialClip={clipId}
-				timeParam={timeParam}
+				initialSong={songId}
 			/>
 		</>
 	);

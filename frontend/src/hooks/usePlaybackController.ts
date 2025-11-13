@@ -1,13 +1,12 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { StemAudioNode } from "../types";
 
 export interface UsePlaybackControllerOptions {
 	audioContext: AudioContext | null;
 	duration: number;
 	stemNodes: Map<string, StemAudioNode>;
-	initialPosition?: number; // Initial playback position in seconds
-	startTimeSec?: number; // Clip start time (default: 0)
-	endTimeSec?: number; // Clip end time (default: duration)
+	initialPosition?: number;
+	startTimeSec?: number;
 }
 
 export interface UsePlaybackControllerResult {
@@ -21,18 +20,12 @@ export interface UsePlaybackControllerResult {
 }
 
 /**
- * Manages playback control and timing for multi-stem audio.
+ * Unified playback controller for both recordings and clips.
  *
- * Responsibilities:
- * - BufferSourceNode lifecycle (recreate on play/resume/seek)
- * - Play/pause/stop/seek operations
- * - RAF-based progress tracking tied to AudioContext.currentTime
- * - Playback generation counter to invalidate old loops
- * - Natural end detection when all sources complete
- *
- * Pattern: Keep current timing model (startTimeRef + pausedAtRef).
- * Refs for imperative operations, state only for UI updates.
- * Playback generation counter prevents race conditions.
+ * Key principle: Single timebase - everything is in "playback time" [0, duration].
+ * - For recordings: duration = full file, offset = 0
+ * - For clips: duration = endTime - startTime, offset = startTime (applied at audio source)
+ * - NO time conversions anywhere - Web Audio API handles the offset
  */
 export function usePlaybackController({
 	audioContext,
@@ -40,170 +33,101 @@ export function usePlaybackController({
 	stemNodes,
 	initialPosition = 0,
 	startTimeSec = 0,
-	endTimeSec,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
-	// Calculate effective bounds
-	const effectiveStart = Math.max(0, startTimeSec);
-	const effectiveEnd = Math.min(endTimeSec ?? duration, duration);
+	const audioOffset = startTimeSec; // Offset applied to audio sources
 
-	// Clamp initial position to clip bounds
-	const clampedInitialPosition = Math.max(
-		effectiveStart,
-		Math.min(initialPosition, effectiveEnd),
-	);
-
+	// State - all in playback time [0, duration]
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [currentTime, setCurrentTime] = useState(clampedInitialPosition);
-	const lastInitialPositionRef = useRef(clampedInitialPosition);
+	const [currentTime, setCurrentTime] = useState(Math.max(0, Math.min(initialPosition, duration)));
 
-	// Update currentTime when initialPosition changes (e.g., loaded from config)
-	useEffect(() => {
-		const newClampedPosition = Math.max(
-			effectiveStart,
-			Math.min(initialPosition, effectiveEnd),
-		);
-		if (newClampedPosition !== lastInitialPositionRef.current) {
-			setCurrentTime(newClampedPosition);
-			pausedAtRef.current = newClampedPosition;
-			lastInitialPositionRef.current = newClampedPosition;
-		}
-	}, [initialPosition, effectiveStart, effectiveEnd]);
-
-	// Audio source management
+	// Refs
+	const isPlayingRef = useRef(false);
+	const pausedAtRef = useRef(Math.max(0, Math.min(initialPosition, duration)));
 	const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
-
-	// Timing state
-	const startTimeRef = useRef<number>(0); // AudioContext.currentTime - offset when play starts
-	const pausedAtRef = useRef<number>(clampedInitialPosition); // Position in seconds when paused
-
-	// RAF and playback management
+	const startTimeRef = useRef<number>(0);
 	const rafRef = useRef<number | null>(null);
-	const playbackGenRef = useRef<number>(0); // Incremented to invalidate old loops
-	const endedRef = useRef<boolean>(false);
-	const isPlayingRef = useRef<boolean>(false); // Authoritative state for closures
-	const manualEndModeRef = useRef<"none" | "pause" | "stop">("none");
+	const playbackGenRef = useRef<number>(0);
 
 	const stopAllSources = useCallback(() => {
 		sourcesRef.current.forEach((src) => {
 			try {
 				src.stop();
 			} catch {
-				// Ignore errors from already-stopped sources
+				// Already stopped
 			}
 		});
 		sourcesRef.current.clear();
 	}, []);
 
 	const startSources = useCallback(
-		(offsetSeconds: number) => {
+		(playbackPosition: number) => {
 			if (!audioContext) return;
 
 			stopAllSources();
-			endedRef.current = false;
 
 			// Increment generation to invalidate old RAF loops
-			const thisPlaybackGen = playbackGenRef.current + 1;
-			playbackGenRef.current = thisPlaybackGen;
-			manualEndModeRef.current = "none";
+			const thisPlaybackGen = ++playbackGenRef.current;
 
+			// Create and start audio sources
+			let allSourcesEnded = false;
 			stemNodes.forEach((node, name) => {
 				const src = audioContext.createBufferSource();
 				src.buffer = node.buffer;
+				src.connect(node.gainNode);
 
-				try {
-					src.connect(node.gainNode);
-				} catch (error) {
-					console.error(
-						"[usePlaybackController] Failed to connect source for stem:",
-						name,
-						error,
-					);
-					console.error("[usePlaybackController] Source details:", {
-						bufferLength: src.buffer?.length,
-						bufferChannels: src.buffer?.numberOfChannels,
-						gainNodeType: node.gainNode?.constructor.name,
-						audioContextState: audioContext.state,
-					});
-					throw error; // Don't continue with broken playback
-				}
-
-				// Handle natural end of playback
+				// Handle natural end
 				src.onended = () => {
-					// Ignore if superseded by newer playback or manually stopped
 					if (playbackGenRef.current !== thisPlaybackGen) return;
-					if (manualEndModeRef.current !== "none") return;
-
 					sourcesRef.current.delete(name);
-
-					// If all sources have ended naturally, stop playback
-					if (sourcesRef.current.size === 0 && !endedRef.current) {
-						endedRef.current = true;
+					if (sourcesRef.current.size === 0 && !allSourcesEnded) {
+						allSourcesEnded = true;
 						setIsPlaying(false);
 						isPlayingRef.current = false;
-						pausedAtRef.current = effectiveStart; // Reset to clip start
-						startTimeRef.current = audioContext.currentTime;
-						setCurrentTime(effectiveStart);
+						pausedAtRef.current = 0;
+						setCurrentTime(0);
 					}
 				};
 
-				try {
-					src.start(0, offsetSeconds);
-				} catch (e) {
-					console.error(
-						"[usePlaybackController] Failed to start source",
-						name,
-						e,
-					);
-				}
-
+				// Start at offset position in buffer
+				const audioPosition = playbackPosition + audioOffset;
+				src.start(0, audioPosition);
 				sourcesRef.current.set(name, src);
 			});
 
-			// Set timing reference
-			startTimeRef.current = audioContext.currentTime - offsetSeconds;
+			// Track when playback started
+			startTimeRef.current = audioContext.currentTime - playbackPosition;
 
-			// Start RAF-based progress tracking
+			// RAF loop to update currentTime
 			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
 			const tick = () => {
-				// Bail if this playback generation is superseded
 				if (playbackGenRef.current !== thisPlaybackGen) return;
 				if (!isPlayingRef.current) return;
 
 				const elapsed = audioContext.currentTime - startTimeRef.current;
 
-				// Stop at clip end
-				if (elapsed >= effectiveEnd) {
-					setCurrentTime(effectiveEnd);
+				// Stop at end
+				if (elapsed >= duration) {
 					setIsPlaying(false);
 					isPlayingRef.current = false;
-					pausedAtRef.current = effectiveStart; // Loop back to start
+					pausedAtRef.current = 0;
+					stopAllSources();
+					setCurrentTime(0);
 					return;
 				}
 
 				setCurrentTime(elapsed);
-
 				rafRef.current = requestAnimationFrame(tick);
 			};
 
 			rafRef.current = requestAnimationFrame(tick);
 		},
-		[
-			audioContext,
-			duration,
-			stemNodes,
-			stopAllSources,
-			effectiveEnd,
-			effectiveStart,
-		],
+		[audioContext, stemNodes, duration, audioOffset, stopAllSources],
 	);
 
 	const play = useCallback(() => {
-		if (isPlayingRef.current) return;
-		if (!audioContext) return;
-		if (stemNodes.size === 0) return;
+		if (isPlayingRef.current || !audioContext || stemNodes.size === 0) return;
 
-		// Resume context if suspended
 		if (audioContext.state === "suspended") {
 			audioContext.resume();
 		}
@@ -214,54 +138,54 @@ export function usePlaybackController({
 	}, [audioContext, stemNodes.size, startSources]);
 
 	const pause = useCallback(() => {
-		if (!isPlayingRef.current) return;
-		if (!audioContext) return;
+		if (!isPlayingRef.current || !audioContext) return;
 
-		pausedAtRef.current = audioContext.currentTime - startTimeRef.current;
-		manualEndModeRef.current = "pause";
+		const currentPosition = audioContext.currentTime - startTimeRef.current;
+		pausedAtRef.current = currentPosition;
+		setCurrentTime(currentPosition);
+
 		isPlayingRef.current = false;
-		stopAllSources();
 		setIsPlaying(false);
+		stopAllSources();
 
 		if (rafRef.current) {
 			cancelAnimationFrame(rafRef.current);
 			rafRef.current = null;
 		}
-
-		// Invalidate current playback generation
-		playbackGenRef.current += 1;
 	}, [audioContext, stopAllSources]);
 
 	const stop = useCallback(() => {
 		if (!audioContext) return;
 
-		pausedAtRef.current = effectiveStart; // Reset to clip start
-		manualEndModeRef.current = "stop";
+		pausedAtRef.current = 0;
+		setCurrentTime(0);
+
 		isPlayingRef.current = false;
-		stopAllSources();
 		setIsPlaying(false);
-		setCurrentTime(effectiveStart);
+		stopAllSources();
 
 		if (rafRef.current) {
 			cancelAnimationFrame(rafRef.current);
 			rafRef.current = null;
 		}
-
-		playbackGenRef.current += 1;
-	}, [audioContext, stopAllSources, effectiveStart]);
+	}, [audioContext, stopAllSources]);
 
 	const seek = useCallback(
-		(seconds: number) => {
-			// Clamp to clip bounds
-			const clamped = Math.max(effectiveStart, Math.min(seconds, effectiveEnd));
+		(playbackPosition: number) => {
+			const clamped = Math.max(0, Math.min(playbackPosition, duration));
 			pausedAtRef.current = clamped;
 			setCurrentTime(clamped);
 
-			if (isPlayingRef.current) {
+			if (isPlayingRef.current && audioContext) {
+				stopAllSources();
+				if (rafRef.current) {
+					cancelAnimationFrame(rafRef.current);
+					rafRef.current = null;
+				}
 				startSources(clamped);
 			}
 		},
-		[effectiveStart, effectiveEnd, startSources],
+		[duration, audioContext, stopAllSources, startSources],
 	);
 
 	const formatTime = useCallback((seconds: number) => {

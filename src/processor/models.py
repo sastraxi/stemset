@@ -46,7 +46,7 @@ class ProcessingCallbackPayload(BaseModel):
     status: str  # "complete" or "error"
     stems: list[StemDataModel] | None = None  # Only present when status="complete"
     error: str | None = None  # Only present when status="error"
-    clip_boundaries: list[ClipBoundary] | None = None  # Optional clip detection results
+    clip_boundaries: dict[str, ClipBoundary] | None = None  # Optional clip detection results (keyed by clip ID)
 
 
 class WorkerJobPayload(BaseModel):

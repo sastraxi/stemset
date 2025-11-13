@@ -3,7 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { apiRecordingsRecordingIdClipsGetRecordingClips } from "@/api/generated";
+import { apiRecordingsRecordingIdClipsGetRecordingClips, apiClipsClipIdGetClipEndpoint, apiSongsSongIdClipsGetSongClips } from "@/api/generated";
 import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
 import { cn, getRelativeTime } from "../lib/utils";
@@ -22,21 +22,31 @@ import { ProfileSelector } from "./ProfileSelector";
 import { QRCodeModal } from "./QRCodeModal";
 import { QRUploadOverlay } from "./QRUploadOverlay";
 import { SongMetadata } from "./SongMetadata";
-import { Spinner } from "./Spinner";
+import { Spinner } from "./ui/spinner";
 import { RecordingPlayer } from "./RecordingPlayer";
+import { ClipPlayer } from "./ClipPlayer";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
 import { ClipsList } from "./ClipsList";
 import { UserNav } from "./UserNav";
 import { Button } from "./ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { RecordingsView } from "./RecordingsView";
+import { ClipsView } from "./ClipsView";
+import { SongsView } from "./SongsView";
+import { ClipCard } from "./ClipCard";
+import { Music2 } from "lucide-react";
 
 interface AuthenticatedAppProps {
 	user: { id: string; name: string; email: string; picture?: string };
 	onLogout: () => void;
 	initialProfile?: string;
 	initialRecording?: string;
+	initialClip?: string;
+	initialSong?: string;
 	sourceParam?: string;
 	initialStateParam?: string;
+	timeParam?: number;
 }
 
 export function AuthenticatedApp({
@@ -44,8 +54,11 @@ export function AuthenticatedApp({
 	onLogout,
 	initialProfile,
 	initialRecording,
+	initialClip,
+	initialSong,
 	sourceParam,
 	initialStateParam,
+	timeParam,
 }: AuthenticatedAppProps) {
 	useEffect(() => {
 		const handleResize = () => {
@@ -69,11 +82,15 @@ export function AuthenticatedApp({
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [audioDuration, setAudioDuration] = useState<number>(0);
 	const [audioCurrentTime, setAudioCurrentTime] = useState<number>(0);
+	const [createClipHandler, setCreateClipHandler] = useState<(() => void) | null>(null);
+	const [hasClipSelection, setHasClipSelection] = useState(false);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
 	const navigate = useNavigate();
 
-	// Check if we're on the recording route
+	// Check if we're on a detail view route (recording, clip, or song)
 	const isOnRecordingRoute = !!initialRecording;
+	const isOnClipRoute = !!initialClip;
+	const isOnSongRoute = !!initialSong;
 
 	const { data: profiles, error: profilesError } = useProfiles();
 
@@ -96,6 +113,26 @@ export function AuthenticatedApp({
 				path: { recording_id: selectedFile!.id },
 			}),
 		enabled: !!selectedFile?.id,
+	});
+
+	// Fetch clip data when on clip route
+	const { data: clip, isLoading: clipLoading } = useQuery({
+		queryKey: ["clip", initialClip],
+		queryFn: () =>
+			apiClipsClipIdGetClipEndpoint({
+				path: { clip_id: initialClip! },
+			}),
+		enabled: !!initialClip,
+	});
+
+	// Fetch song clips when on song route
+	const { data: songClips, isLoading: songLoading } = useQuery({
+		queryKey: ["song-clips", initialSong],
+		queryFn: () =>
+			apiSongsSongIdClipsGetSongClips({
+				path: { song_id: initialSong! },
+			}),
+		enabled: !!initialSong,
 	});
 
 	// Set selected profile based on initial or first available
@@ -324,7 +361,7 @@ export function AuthenticatedApp({
 
 			<div className="main-content">
 				<aside
-					className={`sidebar flex gap-7 flex-col p-7 ${isOnRecordingRoute ? "hidden md:flex" : "flex"}`}
+					className={`sidebar flex gap-7 flex-col p-7 ${isOnRecordingRoute || isOnClipRoute || isOnSongRoute ? "hidden md:flex" : "flex"}`}
 				>
 					{selectedProfile && (
 						<Upload
@@ -335,63 +372,43 @@ export function AuthenticatedApp({
 					)}
 
 					<div className="file-list">
-						<div className="flex items-center justify-between mb-3">
-							<h2 className="text-base font-semibold text-white uppercase tracking-wider">
-								Recordings
-							</h2>
-							<Button
-								onClick={handleRefresh}
-								disabled={!selectedProfile}
-								variant="ghost"
-								size="icon"
-								className="h-8 w-8 p-0 border border-gray-700 hover:bg-gray-700 hover:text-blue-400 hover:border-blue-400"
-								title="Refresh file list"
-							>
-								<RefreshCw className="h-4 w-4" />
-							</Button>
-						</div>
+						<Tabs defaultValue="recordings" className="w-full">
+							<TabsList className="grid w-full grid-cols-3 mb-4">
+								<TabsTrigger value="recordings">Recordings</TabsTrigger>
+								<TabsTrigger value="clips">Clips</TabsTrigger>
+								<TabsTrigger value="songs">Songs</TabsTrigger>
+							</TabsList>
 
-						{filesLoading ? (
-							<div className="flex items-center justify-center py-8">
-								<Spinner size="md" />
-							</div>
-						) : filesError ? (
-							<p className="empty-state">
-								Error loading files. Try refreshing.
-							</p>
-						) : !sortedFiles || sortedFiles.length === 0 ? (
-							<p className="empty-state">
-								No processed files yet. Upload a file above or use the CLI.
-							</p>
-						) : (
-							<ul className="list-none">
-								{sortedFiles.map((file) => {
-									const relativeTime = getRelativeTime(file.date_recorded);
-									return (
-										// biome-ignore lint/a11y/useKeyWithClickEvents: FIXME
-										<li
-											key={file.name}
-											className={cn("recording-list-item", {
-												"recording-list-item-selected":
-													selectedFile?.name === file.name,
-											})}
-											onClick={() => handleFileSelect(file)}
-										>
-											<span
-												className={`truncate ${selectedFile?.name === file.name ? "font-medium" : ""}`}
-											>
-												{file.display_name || file.name}
-											</span>
-											<div className="flex items-center gap-2 flex-shrink-0">
-												{relativeTime && (
-													<span className="recording-time">{relativeTime}</span>
-												)}
-											</div>
-										</li>
-									);
-								})}
-							</ul>
-						)}
+							<TabsContent value="recordings" className="mt-0">
+								<RecordingsView
+									files={sortedFiles}
+									isLoading={filesLoading}
+									error={filesError}
+									selectedFileName={selectedFile?.name || null}
+									onFileSelect={handleFileSelect}
+									onRefresh={handleRefresh}
+									getRelativeTime={getRelativeTime}
+								/>
+							</TabsContent>
+
+							<TabsContent value="clips" className="mt-0">
+								{selectedProfile && (
+									<ClipsView
+										profileName={selectedProfile}
+										onRefresh={handleRefresh}
+									/>
+								)}
+							</TabsContent>
+
+							<TabsContent value="songs" className="mt-0">
+								{selectedProfile && (
+									<SongsView
+										profileName={selectedProfile}
+										onRefresh={handleRefresh}
+									/>
+								)}
+							</TabsContent>
+						</Tabs>
 					</div>
 
 					{/* VCR player container for desktop (fixed/sticky to sidebar) */}
@@ -399,9 +416,85 @@ export function AuthenticatedApp({
 				</aside>
 
 				<main
-					className={`player-area ${isOnRecordingRoute ? "block" : "md:block hidden"}`}
+					className={`player-area ${isOnRecordingRoute || isOnClipRoute || isOnSongRoute ? "block" : "md:block hidden"}`}
 				>
-					{selectedFile && selectedProfile ? (
+					{isOnSongRoute && songClips?.data ? (
+						<div className="container mx-auto p-6">
+							{/* Song header */}
+							<div className="mb-6">
+								<div className="flex items-center gap-3 mb-2">
+									<Music2 className="h-6 w-6 text-primary" />
+									<h1 className="text-3xl font-bold">
+										{songClips.data[0]?.song?.name || "Untitled Song"}
+									</h1>
+								</div>
+								<p className="text-muted-foreground">
+									{songClips.data.length}{" "}
+									{songClips.data.length === 1 ? "clip" : "clips"} across recordings
+								</p>
+							</div>
+
+							{/* Clips list */}
+							{songClips.data.length > 0 ? (
+								<div className="space-y-3">
+									{songClips.data.map((clip) => (
+										<ClipCard
+											key={clip.id}
+											clip={clip}
+											profileName={selectedProfile!}
+											showRecordingInfo={true}
+										/>
+									))}
+								</div>
+							) : (
+								<div className="text-center py-12 text-muted-foreground">
+									No clips found for this song.
+								</div>
+							)}
+						</div>
+					) : isOnClipRoute && clip?.data ? (
+						<>
+							<div className="recording-header">
+								{!clipLoading && (
+									<SongMetadata
+										recording={{
+											id: clip.data.recording_id,
+											name: clip.data.recording_output_name,
+											display_name: clip.data.display_name || clip.data.recording_output_name,
+											date_recorded: null,
+											status: "complete",
+											stems: clip.data.stems,
+											song: clip.data.song || null,
+											location: clip.data.location || null,
+										}}
+										profileName={selectedProfile!}
+										onEdit={() => {}}
+										onShowQR={() => {}}
+										onDelete={() => {}}
+										duration={clip.data.end_time_sec - clip.data.start_time_sec}
+									/>
+								)}
+								<div
+									id="playback-controls-container"
+									className="playback-controls-header"
+								>
+									{/* Playback controls will be rendered here by StemPlayer */}
+								</div>
+							</div>
+							<ClipPlayer
+								clipId={clip.data.id}
+								recordingId={clip.data.recording_id}
+								stemsData={clip.data.stems}
+								startTimeSec={clip.data.start_time_sec}
+								endTimeSec={clip.data.end_time_sec}
+								profileName={selectedProfile!}
+								fileName={clip.data.recording_output_name}
+								onLoadingChange={setIsLoadingStems}
+								onDurationChange={setAudioDuration}
+								onCurrentTimeChange={setAudioCurrentTime}
+							/>
+						</>
+					) : selectedFile && selectedProfile ? (
 						selectedFile.status === "processing" ||
 						selectedFile.status === "error" ||
 						(wasInitiallyProcessing && selectedFile.status === "complete") ? (
@@ -430,9 +523,12 @@ export function AuthenticatedApp({
 									{!isLoadingStems && (
 										<SongMetadata
 											recording={selectedFile}
+											profileName={selectedProfile}
 											onEdit={() => setIsMetadataEditorOpen(true)}
 											onShowQR={() => setIsQRModalOpen(true)}
 											onDelete={() => setIsDeleteModalOpen(true)}
+											onCreateClip={createClipHandler || undefined}
+											hasSelection={hasClipSelection}
 											duration={audioDuration}
 										/>
 									)}
@@ -492,6 +588,10 @@ export function AuthenticatedApp({
 									onLoadingChange={setIsLoadingStems}
 									onDurationChange={setAudioDuration}
 									onCurrentTimeChange={setAudioCurrentTime}
+									onCreateClipChange={(handler, hasSelection) => {
+										setCreateClipHandler(() => handler);
+										setHasClipSelection(hasSelection);
+									}}
 									recordingId={selectedFile.id}
 								/>
 							</>

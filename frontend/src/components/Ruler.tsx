@@ -294,6 +294,10 @@ export function Ruler({
 			if (dragMode === null && dragStartPos.current && onSeek) {
 				// Click to seek
 				onSeek(dragStartPos.current.time);
+				// Clear preview after seeking
+				if (onPreview) {
+					onPreview(null);
+				}
 			} else if (dragMode === 'seek' && onSeek && onPreview && previewTime !== undefined) {
 				// Drag was for seeking - commit the seek
 				onSeek(previewTime);

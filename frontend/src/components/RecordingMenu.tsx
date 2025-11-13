@@ -1,4 +1,5 @@
-import { MoreVertical, Pencil, QrCode, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, QrCode, Scissors, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import {
 	DropdownMenu,
@@ -12,49 +13,90 @@ interface RecordingMenuProps {
 	onShowQR: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
+	onCreateClip?: () => void;
+	hasSelection?: boolean;
 	disabled?: boolean;
+}
+
+interface MenuItem {
+	id: string;
+	label: string;
+	icon: LucideIcon;
+	onClick: () => void;
+	disabled?: boolean;
+	variant?: "default" | "destructive";
+	iconSize?: string;
+	title?: string;
+	separator?: boolean;
 }
 
 export function RecordingMenu({
 	onShowQR,
 	onEdit,
 	onDelete,
+	onCreateClip,
+	hasSelection = false,
 	disabled = false,
 }: RecordingMenuProps) {
+	// Single source of truth for menu items
+	const menuItems: MenuItem[] = [
+		{
+			id: "qr",
+			label: "Share recording",
+			icon: QrCode,
+			onClick: onShowQR,
+			disabled,
+			iconSize: "h-5 w-5",
+			title: "Share recording",
+		},
+		...(onCreateClip ? [{
+			id: "create-clip",
+			label: "Create clip from selection",
+			icon: Scissors,
+			onClick: onCreateClip,
+			disabled: disabled || !hasSelection,
+			iconSize: "h-4 w-4",
+			title: hasSelection ? "Create clip from selection" : "Select a range to create a clip",
+		}] : []),
+		{
+			id: "edit",
+			label: "Edit metadata",
+			icon: Pencil,
+			onClick: onEdit,
+			disabled,
+			iconSize: "h-4 w-4",
+			title: "Edit metadata",
+		},
+		{
+			id: "delete",
+			label: "Delete recording",
+			icon: Trash2,
+			onClick: onDelete,
+			disabled,
+			variant: "destructive" as const,
+			iconSize: "h-4 w-4",
+			title: "Delete recording",
+			separator: true,
+		},
+	];
+
 	return (
 		<>
 			{/* Desktop: Horizontal buttons */}
 			<div className="recording-menu-desktop">
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={onShowQR}
-					disabled={disabled}
-					title="Share recording"
-					className="recording-menu-button px-2"
-				>
-					<QrCode className="h-5 w-5" />
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={onEdit}
-					disabled={disabled}
-					title="Edit metadata"
-					className="recording-menu-button px-2"
-				>
-					<Pencil className="h-4 w-4" />
-				</Button>
-				<Button
-					variant="destructive"
-					size="sm"
-					onClick={onDelete}
-					disabled={disabled}
-					title="Delete recording"
-					className="recording-menu-button recording-menu-button-delete px-2"
-				>
-					<Trash2 className="h-4 w-4" />
-				</Button>
+				{menuItems.map((item) => (
+					<Button
+						key={item.id}
+						variant={item.variant === "destructive" ? "destructive" : "outline"}
+						size="sm"
+						onClick={item.onClick}
+						disabled={item.disabled}
+						title={item.title}
+						className={`recording-menu-button px-2 ${item.variant === "destructive" ? "recording-menu-button-delete" : ""}`}
+					>
+						<item.icon className={item.iconSize} />
+					</Button>
+				))}
 			</div>
 
 			{/* Mobile: Dropdown menu */}
@@ -72,22 +114,19 @@ export function RecordingMenu({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={onShowQR}>
-							<QrCode className="mr-2 h-4 w-4" />
-							Share recording
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={onEdit}>
-							<Pencil className="mr-2 h-4 w-4" />
-							Edit metadata
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={onDelete}
-							className="text-destructive focus:text-destructive"
-						>
-							<Trash2 className="mr-2 h-4 w-4" />
-							Delete recording
-						</DropdownMenuItem>
+						{menuItems.map((item, index) => (
+							<div key={item.id}>
+								{item.separator && index > 0 && <DropdownMenuSeparator />}
+								<DropdownMenuItem
+									onClick={item.onClick}
+									disabled={item.disabled}
+									className={item.variant === "destructive" ? "text-destructive focus:text-destructive" : ""}
+								>
+									<item.icon className="mr-2 h-4 w-4" />
+									{item.label}
+								</DropdownMenuItem>
+							</div>
+						))}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>

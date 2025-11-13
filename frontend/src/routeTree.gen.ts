@@ -14,6 +14,7 @@ import { Route as PProfileNameRouteImport } from './routes/p/$profileName'
 import { Route as PProfileNameIndexRouteImport } from './routes/p/$profileName/index'
 import { Route as PProfileNameRecordingNameRouteImport } from './routes/p/$profileName/$recordingName'
 import { Route as PProfileNameClipsClipIdRouteImport } from './routes/p/$profileName/clips/$clipId'
+import { Route as PProfileNameSongsSongIdIndexRouteImport } from './routes/p/$profileName/songs/$songId/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +42,12 @@ const PProfileNameClipsClipIdRoute = PProfileNameClipsClipIdRouteImport.update({
   path: '/clips/$clipId',
   getParentRoute: () => PProfileNameRoute,
 } as any)
+const PProfileNameSongsSongIdIndexRoute =
+  PProfileNameSongsSongIdIndexRouteImport.update({
+    id: '/songs/$songId/',
+    path: '/songs/$songId/',
+    getParentRoute: () => PProfileNameRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -48,12 +55,14 @@ export interface FileRoutesByFullPath {
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName/': typeof PProfileNameIndexRoute
   '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
+  '/p/$profileName/songs/$songId': typeof PProfileNameSongsSongIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName': typeof PProfileNameIndexRoute
   '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
+  '/p/$profileName/songs/$songId': typeof PProfileNameSongsSongIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +71,7 @@ export interface FileRoutesById {
   '/p/$profileName/$recordingName': typeof PProfileNameRecordingNameRoute
   '/p/$profileName/': typeof PProfileNameIndexRoute
   '/p/$profileName/clips/$clipId': typeof PProfileNameClipsClipIdRoute
+  '/p/$profileName/songs/$songId/': typeof PProfileNameSongsSongIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,12 +81,14 @@ export interface FileRouteTypes {
     | '/p/$profileName/$recordingName'
     | '/p/$profileName/'
     | '/p/$profileName/clips/$clipId'
+    | '/p/$profileName/songs/$songId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/p/$profileName/$recordingName'
     | '/p/$profileName'
     | '/p/$profileName/clips/$clipId'
+    | '/p/$profileName/songs/$songId'
   id:
     | '__root__'
     | '/'
@@ -84,6 +96,7 @@ export interface FileRouteTypes {
     | '/p/$profileName/$recordingName'
     | '/p/$profileName/'
     | '/p/$profileName/clips/$clipId'
+    | '/p/$profileName/songs/$songId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProfileNameClipsClipIdRouteImport
       parentRoute: typeof PProfileNameRoute
     }
+    '/p/$profileName/songs/$songId/': {
+      id: '/p/$profileName/songs/$songId/'
+      path: '/songs/$songId'
+      fullPath: '/p/$profileName/songs/$songId'
+      preLoaderRoute: typeof PProfileNameSongsSongIdIndexRouteImport
+      parentRoute: typeof PProfileNameRoute
+    }
   }
 }
 
@@ -135,12 +155,14 @@ interface PProfileNameRouteChildren {
   PProfileNameRecordingNameRoute: typeof PProfileNameRecordingNameRoute
   PProfileNameIndexRoute: typeof PProfileNameIndexRoute
   PProfileNameClipsClipIdRoute: typeof PProfileNameClipsClipIdRoute
+  PProfileNameSongsSongIdIndexRoute: typeof PProfileNameSongsSongIdIndexRoute
 }
 
 const PProfileNameRouteChildren: PProfileNameRouteChildren = {
   PProfileNameRecordingNameRoute: PProfileNameRecordingNameRoute,
   PProfileNameIndexRoute: PProfileNameIndexRoute,
   PProfileNameClipsClipIdRoute: PProfileNameClipsClipIdRoute,
+  PProfileNameSongsSongIdIndexRoute: PProfileNameSongsSongIdIndexRoute,
 }
 
 const PProfileNameRouteWithChildren = PProfileNameRoute._addFileChildren(

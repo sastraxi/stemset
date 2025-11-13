@@ -32,18 +32,43 @@ export function RangeSelectionProvider({ children, duration, enabled = true }: R
 
   const setInPoint = useCallback((timeSec: number) => {
     const clampedTime = Math.max(0, Math.min(duration, timeSec));
-    setSelection((prev) => ({
-      startSec: clampedTime,
-      endSec: prev.endSec,
-    }));
+    setSelection((prev) => {
+      // If out-point exists and new in-point is after it, adjust out-point
+      if (prev.endSec !== null && clampedTime > prev.endSec) {
+        return {
+          startSec: clampedTime,
+          endSec: null, // Clear out-point if it would be before in-point
+        };
+      }
+      return {
+        startSec: clampedTime,
+        endSec: prev.endSec,
+      };
+    });
   }, [duration]);
 
   const setOutPoint = useCallback((timeSec: number) => {
     const clampedTime = Math.max(0, Math.min(duration, timeSec));
-    setSelection((prev) => ({
-      startSec: prev.startSec,
-      endSec: clampedTime,
-    }));
+    setSelection((prev) => {
+      // If in-point exists and new out-point is before it, adjust in-point
+      if (prev.startSec !== null && clampedTime < prev.startSec) {
+        return {
+          startSec: null, // Clear in-point if it would be after out-point
+          endSec: clampedTime,
+        };
+      }
+      // If in-point exists and new out-point equals it, clear both (zero-length selection)
+      if (prev.startSec !== null && clampedTime === prev.startSec) {
+        return {
+          startSec: null,
+          endSec: null,
+        };
+      }
+      return {
+        startSec: prev.startSec,
+        endSec: clampedTime,
+      };
+    });
   }, [duration]);
 
   const setRange = useCallback((startSec: number, endSec: number) => {

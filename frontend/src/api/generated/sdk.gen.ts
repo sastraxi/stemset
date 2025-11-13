@@ -34,6 +34,9 @@ import type {
   ApiProfilesProfileIdSongsGetProfileSongsData,
   ApiProfilesProfileIdSongsGetProfileSongsErrors,
   ApiProfilesProfileIdSongsGetProfileSongsResponses,
+  ApiProfilesProfileNameClipsGetProfileClipsData,
+  ApiProfilesProfileNameClipsGetProfileClipsErrors,
+  ApiProfilesProfileNameClipsGetProfileClipsResponses,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesGetProfileFilesErrors,
   ApiProfilesProfileNameFilesGetProfileFilesResponses,
@@ -43,6 +46,9 @@ import type {
   ApiProfilesProfileNameGetProfileData,
   ApiProfilesProfileNameGetProfileErrors,
   ApiProfilesProfileNameGetProfileResponses,
+  ApiProfilesProfileNameSongsGetProfileSongsByNameData,
+  ApiProfilesProfileNameSongsGetProfileSongsByNameErrors,
+  ApiProfilesProfileNameSongsGetProfileSongsByNameResponses,
   ApiRecordingsRecordingIdClipsCreateClipEndpointData,
   ApiRecordingsRecordingIdClipsCreateClipEndpointErrors,
   ApiRecordingsRecordingIdClipsCreateClipEndpointResponses,
@@ -513,6 +519,48 @@ export const apiClipsClipIdUpdateClipEndpoint = <
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * GetProfileClips
+ */
+export const apiProfilesProfileNameClipsGetProfileClips = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileNameClipsGetProfileClipsData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ApiProfilesProfileNameClipsGetProfileClipsResponses,
+    ApiProfilesProfileNameClipsGetProfileClipsErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_name}/clips",
+    ...options,
+  });
+};
+
+/**
+ * GetProfileSongsByName
+ */
+export const apiProfilesProfileNameSongsGetProfileSongsByName = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileNameSongsGetProfileSongsByNameData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ApiProfilesProfileNameSongsGetProfileSongsByNameResponses,
+    ApiProfilesProfileNameSongsGetProfileSongsByNameErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_name}/songs",
+    ...options,
   });
 };
 

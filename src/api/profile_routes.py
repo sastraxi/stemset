@@ -469,3 +469,133 @@ async def delete_clip_endpoint(clip_id: UUID) -> None:
             raise NotFoundException(detail=str(e))
 
         return None
+
+
+@get("/api/profiles/{profile_name:str}/clips")
+async def get_profile_clips(profile_name: str) -> list[ClipWithStemsResponse]:
+    """Get all clips across all recordings in a profile."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Get profile
+        stmt = select(DBProfile).where(DBProfile.name == profile_name)
+        result = await session.exec(stmt)
+        profile = result.first()
+
+        if profile is None:
+            raise NotFoundException(f"Profile '{profile_name}' not found")
+
+        # Get all clips for this profile's recordings
+        stmt = (
+            select(Clip)
+            .join(Recording, Clip.recording_id == Recording.id)
+            .where(Recording.profile_id == profile.id)
+            .order_by(desc(Clip.created_at))
+            .options(
+                selectinload(Clip.recording).selectinload(Recording.stems),  # pyright: ignore
+                selectinload(Clip.song),  # pyright: ignore
+            )
+        )
+        result = await session.exec(stmt)
+        clips = result.all()
+
+        # Build responses with stem URLs
+        from ..storage import get_storage
+        storage = get_storage()
+
+        responses = []
+        for clip in clips:
+            recording = clip.recording
+            if not recording:
+                continue
+
+            # Build stems list
+            stems = []
+            for stem in recording.stems:
+                file_ext = Path(stem.audio_url).suffix
+                audio_url = storage.get_file_url(
+                    profile_name,
+                    recording.output_name,
+                    stem.stem_type,
+                    file_ext,
+                )
+                waveform_url = storage.get_waveform_url(
+                    profile_name,
+                    recording.output_name,
+                    stem.stem_type,
+                )
+
+                stems.append(
+                    StemResponse(
+                        stem_type=stem.stem_type,
+                        measured_lufs=stem.measured_lufs,
+                        peak_amplitude=stem.peak_amplitude,
+                        stem_gain_adjustment_db=stem.stem_gain_adjustment_db,
+                        audio_url=audio_url,
+                        waveform_url=waveform_url,
+                        file_size_bytes=stem.file_size_bytes,
+                        duration_seconds=stem.duration_seconds,
+                    )
+                )
+
+            responses.append(
+                ClipWithStemsResponse(
+                    id=str(clip.id),
+                    recording_id=str(clip.recording_id),
+                    song_id=str(clip.song_id) if clip.song_id else None,
+                    start_time_sec=clip.start_time_sec,
+                    end_time_sec=clip.end_time_sec,
+                    display_name=clip.display_name,
+                    created_at=clip.created_at.isoformat(),
+                    updated_at=clip.updated_at.isoformat(),
+                    recording_output_name=recording.output_name,
+                    stems=stems,
+                )
+            )
+
+        return responses
+
+
+class SongWithClipCount(BaseModel):
+    """Song with clip count."""
+
+    id: str
+    name: str
+    clip_count: int
+
+
+@get("/api/profiles/{profile_name:str}/songs")
+async def get_profile_songs_by_name(profile_name: str) -> list[SongWithClipCount]:
+    """Get all songs in a profile with clip counts."""
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Get profile
+        stmt = select(DBProfile).where(DBProfile.name == profile_name)
+        result = await session.exec(stmt)
+        profile = result.first()
+
+        if profile is None:
+            raise NotFoundException(f"Profile '{profile_name}' not found")
+
+        # Get all songs with clips in this profile
+        from sqlalchemy import func
+        stmt = (
+            select(Song, func.count(Clip.id).label("clip_count"))
+            .join(Clip, Song.id == Clip.song_id)
+            .join(Recording, Clip.recording_id == Recording.id)
+            .where(Recording.profile_id == profile.id)
+            .group_by(Song.id)
+            .order_by(Song.name)
+        )
+        result = await session.exec(stmt)
+        rows = result.all()
+
+        return [
+            SongWithClipCount(
+                id=str(song.id),
+                name=song.name,
+                clip_count=clip_count,
+            )
+            for song, clip_count in rows
+        ]

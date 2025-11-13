@@ -13,9 +13,11 @@ import {
   apiProfilesProfileIdLocationsGetProfileLocations,
   apiProfilesProfileIdSongsCreateSong,
   apiProfilesProfileIdSongsGetProfileSongs,
+  apiProfilesProfileNameClipsGetProfileClips,
   apiProfilesProfileNameFilesGetProfileFiles,
   apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName,
   apiProfilesProfileNameGetProfile,
+  apiProfilesProfileNameSongsGetProfileSongsByName,
   apiRecordingsRecordingIdClipsCreateClipEndpoint,
   apiRecordingsRecordingIdClipsGetRecordingClips,
   apiRecordingsRecordingIdCompleteVerificationTokenRecordingComplete,
@@ -51,11 +53,13 @@ import type {
   ApiProfilesProfileIdSongsCreateSongError,
   ApiProfilesProfileIdSongsCreateSongResponse,
   ApiProfilesProfileIdSongsGetProfileSongsData,
+  ApiProfilesProfileNameClipsGetProfileClipsData,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameError,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponse,
   ApiProfilesProfileNameGetProfileData,
+  ApiProfilesProfileNameSongsGetProfileSongsByNameData,
   ApiRecordingsRecordingIdClipsCreateClipEndpointData,
   ApiRecordingsRecordingIdClipsCreateClipEndpointError,
   ApiRecordingsRecordingIdClipsCreateClipEndpointResponse,
@@ -663,6 +667,55 @@ export const apiClipsClipIdUpdateClipEndpointMutation = (
     },
   };
   return mutationOptions;
+};
+
+export const apiProfilesProfileNameClipsGetProfileClipsQueryKey = (
+  options: Options<ApiProfilesProfileNameClipsGetProfileClipsData>,
+) => createQueryKey("apiProfilesProfileNameClipsGetProfileClips", options);
+
+/**
+ * GetProfileClips
+ */
+export const apiProfilesProfileNameClipsGetProfileClipsOptions = (
+  options: Options<ApiProfilesProfileNameClipsGetProfileClipsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiProfilesProfileNameClipsGetProfileClips({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiProfilesProfileNameClipsGetProfileClipsQueryKey(options),
+  });
+};
+
+export const apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey = (
+  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
+) =>
+  createQueryKey("apiProfilesProfileNameSongsGetProfileSongsByName", options);
+
+/**
+ * GetProfileSongsByName
+ */
+export const apiProfilesProfileNameSongsGetProfileSongsByNameOptions = (
+  options: Options<ApiProfilesProfileNameSongsGetProfileSongsByNameData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await apiProfilesProfileNameSongsGetProfileSongsByName({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: apiProfilesProfileNameSongsGetProfileSongsByNameQueryKey(options),
+  });
 };
 
 /**

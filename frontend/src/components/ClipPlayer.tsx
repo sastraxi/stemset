@@ -22,10 +22,9 @@ interface ClipPlayerProps {
 }
 
 export const ClipPlayer = forwardRef<StemPlayerHandle, ClipPlayerProps>(
-	({ clipId: _clipId, ...props }, ref) => {
-		// Note: clipId is unused for now but may be useful for future features
-		// (e.g., clip-specific analytics, deep linking, etc.)
-
+	({ clipId, ...props }, ref) => {
+		// Note: We pass recordingId for config persistence (stem volumes, effects, etc.)
+		// but clips don't persist playback position (they always start at 0)
 		return (
 			<StemPlayer
 				ref={ref}
@@ -38,6 +37,7 @@ export const ClipPlayer = forwardRef<StemPlayerHandle, ClipPlayerProps>(
 				onLoadingChange={props.onLoadingChange}
 				onDurationChange={props.onDurationChange}
 				onCurrentTimeChange={props.onCurrentTimeChange}
+				disablePositionPersistence={true}
 			/>
 		);
 	},

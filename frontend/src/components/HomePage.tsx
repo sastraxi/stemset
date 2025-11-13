@@ -9,7 +9,7 @@ import {
 	clearSessionRecording,
 } from "../lib/storage";
 import { useProfiles, useProfileFiles } from "../hooks/queries";
-import { Spinner } from "../components/Spinner";
+import { Spinner } from "./ui/spinner";
 
 export function HomePage() {
 	const { authStatus, loading: authLoading } = useAuth();

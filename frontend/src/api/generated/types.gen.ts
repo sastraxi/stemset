@@ -124,7 +124,9 @@ export type ProcessingCallbackPayload = {
   status: string;
   stems?: Array<StemDataModel> | null;
   error?: string | null;
-  clip_boundaries?: Array<ClipBoundary> | null;
+  clip_boundaries?: {
+    [key: string]: ClipBoundary;
+  } | null;
 };
 
 /**
@@ -196,6 +198,15 @@ export type SongResponse = {
   id: string;
   name: string;
   created_at: string;
+};
+
+/**
+ * SongWithClipCount
+ */
+export type SongWithClipCount = {
+  id: string;
+  name: string;
+  clip_count: number;
 };
 
 /**
@@ -1014,6 +1025,82 @@ export type ApiClipsClipIdUpdateClipEndpointResponses = {
 
 export type ApiClipsClipIdUpdateClipEndpointResponse =
   ApiClipsClipIdUpdateClipEndpointResponses[keyof ApiClipsClipIdUpdateClipEndpointResponses];
+
+export type ApiProfilesProfileNameClipsGetProfileClipsData = {
+  body?: never;
+  path: {
+    profile_name: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_name}/clips";
+};
+
+export type ApiProfilesProfileNameClipsGetProfileClipsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileNameClipsGetProfileClipsError =
+  ApiProfilesProfileNameClipsGetProfileClipsErrors[keyof ApiProfilesProfileNameClipsGetProfileClipsErrors];
+
+export type ApiProfilesProfileNameClipsGetProfileClipsResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<ClipWithStemsResponse>;
+};
+
+export type ApiProfilesProfileNameClipsGetProfileClipsResponse =
+  ApiProfilesProfileNameClipsGetProfileClipsResponses[keyof ApiProfilesProfileNameClipsGetProfileClipsResponses];
+
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameData = {
+  body?: never;
+  path: {
+    profile_name: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_name}/songs";
+};
+
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameError =
+  ApiProfilesProfileNameSongsGetProfileSongsByNameErrors[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameErrors];
+
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: Array<SongWithClipCount>;
+};
+
+export type ApiProfilesProfileNameSongsGetProfileSongsByNameResponse =
+  ApiProfilesProfileNameSongsGetProfileSongsByNameResponses[keyof ApiProfilesProfileNameSongsGetProfileSongsByNameResponses];
 
 export type ApiUploadProfileNameUploadFileData = {
   body: {

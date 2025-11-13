@@ -10,7 +10,9 @@ interface WaveformVisualizationProps {
 	previewTime?: number; // Optional preview time for scrubbing visualization
 	onSeek?: (seconds: number) => void;
 	onPreview?: (seconds: number | null) => void; // Preview callback
-
+	startTimeSec?: number; // Clip start time (for rendering clip portion of waveform)
+	endTimeSec?: number; // Clip end time (for rendering clip portion of waveform)
+	fullDuration?: number; // Full recording duration (needed for clip rendering)
 	waveformClasses?: string; // Optional additional CSS classes for styling
 }
 
@@ -43,6 +45,9 @@ export function WaveformVisualization({
 	previewTime,
 	onSeek,
 	onPreview,
+	startTimeSec,
+	endTimeSec,
+	fullDuration,
 	waveformClasses,
 }: WaveformVisualizationProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -167,14 +172,27 @@ export function WaveformVisualization({
 		const stemColor = STEM_COLORS[stemName] || "#4a9eff";
 		const cursorColor = CURSOR_COLOR;
 
+		// Calculate clip bounds for rendering
+		const isClip = startTimeSec !== undefined && endTimeSec !== undefined && fullDuration !== undefined;
+		const clipStart = isClip ? startTimeSec : 0;
+		const clipEnd = isClip ? endTimeSec : fullDuration || duration;
+		const clipDuration = clipEnd - clipStart;
+		const totalDuration = fullDuration || duration;
+
+		// Source rectangle in the waveform image (what portion to draw)
+		const srcX = isClip ? (clipStart / totalDuration) * img.width : 0;
+		const srcWidth = isClip ? (clipDuration / totalDuration) * img.width : img.width;
+		const srcY = 0;
+		const srcHeight = img.height;
+
 		// LEFT SIDE: Played portion (dark greyscale)
 		ctx.save();
 		ctx.beginPath();
 		ctx.rect(0, 0, cursorX, canvas.height);
 		ctx.clip();
 
-		// Draw waveform image
-		ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+		// Draw waveform image (only the clip portion)
+		ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, canvas.width, canvas.height);
 
 		// Apply dark greyscale using source-in + dark grey fill
 		ctx.globalCompositeOperation = "source-in";
@@ -189,9 +207,9 @@ export function WaveformVisualization({
 		ctx.rect(cursorX, 0, canvas.width - cursorX, canvas.height);
 		ctx.clip();
 
-		// Draw waveform image
+		// Draw waveform image (only the clip portion)
 		ctx.globalCompositeOperation = "source-over";
-		ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+		ctx.drawImage(img, srcX, srcY, srcWidth, srcHeight, 0, 0, canvas.width, canvas.height);
 
 		// Apply vibrant stem color
 		ctx.globalCompositeOperation = "source-in";
@@ -415,6 +433,10 @@ export function WaveformVisualization({
 			if (dragMode === null && dragStartPos.current && onSeek) {
 				// Click to seek
 				onSeek(dragStartPos.current.time);
+				// Clear preview after seeking
+				if (onPreview) {
+					onPreview(null);
+				}
 			} else if (dragMode === 'seek' && onSeek && onPreview && previewTime !== undefined) {
 				// Drag was for seeking - commit the seek
 				onSeek(previewTime);

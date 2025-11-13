@@ -172,16 +172,23 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
                     r2_waveform_key,
                 )
 
-            # Call back to API with stem data and default clip boundary
-            # For now, always report one clip covering the full duration
-            duration_seconds = stem_data_list[0]["duration_seconds"] if stem_data_list else 0.0
+            # Detect clip boundaries from separated stems
+            print("Detecting clip boundaries...")
+            from src.processor.clip_detection import detect_clip_boundaries
 
-            from src.processor.models import ClipBoundary
+            # Build dict of stem paths for detection
+            stems_dict = {
+                stem_dict["stem_type"]: output_dir / str(stem_dict["audio_url"])
+                for stem_dict in stem_data_list
+            }
+
+            clip_boundaries = detect_clip_boundaries(stems_dict)
+            print(f"Detected {len(clip_boundaries)} clip(s)")
 
             callback_payload = ProcessingCallbackPayload(
                 status="complete",
                 stems=[StemDataModel(**stem) for stem in stem_data_list],
-                clip_boundaries=[ClipBoundary(start_time_sec=0.0, end_time_sec=duration_seconds)],
+                clip_boundaries=clip_boundaries,
             )
 
             print(f"Calling back to: {callback_url}")

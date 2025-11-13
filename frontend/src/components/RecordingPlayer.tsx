@@ -19,6 +19,7 @@ interface RecordingPlayerProps {
 	onLoadingChange?: (isLoading: boolean) => void;
 	onDurationChange?: (duration: number) => void;
 	onCurrentTimeChange?: (currentTime: number) => void;
+	onCreateClipChange?: (handler: (() => void) | null, hasSelection: boolean) => void;
 }
 
 // Inner component that uses the RangeSelectionContext
@@ -37,6 +38,15 @@ function RecordingPlayerInner(
 
 	const { selection } = rangeSelection;
 	const hasSelection = selection.startSec !== null && selection.endSec !== null;
+
+	const handleCreateClip = () => {
+		setModalOpen(true);
+	};
+
+	// Expose create clip handler and selection state to parent
+	useEffect(() => {
+		props.onCreateClipChange?.(handleCreateClip, hasSelection);
+	}, [hasSelection, props.onCreateClipChange]);
 
 	// Keyboard shortcuts for range selection
 	useEffect(() => {
@@ -78,10 +88,6 @@ function RecordingPlayerInner(
 		props.onCurrentTimeChange?.(newTime);
 	};
 
-	const handleCreateClip = () => {
-		setModalOpen(true);
-	};
-
 	return (
 		<div className="relative">
 			<StemPlayer
@@ -91,19 +97,6 @@ function RecordingPlayerInner(
 				onCurrentTimeChange={handleCurrentTimeChange}
 				// No time bounds - plays entire recording
 			/>
-
-			{/* Create Clip Button - shown when range is selected */}
-			{hasSelection && (
-				<div className="sticky top-4 z-10 flex justify-center mb-4">
-					<Button
-						onClick={handleCreateClip}
-						className="shadow-lg"
-						size="lg"
-					>
-						Create Clip from Selection
-					</Button>
-				</div>
-			)}
 
 			{/* Create Clip Modal */}
 			{hasSelection && (
