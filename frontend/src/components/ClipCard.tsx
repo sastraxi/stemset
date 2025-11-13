@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Clock, Calendar, MapPin } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 import type { ClipWithStemsResponse } from "../api/generated";
 
 interface ClipCardProps {

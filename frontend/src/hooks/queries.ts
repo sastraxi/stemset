@@ -12,6 +12,8 @@ import {
 	apiProfilesProfileIdLocationsGetProfileLocationsQueryKey,
 	apiProfilesProfileIdLocationsCreateLocationMutation,
 	apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation,
+	apiClipsClipIdUpdateClipEndpointMutation,
+	apiClipsClipIdDeleteClipEndpointMutation,
 } from "../api/generated/@tanstack/react-query.gen";
 
 export function useProfiles() {
@@ -48,8 +50,8 @@ export function useRecording(recordingId: string | undefined) {
 			const data = query.state.data;
 			return data && data.status === "processing" ? 5000 : false;
 		},
-		select: (data) =>
-			data ? { ...data, displayName: data.display_name || data.output_name } : null,
+		// Note: Removed select to avoid creating new object references on every render
+		// Components can compute displayName themselves if needed
 	});
 }
 
@@ -67,11 +69,18 @@ export function useUpdateDisplayName() {
 				}),
 				(oldData: any) => {
 					if (!oldData) return oldData;
-					return oldData.map((file: any) =>
-						file.name === variables.path.output_name
-							? { ...file, displayName: data.display_name, display_name: data.display_name }
-							: file
-					);
+
+					// Only create new array if the file exists and display_name actually changed
+					const fileIndex = oldData.findIndex((file: any) => file.name === variables.path.output_name);
+					if (fileIndex === -1) return oldData;
+
+					const oldFile = oldData[fileIndex];
+					if (oldFile.display_name === data.display_name) return oldData;
+
+					// Create new array with updated file
+					const newData = [...oldData];
+					newData[fileIndex] = { ...oldFile, display_name: data.display_name };
+					return newData;
 				}
 			);
 		},
@@ -142,6 +151,42 @@ export function useUpdateRecordingMetadata() {
 			// Invalidate all recordings queries to refresh the metadata
 			queryClient.invalidateQueries({
 				queryKey: ["api", "recordings"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["api", "profiles"],
+			});
+		},
+	});
+}
+
+export function useUpdateClip() {
+	const queryClient = useQueryClient();
+	const mutationOptions = apiClipsClipIdUpdateClipEndpointMutation();
+
+	return useMutation({
+		...mutationOptions,
+		onSuccess: () => {
+			// Invalidate clips and profiles queries to refresh the metadata
+			queryClient.invalidateQueries({
+				queryKey: ["api", "clips"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["api", "profiles"],
+			});
+		},
+	});
+}
+
+export function useDeleteClip() {
+	const queryClient = useQueryClient();
+	const mutationOptions = apiClipsClipIdDeleteClipEndpointMutation();
+
+	return useMutation({
+		...mutationOptions,
+		onSuccess: () => {
+			// Invalidate clips and profiles queries to refresh the list
+			queryClient.invalidateQueries({
+				queryKey: ["api", "clips"],
 			});
 			queryClient.invalidateQueries({
 				queryKey: ["api", "profiles"],

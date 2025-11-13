@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 import { cn } from "@/lib/utils";
 import type { FileWithStems } from "@/api/generated";
+import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 
 interface RecordingsViewProps {
 	files: FileWithStems[] | undefined;
@@ -11,7 +12,10 @@ interface RecordingsViewProps {
 	selectedFileName: string | null;
 	onFileSelect: (file: FileWithStems) => void;
 	onRefresh: () => void;
-	getRelativeTime: (dateString: string | null) => string | null;
+	getRelativeTime: (dateString: string | null | undefined) => string;
+	sortField: SortField;
+	sortDirection: SortDirection;
+	onSortCycle: () => void;
 }
 
 export function RecordingsView({
@@ -22,13 +26,23 @@ export function RecordingsView({
 	onFileSelect,
 	onRefresh,
 	getRelativeTime,
+	sortField,
+	sortDirection,
+	onSortCycle,
 }: RecordingsViewProps) {
+	const sortLabel = `${sortField === "name" ? "NAME" : "DATE"} ${sortDirection === "asc" ? "↑" : "↓"}`;
+
 	return (
 		<>
-			<div className="flex items-center justify-between mb-3">
-				<h2 className="text-base font-semibold text-white uppercase tracking-wider">
-					Recordings
-				</h2>
+			<div className="flex items-center justify-between mb-3 gap-2">
+				<Button
+					onClick={onSortCycle}
+					variant="ghost"
+					className="h-8 px-3 py-0 border border-gray-700 hover:bg-gray-700 hover:text-blue-400 hover:border-blue-400 text-xs font-semibold uppercase tracking-wider flex-1"
+					title="Cycle sort order"
+				>
+					{sortLabel}
+				</Button>
 				<Button
 					onClick={onRefresh}
 					variant="ghost"

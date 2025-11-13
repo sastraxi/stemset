@@ -180,8 +180,6 @@ export function useClipDetector(
 		clipThreshold,
 		clipHoldTime,
 		updateInterval,
-		leftClipping,
-		rightClipping,
 	]);
 
 	const reset = () => {

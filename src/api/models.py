@@ -140,6 +140,7 @@ class ClipWithStemsResponse(BaseModel):
     id: str
     recording_id: str
     song_id: str | None = None
+    song: SongMetadata | None = None
     start_time_sec: float
     end_time_sec: float
     display_name: str | None = None

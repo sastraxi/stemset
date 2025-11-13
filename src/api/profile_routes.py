@@ -248,6 +248,12 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
+        # Get song metadata first
+        song_result = await session.exec(select(Song).where(Song.id == song_id))
+        song = song_result.first()
+        if song is None:
+            raise NotFoundException(detail=f"Song {song_id} not found")
+
         clips = await get_clips_for_song(session, song_id)
 
         # Get storage backend for generating URLs
@@ -300,6 +306,7 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
                     id=str(clip.id),
                     recording_id=str(clip.recording_id),
                     song_id=str(clip.song_id) if clip.song_id else None,
+                    song=SongMetadata(id=str(song.id), name=song.name),
                     start_time_sec=clip.start_time_sec,
                     end_time_sec=clip.end_time_sec,
                     display_name=clip.display_name,
@@ -366,11 +373,14 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
         if clip is None:
             raise NotFoundException(detail=f"Clip {clip_id} not found")
 
-        # Fetch recording with stems
+        # Fetch recording with stems and song
         stmt = (
             select(Recording)
             .where(Recording.id == clip.recording_id)
-            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+            .options(
+                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
+            )
         )
         result = await session.exec(stmt)
         recording = result.first()
@@ -413,6 +423,11 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             id=str(clip.id),
             recording_id=str(clip.recording_id),
             song_id=str(clip.song_id) if clip.song_id else None,
+            song=(
+                SongMetadata(id=str(recording.song.id), name=recording.song.name)
+                if recording.song
+                else None
+            ),
             start_time_sec=clip.start_time_sec,
             end_time_sec=clip.end_time_sec,
             display_name=clip.display_name,
@@ -543,6 +558,11 @@ async def get_profile_clips(profile_name: str) -> list[ClipWithStemsResponse]:
                     id=str(clip.id),
                     recording_id=str(clip.recording_id),
                     song_id=str(clip.song_id) if clip.song_id else None,
+                    song=(
+                        SongMetadata(id=str(clip.song.id), name=clip.song.name)
+                        if clip.song
+                        else None
+                    ),
                     start_time_sec=clip.start_time_sec,
                     end_time_sec=clip.end_time_sec,
                     display_name=clip.display_name,
@@ -561,6 +581,7 @@ class SongWithClipCount(BaseModel):
 
     id: str
     name: str
+    created_at: str
     clip_count: int
 
 
@@ -582,9 +603,9 @@ async def get_profile_songs_by_name(profile_name: str) -> list[SongWithClipCount
         from sqlalchemy import func
         stmt = (
             select(Song, func.count(Clip.id).label("clip_count"))
-            .join(Clip, Song.id == Clip.song_id)
-            .join(Recording, Clip.recording_id == Recording.id)
-            .where(Recording.profile_id == profile.id)
+            .outerjoin(Clip, Song.id == Clip.song_id)
+            .outerjoin(Recording, Clip.recording_id == Recording.id)
+            .where((Song.profile_id == profile.id) & ((Recording.profile_id == profile.id) | (Recording.profile_id == None)))
             .group_by(Song.id)
             .order_by(Song.name)
         )
@@ -595,6 +616,7 @@ async def get_profile_songs_by_name(profile_name: str) -> list[SongWithClipCount
             SongWithClipCount(
                 id=str(song.id),
                 name=song.name,
+                created_at=song.created_at.isoformat(),
                 clip_count=clip_count,
             )
             for song, clip_count in rows

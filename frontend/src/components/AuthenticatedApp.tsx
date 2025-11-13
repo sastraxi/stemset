@@ -1,41 +1,41 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { apiRecordingsRecordingIdClipsGetRecordingClips, apiClipsClipIdGetClipEndpoint, apiSongsSongIdClipsGetSongClips } from "@/api/generated";
-import { useProfileFiles, useProfiles, useRecording } from "../hooks/queries";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+	apiClipsClipIdGetClipEndpoint,
+	apiSongsSongIdClipsGetSongClips,
+} from "@/api/generated";
+import { useProfileFiles, useProfiles, useRecording, useDeleteClip } from "../hooks/queries";
+import { useSortPreference } from "../hooks/useSortPreference";
 import { setSessionProfile, setSessionRecording } from "../lib/storage";
-import { cn, getRelativeTime } from "../lib/utils";
+import { getRelativeTime } from "../lib/utils";
 import "../styles/effects.css";
 import "../styles/layout.css";
 import "../styles/player.css";
 import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
+import { Music2 } from "lucide-react";
 import type { FileWithStems } from "@/api/generated";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
+import { ClipCard } from "./ClipCard";
+import { ClipsView } from "./ClipsView";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MetadataEditorModal } from "./MetadataEditorModal";
 import { MetadataPage } from "./MetadataPage";
 import { ProfileSelector } from "./ProfileSelector";
 import { QRCodeModal } from "./QRCodeModal";
 import { QRUploadOverlay } from "./QRUploadOverlay";
-import { SongMetadata } from "./SongMetadata";
-import { Spinner } from "./ui/spinner";
 import { RecordingPlayer } from "./RecordingPlayer";
-import { ClipPlayer } from "./ClipPlayer";
+import { RecordingsView } from "./RecordingsView";
+import { SongMetadata } from "./SongMetadata";
+import { SongsView } from "./SongsView";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
-import { ClipsList } from "./ClipsList";
 import { UserNav } from "./UserNav";
-import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { RecordingsView } from "./RecordingsView";
-import { ClipsView } from "./ClipsView";
-import { SongsView } from "./SongsView";
-import { ClipCard } from "./ClipCard";
-import { Music2 } from "lucide-react";
+import { Spinner } from "./ui/spinner";
 
 interface AuthenticatedAppProps {
 	user: { id: string; name: string; email: string; picture?: string };
@@ -58,7 +58,6 @@ export function AuthenticatedApp({
 	initialSong,
 	sourceParam,
 	initialStateParam,
-	timeParam,
 }: AuthenticatedAppProps) {
 	useEffect(() => {
 		const handleResize = () => {
@@ -80,10 +79,26 @@ export function AuthenticatedApp({
 	const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+
+	// Clip-specific modal states
+	const [isClipMetadataEditorOpen, setIsClipMetadataEditorOpen] = useState(false);
+	const [isClipQRModalOpen, setIsClipQRModalOpen] = useState(false);
+	const [isClipDeleteModalOpen, setIsClipDeleteModalOpen] = useState(false);
+	const [isDeletingClip, setIsDeletingClip] = useState(false);
 	const [audioDuration, setAudioDuration] = useState<number>(0);
 	const [audioCurrentTime, setAudioCurrentTime] = useState<number>(0);
-	const [createClipHandler, setCreateClipHandler] = useState<(() => void) | null>(null);
+	const [createClipHandler, setCreateClipHandler] = useState<
+		(() => void) | null
+	>(null);
 	const [hasClipSelection, setHasClipSelection] = useState(false);
+
+	// Initialize sidebar tab based on initial route
+	const [sidebarTab, setSidebarTab] = useState<string>(() => {
+		if (initialSong) return "songs";
+		if (initialClip) return "clips";
+		return "recordings";
+	});
+
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
 	const navigate = useNavigate();
 
@@ -91,6 +106,33 @@ export function AuthenticatedApp({
 	const isOnRecordingRoute = !!initialRecording;
 	const isOnClipRoute = !!initialClip;
 	const isOnSongRoute = !!initialSong;
+
+	// Track previous route to detect actual navigation changes
+	const prevRouteRef = useRef({ song: initialSong, clip: initialClip, recording: initialRecording });
+
+	useEffect(() => {
+		const prev = prevRouteRef.current;
+		const current = { song: initialSong, clip: initialClip, recording: initialRecording };
+
+		// Only update tab if we actually navigated to a different item
+		const routeChanged =
+			prev.song !== current.song ||
+			prev.clip !== current.clip ||
+			prev.recording !== current.recording;
+
+		if (routeChanged) {
+			prevRouteRef.current = current;
+
+			// Set tab based on new route
+			if (initialSong) {
+				setSidebarTab("songs");
+			} else if (initialClip) {
+				setSidebarTab("clips");
+			} else if (initialRecording) {
+				setSidebarTab("recordings");
+			}
+		}
+	}, [initialSong, initialClip, initialRecording]);
 
 	const { data: profiles, error: profilesError } = useProfiles();
 
@@ -105,16 +147,6 @@ export function AuthenticatedApp({
 	// This primes the React Query cache for useConfigPersistence
 	useRecording(selectedFile?.id);
 
-	// Fetch clips for the selected recording
-	const { data: clips } = useQuery({
-		queryKey: ["recording-clips", selectedFile?.id],
-		queryFn: () =>
-			apiRecordingsRecordingIdClipsGetRecordingClips({
-				path: { recording_id: selectedFile!.id },
-			}),
-		enabled: !!selectedFile?.id,
-	});
-
 	// Fetch clip data when on clip route
 	const { data: clip, isLoading: clipLoading } = useQuery({
 		queryKey: ["clip", initialClip],
@@ -125,8 +157,32 @@ export function AuthenticatedApp({
 		enabled: !!initialClip,
 	});
 
+	// Fetch the recording status for the clip to get location/date metadata
+	const clipRecordingStatus = useRecording(clip?.data?.recording_id);
+
+	// Build a FileWithStems from clip data and recording status
+	const clipRecordingData: FileWithStems | null = useMemo(() => {
+		if (!clip?.data || !clipRecordingStatus.data) return null;
+
+		return {
+			id: clip.data.recording_id,
+			name: clip.data.recording_output_name,
+			display_name: clipRecordingStatus.data.display_name,
+			date_recorded: null, // Recordings don't have date in RecordingStatusResponse
+			status: "complete" as const,
+			stems: clip.data.stems,
+			created_at: clip.data.created_at,
+			song: clip.data.song || null,
+			location: null, // Location not in RecordingStatusResponse
+		};
+	}, [clip?.data, clipRecordingStatus.data]);
+
 	// Fetch song clips when on song route
-	const { data: songClips, isLoading: songLoading } = useQuery({
+	const {
+		data: songClips,
+		isLoading: songClipsLoading,
+		error: songClipsError,
+	} = useQuery({
 		queryKey: ["song-clips", initialSong],
 		queryFn: () =>
 			apiSongsSongIdClipsGetSongClips({
@@ -243,6 +299,8 @@ export function AuthenticatedApp({
 		}
 	};
 
+	const deleteClipMutation = useDeleteClip();
+
 	const handleDeleteRecording = async () => {
 		if (!selectedFile || !selectedProfile) return;
 
@@ -271,6 +329,59 @@ export function AuthenticatedApp({
 		}
 	};
 
+	const handleDeleteClip = async () => {
+		if (!clip?.data || !selectedProfile) return;
+
+		try {
+			setIsDeletingClip(true);
+
+			await deleteClipMutation.mutateAsync({
+				path: {
+					clip_id: clip.data.id,
+				},
+			});
+
+			toast.success("Clip deleted successfully");
+			setIsClipDeleteModalOpen(false);
+
+			// Navigate back to profile page
+			navigate({
+				to: "/p/$profileName",
+				params: { profileName: selectedProfile },
+			});
+		} catch (error) {
+			console.error("Failed to delete clip:", error);
+			toast.error("Failed to delete clip");
+		} finally {
+			setIsDeletingClip(false);
+		}
+	};
+
+	const handleCreateClipChange = useCallback(
+		(handler: (() => void) | null, hasSelection: boolean) => {
+			setCreateClipHandler(() => handler);
+			setHasClipSelection(hasSelection);
+		},
+		[],
+	);
+
+	// Sort hook for recordings
+	const { sortField, sortDirection, cycleSort, sortData } = useSortPreference({
+		storageKey: "stemset-sort-recordings",
+		defaultField: "date",
+		defaultDirection: "desc",
+	});
+
+	// Sort files using the sort hook
+	const sortedFiles = useMemo(() => {
+		if (!files) return [];
+		return sortData<FileWithStems>(
+			files,
+			(file) => file.date_recorded,
+			(file) => file.display_name || file.name,
+		);
+	}, [files, sortData]);
+
 	// Show backend connection error
 	if (profilesError) {
 		return (
@@ -291,22 +402,6 @@ export function AuthenticatedApp({
 			</div>
 		);
 	}
-
-	// Sort files by date_recorded descending, with nulls at top
-	const sortedFiles = useMemo(() => {
-		if (!files) return [];
-		return [...files].sort((a, b) => {
-			// Nulls first
-			if (!a.date_recorded && !b.date_recorded) return 0;
-			if (!a.date_recorded) return -1;
-			if (!b.date_recorded) return 1;
-			// Descending (most recent first)
-			return (
-				new Date(b.date_recorded).getTime() -
-				new Date(a.date_recorded).getTime()
-			);
-		});
-	}, [files]);
 
 	// Calculate file counts for profile selector
 	const fileCountByProfile: Record<string, number> = {};
@@ -372,7 +467,7 @@ export function AuthenticatedApp({
 					)}
 
 					<div className="file-list">
-						<Tabs defaultValue="recordings" className="w-full">
+						<Tabs value={sidebarTab} onValueChange={setSidebarTab} className="w-full">
 							<TabsList className="grid w-full grid-cols-3 mb-4">
 								<TabsTrigger value="recordings">Recordings</TabsTrigger>
 								<TabsTrigger value="clips">Clips</TabsTrigger>
@@ -388,6 +483,9 @@ export function AuthenticatedApp({
 									onFileSelect={handleFileSelect}
 									onRefresh={handleRefresh}
 									getRelativeTime={getRelativeTime}
+									sortField={sortField}
+									sortDirection={sortDirection}
+									onSortCycle={cycleSort}
 								/>
 							</TabsContent>
 
@@ -418,59 +516,67 @@ export function AuthenticatedApp({
 				<main
 					className={`player-area ${isOnRecordingRoute || isOnClipRoute || isOnSongRoute ? "block" : "md:block hidden"}`}
 				>
-					{isOnSongRoute && songClips?.data ? (
-						<div className="container mx-auto p-6">
-							{/* Song header */}
-							<div className="mb-6">
-								<div className="flex items-center gap-3 mb-2">
-									<Music2 className="h-6 w-6 text-primary" />
-									<h1 className="text-3xl font-bold">
-										{songClips.data[0]?.song?.name || "Untitled Song"}
-									</h1>
-								</div>
-								<p className="text-muted-foreground">
-									{songClips.data.length}{" "}
-									{songClips.data.length === 1 ? "clip" : "clips"} across recordings
-								</p>
+					{isOnSongRoute ? (
+						songClipsLoading ? (
+							<div className="flex items-center justify-center h-full">
+								<Spinner size="md" />
 							</div>
+						) : songClipsError ? (
+							<div className="empty-state">
+								<p className="text-2xl font-bold mb-2">Song Not Found</p>
+								<p>The requested song does not exist or has been deleted.</p>
+							</div>
+						) : songClips?.data ? (
+							<div className="container mx-auto p-6">
+								{/* Song header */}
+								<div className="mb-6">
+									<div className="flex items-center gap-3 mb-2">
+										<Music2 className="h-6 w-6 text-primary" />
+										<h1 className="text-3xl font-bold">
+											{songClips.data[0]?.song?.name || "Untitled Song"}
+										</h1>
+									</div>
+									<p className="text-muted-foreground">
+										{songClips.data.length}{" "}
+										{songClips.data.length === 1 ? "clip" : "clips"} across
+										recordings
+									</p>
+								</div>
 
-							{/* Clips list */}
-							{songClips.data.length > 0 ? (
-								<div className="space-y-3">
-									{songClips.data.map((clip) => (
-										<ClipCard
-											key={clip.id}
-											clip={clip}
-											profileName={selectedProfile!}
-											showRecordingInfo={true}
-										/>
-									))}
-								</div>
-							) : (
-								<div className="text-center py-12 text-muted-foreground">
-									No clips found for this song.
-								</div>
-							)}
-						</div>
-					) : isOnClipRoute && clip?.data ? (
+								{/* Clips list */}
+								{songClips.data.length > 0 ? (
+									<div className="space-y-3">
+										{songClips.data.map((clip) => (
+											<ClipCard
+												key={clip.id}
+												clip={clip}
+												profileName={selectedProfile || ""}
+												showRecordingInfo={true}
+											/>
+										))}
+									</div>
+								) : (
+									<div className="text-center py-12 text-muted-foreground">
+										No clips found for this song.
+									</div>
+								)}
+							</div>
+						) : null
+					) : isOnClipRoute && clip?.data && clipRecordingData ? (
 						<>
 							<div className="recording-header">
-								{!clipLoading && (
+								{!clipLoading && !clipRecordingStatus.isLoading && (
 									<SongMetadata
 										recording={{
-											id: clip.data.recording_id,
-											name: clip.data.recording_output_name,
-											display_name: clip.data.display_name || clip.data.recording_output_name,
-											date_recorded: null,
-											status: "complete",
-											stems: clip.data.stems,
-											song: clip.data.song || null,
-											location: clip.data.location || null,
+											...clipRecordingData,
+											display_name:
+												clip.data.display_name ||
+												clipRecordingData.display_name,
 										}}
 										profileName={selectedProfile!}
-										onEdit={() => {}}
-										onShowQR={() => {}}
-										onDelete={() => {}}
+										onEdit={() => setIsClipMetadataEditorOpen(true)}
+										onShowQR={() => setIsClipQRModalOpen(true)}
+										onDelete={() => setIsClipDeleteModalOpen(true)}
 										duration={clip.data.end_time_sec - clip.data.start_time_sec}
 									/>
 								)}
@@ -481,14 +587,53 @@ export function AuthenticatedApp({
 									{/* Playback controls will be rendered here by StemPlayer */}
 								</div>
 							</div>
-							<ClipPlayer
-								clipId={clip.data.id}
+
+							{/* Modals for clip */}
+							{clipRecordingData && selectedProfile && (
+								<>
+									<MetadataEditorModal
+										recording={clipRecordingData}
+										clip={{
+											id: clip.data.id,
+											display_name: clip.data.display_name,
+											song_id: clip.data.song_id,
+										}}
+										profileId={
+											profiles?.find((p) => p.name === selectedProfile)?.id ||
+											""
+										}
+										profileName={selectedProfile}
+										open={isClipMetadataEditorOpen}
+										onClose={() => setIsClipMetadataEditorOpen(false)}
+									/>
+									<QRCodeModal
+										isOpen={isClipQRModalOpen}
+										onClose={() => setIsClipQRModalOpen(false)}
+										url={encodeURI(
+											`${import.meta.env.VITE_FRONTEND_URL || window.location.origin}/p/${selectedProfile}/clips/${clip.data.id}`,
+										)}
+										currentTime={audioCurrentTime}
+									/>
+									<DeleteConfirmationModal
+										isOpen={isClipDeleteModalOpen}
+										onClose={() => setIsClipDeleteModalOpen(false)}
+										onConfirm={handleDeleteClip}
+										recordingTitle={clip.data.display_name || "this clip"}
+										isDeleting={isDeletingClip}
+									/>
+								</>
+							)}
+
+							<RecordingPlayer
 								recordingId={clip.data.recording_id}
 								stemsData={clip.data.stems}
-								startTimeSec={clip.data.start_time_sec}
-								endTimeSec={clip.data.end_time_sec}
 								profileName={selectedProfile!}
 								fileName={clip.data.recording_output_name}
+								clip={{
+									id: clip.data.id,
+									startTimeSec: clip.data.start_time_sec,
+									endTimeSec: clip.data.end_time_sec,
+								}}
 								onLoadingChange={setIsLoadingStems}
 								onDurationChange={setAudioDuration}
 								onCurrentTimeChange={setAudioCurrentTime}
@@ -572,13 +717,13 @@ export function AuthenticatedApp({
 									</>
 								)}
 								{/* Clips List */}
-								{clips?.data && clips.data.length > 0 && (
+								{/* {clips?.data && clips.data.length > 0 && (
 									<ClipsList
 										clips={clips.data}
 										profileName={selectedProfile}
 										recordingId={selectedFile.id}
 									/>
-								)}
+								)} */}
 								<RecordingPlayer
 									key={`${selectedProfile}::${selectedFile.name}`}
 									ref={stemPlayerRef}
@@ -588,10 +733,7 @@ export function AuthenticatedApp({
 									onLoadingChange={setIsLoadingStems}
 									onDurationChange={setAudioDuration}
 									onCurrentTimeChange={setAudioCurrentTime}
-									onCreateClipChange={(handler, hasSelection) => {
-										setCreateClipHandler(() => handler);
-										setHasClipSelection(hasSelection);
-									}}
+									onCreateClipChange={handleCreateClipChange}
 									recordingId={selectedFile.id}
 								/>
 							</>

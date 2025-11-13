@@ -38,8 +38,8 @@ interface MetadataEditorProps {
 	selectedDate: Date | undefined;
 	onDisplayNameChange: (value: string) => void;
 	onSongChange: (songId: string | null) => void;
-	onLocationChange: (locationName: string | null) => void;
-	onDateChange: (date: Date | undefined) => void;
+	onLocationChange?: (locationName: string | null) => void;
+	onDateChange?: (date: Date | undefined) => void;
 	onSave: () => void;
 	onCancel?: () => void;
 	onDelete?: () => void;
@@ -185,53 +185,57 @@ export function MetadataEditor({
 			{/* Two Column Layout */}
 			<div className="metadata-editor-columns">
 				{/* Left Column: Calendar (Desktop only) */}
-				<div className="metadata-editor-calendar-column metadata-editor-calendar-desktop">
-					<Label>Date Recorded</Label>
-					<Calendar
-						mode="single"
-						selected={selectedDate}
-						onSelect={(date) => onDateChange(date)}
-						disabled={(date) =>
-							date > new Date() || date < new Date("1900-01-01")
-						}
-						className="metadata-editor-calendar"
-					/>
-				</div>
+				{onDateChange && (
+					<div className="metadata-editor-calendar-column metadata-editor-calendar-desktop">
+						<Label>Date Recorded</Label>
+						<Calendar
+							mode="single"
+							selected={selectedDate}
+							onSelect={(date) => onDateChange(date)}
+							disabled={(date) =>
+								date > new Date() || date < new Date("1900-01-01")
+							}
+							className="metadata-editor-calendar"
+						/>
+					</div>
+				)}
 
 				{/* Right Column: Title, Song & Location */}
 				<div className="metadata-editor-fields-column">
 					{/* Date Recorded (Mobile only) */}
-					<div className="space-y-2 metadata-editor-date-mobile">
-						<Label>Date Recorded</Label>
-						<Popover open={dateOpen} onOpenChange={setDateOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									variant="outline"
-									className={cn(
-										"w-full justify-start text-left font-normal",
-										!selectedDate && "text-muted-foreground"
-									)}
-								>
-									<CalendarIcon className="mr-2 h-4 w-4" />
-									{selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-auto p-0" align="start">
-								<Calendar
-									mode="single"
-									selected={selectedDate}
-									onSelect={(date) => {
-										onDateChange(date);
-										setDateOpen(false);
-									}}
-									disabled={(date) =>
-										date > new Date() || date < new Date("1900-01-01")
-									}
-									initialFocus
-								/>
-							</PopoverContent>
-						</Popover>
-					</div>
+					{onDateChange && (
+						<div className="space-y-2 metadata-editor-date-mobile">
+							<Label>Date Recorded</Label>
+							<Popover open={dateOpen} onOpenChange={setDateOpen}>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										className={cn(
+											"w-full justify-start text-left font-normal",
+											!selectedDate && "text-muted-foreground"
+										)}
+									>
+										<CalendarIcon className="mr-2 h-4 w-4" />
+										{selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-auto p-0" align="start">
+									<Calendar
+										mode="single"
+										selected={selectedDate}
+										onSelect={(date) => {
+											onDateChange(date);
+											setDateOpen(false);
+										}}
+										disabled={(date) =>
+											date > new Date() || date < new Date("1900-01-01")
+										}
+										initialFocus
+									/>
+								</PopoverContent>
+							</Popover>
+						</div>
+					)}
 
 					{/* Recording Title */}
 					<div className="space-y-2">
@@ -324,86 +328,88 @@ export function MetadataEditor({
 					</div>
 
 					{/* Location (LocationIQ) */}
-					<div className="space-y-2">
-						<Label htmlFor="location">Location</Label>
-						<Popover open={locationOpen} onOpenChange={setLocationOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									id="location"
-									variant="outline"
-									role="combobox"
-									aria-expanded={locationOpen}
-									className="w-full justify-between"
-								>
-									{selectedLocationName || "Search for location..."}
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-full p-0" align="start">
-								<Command shouldFilter={false}>
-									<CommandInput
-										placeholder="Search location..."
-										value={locationSearch}
-										onValueChange={setLocationSearch}
-									/>
-									<CommandList>
-										<CommandEmpty>
-											{isSearching && "Searching..."}
-											{!isSearching &&
-												locationSearch.length < 3 &&
-												"Type at least 3 characters"}
-											{!isSearching &&
-												locationSearch.length >= 3 &&
-												locationResults.length === 0 &&
-												"No locations found"}
-										</CommandEmpty>
-										<CommandGroup>
-											{locationResults.map((result) => {
-												const stateCountry = [
-													result.address?.state,
-													result.address?.country,
-												]
-													.filter(Boolean)
-													.join(", ");
+					{onLocationChange && (
+						<div className="space-y-2">
+							<Label htmlFor="location">Location</Label>
+							<Popover open={locationOpen} onOpenChange={setLocationOpen}>
+								<PopoverTrigger asChild>
+									<Button
+										id="location"
+										variant="outline"
+										role="combobox"
+										aria-expanded={locationOpen}
+										className="w-full justify-between"
+									>
+										{selectedLocationName || "Search for location..."}
+										<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-full p-0" align="start">
+									<Command shouldFilter={false}>
+										<CommandInput
+											placeholder="Search location..."
+											value={locationSearch}
+											onValueChange={setLocationSearch}
+										/>
+										<CommandList>
+											<CommandEmpty>
+												{isSearching && "Searching..."}
+												{!isSearching &&
+													locationSearch.length < 3 &&
+													"Type at least 3 characters"}
+												{!isSearching &&
+													locationSearch.length >= 3 &&
+													locationResults.length === 0 &&
+													"No locations found"}
+											</CommandEmpty>
+											<CommandGroup>
+												{locationResults.map((result) => {
+													const stateCountry = [
+														result.address?.state,
+														result.address?.country,
+													]
+														.filter(Boolean)
+														.join(", ");
 
-												return (
-													<CommandItem
-														key={result.place_id}
-														value={result.display_name}
-														onSelect={() => {
-															onLocationChange(result.display_name);
-															setLocationOpen(false);
-															setLocationSearch("");
-														}}
-														className="flex items-center justify-between"
-													>
-														<div className="flex items-center">
-															<Check
-																className={cn(
-																	"mr-2 h-4 w-4",
-																	selectedLocationName === result.display_name
-																		? "opacity-100"
-																		: "opacity-0",
-																)}
-															/>
-															<span className="truncate max-w-[300px]">
-																{result.display_name}
-															</span>
-														</div>
-														{stateCountry && (
-															<span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-																{stateCountry}
-															</span>
-														)}
-													</CommandItem>
-												);
-											})}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
+													return (
+														<CommandItem
+															key={result.place_id}
+															value={result.display_name}
+															onSelect={() => {
+																onLocationChange(result.display_name);
+																setLocationOpen(false);
+																setLocationSearch("");
+															}}
+															className="flex items-center justify-between"
+														>
+															<div className="flex items-center">
+																<Check
+																	className={cn(
+																		"mr-2 h-4 w-4",
+																		selectedLocationName === result.display_name
+																			? "opacity-100"
+																			: "opacity-0",
+																	)}
+																/>
+																<span className="truncate max-w-[300px]">
+																	{result.display_name}
+																</span>
+															</div>
+															{stateCountry && (
+																<span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+																	{stateCountry}
+																</span>
+															)}
+														</CommandItem>
+													);
+												})}
+											</CommandGroup>
+										</CommandList>
+									</Command>
+								</PopoverContent>
+							</Popover>
+						</div>
+					)}
 				</div>
 			</div>
 

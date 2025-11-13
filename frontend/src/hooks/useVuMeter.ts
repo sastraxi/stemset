@@ -75,6 +75,8 @@ export function useVuMeter(
 			return;
 		}
 
+		let rafId: number | null = null;
+
 		const updateLevels = () => {
 			if (!analyserLeftRef.current || !analyserRightRef.current) return;
 			if (!dataArrayLeftRef.current || !dataArrayRightRef.current) return;
@@ -103,16 +105,18 @@ export function useVuMeter(
 				right: rightLevel,
 			});
 
-			animationFrameRef.current = requestAnimationFrame(updateLevels);
+			rafId = requestAnimationFrame(updateLevels);
+			animationFrameRef.current = rafId;
 		};
 
-		animationFrameRef.current = requestAnimationFrame(updateLevels);
+		rafId = requestAnimationFrame(updateLevels);
+		animationFrameRef.current = rafId;
 
 		return () => {
-			if (animationFrameRef.current) {
-				cancelAnimationFrame(animationFrameRef.current);
-				animationFrameRef.current = null;
+			if (rafId !== null) {
+				cancelAnimationFrame(rafId);
 			}
+			animationFrameRef.current = null;
 		};
 	}, [isPlaying]);
 

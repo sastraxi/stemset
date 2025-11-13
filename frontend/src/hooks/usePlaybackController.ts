@@ -100,9 +100,13 @@ export function usePlaybackController({
 			startTimeRef.current = audioContext.currentTime - playbackPosition;
 
 			// RAF loop to update currentTime
-			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
 
 			const tick = () => {
+				// Double-check generation to prevent stale loops
 				if (playbackGenRef.current !== thisPlaybackGen) return;
 				if (!isPlayingRef.current) return;
 
@@ -119,7 +123,11 @@ export function usePlaybackController({
 				}
 
 				setCurrentTime(elapsed);
-				rafRef.current = requestAnimationFrame(tick);
+
+				// Only schedule next frame if still the current generation
+				if (playbackGenRef.current === thisPlaybackGen) {
+					rafRef.current = requestAnimationFrame(tick);
+				}
 			};
 
 			rafRef.current = requestAnimationFrame(tick);

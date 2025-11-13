@@ -226,17 +226,17 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		// Notify parent of loading state changes
 		useEffect(() => {
 			onLoadingChange?.(isLoading);
-		}, [isLoading, onLoadingChange]);
+		}, [isLoading]);
 
 		// Notify parent of duration changes
 		useEffect(() => {
 			onDurationChange?.(duration);
-		}, [duration, onDurationChange]);
+		}, [duration]);
 
 		// Notify parent of current time changes
 		useEffect(() => {
 			onCurrentTimeChange?.(currentTime);
-		}, [currentTime, onCurrentTimeChange]);
+		}, [currentTime]);
 
 		// Keyboard shortcuts
 		useEffect(() => {

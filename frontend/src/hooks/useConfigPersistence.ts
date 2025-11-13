@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { useRecording } from "./queries";
+import { apiRecordingsRecordingIdGetRecordingStatusQueryKey } from "@/api/generated/@tanstack/react-query.gen";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -11,7 +12,6 @@ export interface UseConfigPersistenceOptions<T> {
 	configKey: string; // 'eq', 'compressor', 'reverb', 'stereoExpander', 'stems', 'playbackPosition'
 	defaultValue: T;
 	debounceMs?: number; // Default: 500ms
-	skipFirstSave?: boolean; // Default: true - skip save on initial mount
 }
 
 export interface UseConfigPersistenceResult<T> {
@@ -25,67 +25,69 @@ export interface UseConfigPersistenceResult<T> {
 /**
  * Generic hook for persisting config values to the database with React Query.
  *
- * Features:
- * - Automatic loading from API on mount (cached via React Query)
- * - Debounced saves to prevent excessive writes
- * - Optimistic updates with automatic rollback on error
- * - Independent persistence per config key (no race conditions)
- * - Proper cleanup on unmount
- *
- * Usage:
- * ```ts
- * const { config, setConfig, isLoading } = useConfigPersistence({
- *   recordingId: '123',
- *   configKey: 'eq',
- *   defaultValue: DEFAULT_EQ_CONFIG,
- * });
- * ```
+ * Design principles:
+ * 1. Backend config (from React Query cache) is the source of truth for persisted state
+ * 2. Local state handles immediate UI updates
+ * 3. Only save when user actually changes a value (not on initial load)
+ * 4. Use stable object identity checks to prevent unnecessary saves
+ * 5. Debounce saves to prevent excessive writes
  */
 export function useConfigPersistence<T>({
 	recordingId,
 	configKey,
 	defaultValue,
 	debounceMs = 500,
-	skipFirstSave = true,
 }: UseConfigPersistenceOptions<T>): UseConfigPersistenceResult<T> {
 	const { getToken } = useAuth();
 	const queryClient = useQueryClient();
 
-	// Local state for the config
-	const [config, setConfigState] = useState<T>(defaultValue);
-
-	// Track if we've loaded the initial config (to prevent overwriting local changes)
-	const hasLoadedInitialConfigRef = useRef(false);
-
-	// Track if this is the first render (to skip saving the initial fetched config)
-	const isFirstRenderRef = useRef(skipFirstSave);
-
-	// Debounce timer
-	const debounceTimerRef = useRef<number | null>(null);
-
-	// Ref to always have latest config value (prevents stale closures in debounce timer)
-	const configRef = useRef<T>(defaultValue);
-
-	// Stable reference to defaultValue to avoid stale closures while preventing infinite loops
-	const defaultValueRef = useRef(defaultValue);
-	defaultValueRef.current = defaultValue;
-
-	// Fetch config from recording (uses cached recording data from useRecording)
+	// Fetch recording data (uses React Query cache)
 	const { data: recording, isLoading, error } = useRecording(recordingId);
 
-	// Extract the specific config key from the recording
-	const fetchedConfig = recording?.config?.[
-		configKey as keyof typeof recording.config
-	] as T | null | undefined;
+	// Extract the config for this key from the recording
+	// This is the "persisted" value from the backend
+	const backendConfig = useMemo(() => {
+		if (!recording?.config) return null;
+		const value = recording.config[
+			configKey as keyof typeof recording.config
+		] as T | null | undefined;
+		return value ?? null;
+	}, [recording, configKey]);
 
-	// Keep configRef in sync with config state (ensures timer always has latest value)
+	// Local state for immediate UI updates
+	// Initialize with backend config if available, otherwise use default
+	const [config, setConfigState] = useState<T>(() => {
+		// On mount: use backend config if it exists, otherwise default
+		if (backendConfig !== null) {
+			return backendConfig;
+		}
+		return defaultValue;
+	});
+
+	// Track whether we've initialized from backend yet
+	// This prevents saving the initial backend value back to the server
+	const [initialized, setInitialized] = useState(false);
+
+	// When backend config loads/changes, update local state
+	// But only if we haven't initialized yet OR if backend changed externally
 	useEffect(() => {
-		configRef.current = config;
-	}, [config]);
+		if (isLoading) return;
 
-	// Stable mutation function (doesn't recreate on auth re-renders)
-	const mutationFn = useCallback(
-		async (value: T) => {
+		if (!initialized) {
+			// First load: set local state to backend value (or default)
+			if (backendConfig !== null) {
+				setConfigState(backendConfig);
+			}
+			setInitialized(true);
+		}
+		// Note: We don't update local state on subsequent backend changes
+		// because the user might be actively editing. Our debounced save
+		// will push local changes to the backend.
+	}, [backendConfig, isLoading, initialized]);
+
+	// Mutation for saving config to backend
+	const mutation = useMutation({
+		mutationFn: async (value: T) => {
 			const token = getToken();
 			if (!token) {
 				throw new Error("No auth token available");
@@ -106,21 +108,22 @@ export function useConfigPersistence<T>({
 			if (!response.ok) {
 				throw new Error(`Server returned ${response.status}`);
 			}
-
-			// Server returns 204 No Content, no need to parse response
-			return;
 		},
-		[getToken, recordingId, configKey],
-	);
+		onMutate: async (newValue) => {
+			// Optimistically update the cache immediately
+			const queryKey = apiRecordingsRecordingIdGetRecordingStatusQueryKey({
+				path: { recording_id: recordingId },
+			});
 
-	// Mutation for saving config
-	const mutation = useMutation({
-		mutationFn,
-		onSuccess: (_data, newValue) => {
-			// Manually update the recording cache with the new config value
-			queryClient.setQueryData(["recording", recordingId], (old: unknown) => {
+			// Cancel any outgoing refetches
+			await queryClient.cancelQueries({ queryKey });
+
+			// Snapshot the previous value
+			const previousData = queryClient.getQueryData(queryKey);
+
+			// Optimistically update
+			queryClient.setQueryData(queryKey, (old: unknown) => {
 				if (!old || typeof old !== "object") return old;
-
 				return {
 					...old,
 					config: {
@@ -130,10 +133,15 @@ export function useConfigPersistence<T>({
 				};
 			});
 
-			// Don't invalidate - we've already updated the cache manually
-			// Invalidating causes unnecessary refetches
+			// Return context for rollback
+			return { previousData, queryKey };
 		},
-		onError: () => {
+		onError: (_err, _newValue, context) => {
+			// Rollback on error
+			if (context?.previousData) {
+				queryClient.setQueryData(context.queryKey, context.previousData);
+			}
+
 			// Show user-friendly error message
 			const displayName =
 				configKey === "playbackPosition"
@@ -144,77 +152,40 @@ export function useConfigPersistence<T>({
 			toast.error(
 				`Failed to save ${displayName}. Your changes may not be persisted.`,
 			);
-
-			// Note: React Query will automatically roll back optimistic update
 		},
 	});
 
-	// Initialize config from fetched data (only on first load)
+	// Debounced save effect
 	useEffect(() => {
-		// Skip if we've already loaded the initial config
-		if (hasLoadedInitialConfigRef.current) {
+		// Don't save until we've initialized
+		if (!initialized) return;
+
+		// Don't save during initial load
+		if (isLoading) return;
+
+		// Don't save if config matches backend (no change)
+		// Use JSON comparison since we're dealing with objects
+		if (backendConfig !== null && JSON.stringify(config) === JSON.stringify(backendConfig)) {
 			return;
 		}
 
-		// Wait until loading is complete
-		if (isLoading) {
+		// If backend has no config yet and our config equals default, don't save
+		// This prevents saving defaults on first load
+		if (backendConfig === null && JSON.stringify(config) === JSON.stringify(defaultValue)) {
 			return;
 		}
 
-		if (fetchedConfig !== null && fetchedConfig !== undefined) {
-			// Merge fetched config with defaults to handle missing fields (backward compatibility)
-			// Use ref to get latest defaultValue without adding it to deps (prevents infinite loops)
-			setConfigState({ ...defaultValueRef.current, ...fetchedConfig });
-		}
-
-		// Mark as loaded - this prevents this effect from running again
-		hasLoadedInitialConfigRef.current = true;
-		// Note: Don't set isFirstRenderRef to false here! That would cause the loaded config
-		// to trigger a save. Let it remain true until the next user-initiated change.
-	}, [fetchedConfig, isLoading, configKey]);
-
-	// Debounced save when config changes
-	useEffect(() => {
-		// Skip save until initial fetch completes (prevents race conditions)
-		if (isLoading) {
-			return;
-		}
-
-		// Skip the first change after initial load (that's the fetched config being set)
-		if (isFirstRenderRef.current) {
-			isFirstRenderRef.current = false; // Next change will be a real user edit
-			return;
-		}
-
-		// Clear existing timer
-		if (debounceTimerRef.current) {
-			clearTimeout(debounceTimerRef.current);
-		}
-
-		// Start new debounce timer
-		debounceTimerRef.current = window.setTimeout(() => {
-			// Clear timer ref first
-			debounceTimerRef.current = null;
-			// Use configRef to get the latest value (prevents stale closures)
-			mutation.mutate(configRef.current);
+		// Debounce the save
+		const timer = setTimeout(() => {
+			mutation.mutate(config);
 		}, debounceMs);
 
-		// Cleanup timer on unmount or config change
-		return () => {
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current);
-				debounceTimerRef.current = null;
-			}
-		};
-	}, [config, debounceMs, isLoading, mutation]);
+		return () => clearTimeout(timer);
+	}, [config, backendConfig, initialized, isLoading, mutation, debounceMs, defaultValue]);
 
 	// Wrapper for setState that handles both direct values and updater functions
 	const setConfig = useCallback((value: T | ((prev: T) => T)) => {
-		if (typeof value === "function") {
-			setConfigState(value as (prev: T) => T);
-		} else {
-			setConfigState(value);
-		}
+		setConfigState(value);
 	}, []);
 
 	return {

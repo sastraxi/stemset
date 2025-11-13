@@ -3,53 +3,71 @@ import type { StemResponse } from "@/api/generated";
 import { StemPlayer, type StemPlayerHandle } from "./StemPlayer";
 import { RangeSelectionProvider, useRangeSelection } from "../contexts/RangeSelectionContext";
 import { CreateClipModal } from "./CreateClipModal";
-import { Button } from "./ui/button";
 
 /**
- * RecordingPlayer - Wrapper around StemPlayer for full recording playback (no time bounds).
+ * RecordingPlayer - Unified player for recordings and clips.
  *
- * Use this component when playing back entire recordings without clip constraints.
- * Includes range selection and clip creation functionality.
+ * When clip is provided:
+ * - Plays time-bounded segment (startTimeSec to endTimeSec)
+ * - Disables position persistence
+ * - No range selection or clip creation
+ *
+ * When clip is absent:
+ * - Plays full recording
+ * - Saves/loads playback position
+ * - Includes range selection and clip creation
  */
 interface RecordingPlayerProps {
 	recordingId: string;
 	stemsData: StemResponse[];
 	profileName: string;
 	fileName: string;
+	clip?: {
+		id: string;
+		startTimeSec: number;
+		endTimeSec: number;
+	};
 	onLoadingChange?: (isLoading: boolean) => void;
 	onDurationChange?: (duration: number) => void;
 	onCurrentTimeChange?: (currentTime: number) => void;
 	onCreateClipChange?: (handler: (() => void) | null, hasSelection: boolean) => void;
 }
 
-// Inner component that uses the RangeSelectionContext
+// Inner component that uses the RangeSelectionContext (only when not a clip)
 function RecordingPlayerInner(
 	props: RecordingPlayerProps,
 	ref: React.ForwardedRef<StemPlayerHandle>
 ) {
-	const { recordingId, profileName } = props;
+	const { recordingId, profileName, clip } = props;
 	const [currentTime, setCurrentTime] = useState(0);
 	const [modalOpen, setModalOpen] = useState(false);
 	const stemPlayerRef = useRef<StemPlayerHandle>(null);
-	const rangeSelection = useRangeSelection();
+
+	// Only use range selection context if not playing a clip
+	const rangeSelection = clip ? null : useRangeSelection();
 
 	// Expose StemPlayer handle to parent
 	useImperativeHandle(ref, () => stemPlayerRef.current!, []);
 
-	const { selection } = rangeSelection;
-	const hasSelection = selection.startSec !== null && selection.endSec !== null;
+	const hasSelection = rangeSelection
+		? rangeSelection.selection.startSec !== null && rangeSelection.selection.endSec !== null
+		: false;
 
 	const handleCreateClip = () => {
 		setModalOpen(true);
 	};
 
-	// Expose create clip handler and selection state to parent
+	// Expose create clip handler and selection state to parent (only for recordings)
 	useEffect(() => {
-		props.onCreateClipChange?.(handleCreateClip, hasSelection);
-	}, [hasSelection, props.onCreateClipChange]);
+		if (!clip) {
+			props.onCreateClipChange?.(handleCreateClip, hasSelection);
+		}
+	}, [hasSelection, props.onCreateClipChange, clip]);
 
-	// Keyboard shortcuts for range selection
+	// Keyboard shortcuts for range selection (only for recordings)
 	useEffect(() => {
+		if (clip || !rangeSelection) return;
+
 		const handleKeyDown = (e: KeyboardEvent) => {
 			// Only handle if not typing in an input
 			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -77,7 +95,7 @@ function RecordingPlayerInner(
 
 		window.addEventListener('keydown', handleKeyDown);
 		return () => window.removeEventListener('keydown', handleKeyDown);
-	}, [currentTime, rangeSelection]);
+	}, [currentTime, rangeSelection, clip]);
 
 	const handleDurationChange = (newDuration: number) => {
 		props.onDurationChange?.(newDuration);
@@ -95,16 +113,20 @@ function RecordingPlayerInner(
 				{...props}
 				onDurationChange={handleDurationChange}
 				onCurrentTimeChange={handleCurrentTimeChange}
-				// No time bounds - plays entire recording
+				// Clip time boundaries or full recording
+				startTimeSec={clip?.startTimeSec}
+				endTimeSec={clip?.endTimeSec}
+				// Disable position persistence for clips
+				disablePositionPersistence={!!clip}
 			/>
 
-			{/* Create Clip Modal */}
-			{hasSelection && (
+			{/* Create Clip Modal - only for recordings */}
+			{!clip && hasSelection && rangeSelection && (
 				<CreateClipModal
 					open={modalOpen}
 					onOpenChange={setModalOpen}
-					startSec={selection.startSec!}
-					endSec={selection.endSec!}
+					startSec={rangeSelection.selection.startSec!}
+					endSec={rangeSelection.selection.endSec!}
 					recordingId={recordingId}
 					profileName={profileName}
 				/>
@@ -120,6 +142,11 @@ export const RecordingPlayer = forwardRef<
 	RecordingPlayerProps
 >((props, ref) => {
 	const [duration, setDuration] = useState(0);
+
+	// Only wrap in RangeSelectionProvider for recordings (not clips)
+	if (props.clip) {
+		return <RecordingPlayerInnerWithRef {...props} ref={ref} />;
+	}
 
 	return (
 		<RangeSelectionProvider duration={duration} enabled={true}>

@@ -43,6 +43,7 @@ export type ClipWithStemsResponse = {
   id: string;
   recording_id: string;
   song_id?: string | null;
+  song?: SongMetadata | null;
   start_time_sec: number;
   end_time_sec: number;
   display_name?: string | null;
@@ -203,6 +204,7 @@ export type SongResponse = {
 export type SongWithClipCount = {
   id: string;
   name: string;
+  created_at: string;
   clip_count: number;
 };
 

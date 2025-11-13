@@ -1,9 +1,12 @@
 import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 import { SongCard } from "./SongCard";
 import { apiProfilesProfileNameSongsGetProfileSongsByName } from "@/api/generated";
+import { useSortPreference } from "@/hooks/useSortPreference";
+import type { SongWithClipCount } from "@/api/generated";
 
 interface SongsViewProps {
 	profileName: string;
@@ -24,6 +27,12 @@ export function SongsView({ profileName, onRefresh }: SongsViewProps) {
 			}),
 	});
 
+	const { sortField, sortDirection, cycleSort, sortData } = useSortPreference({
+		storageKey: "stemset-sort-songs",
+		defaultField: "date",
+		defaultDirection: "desc",
+	});
+
 	const handleRefresh = () => {
 		refetch();
 		onRefresh();
@@ -31,12 +40,28 @@ export function SongsView({ profileName, onRefresh }: SongsViewProps) {
 
 	const songs = songsResponse?.data || [];
 
+	// Sort songs based on current sort preference
+	const sortedSongs = useMemo(() => {
+		return sortData<SongWithClipCount>(
+			songs,
+			(song) => song.created_at,
+			(song) => song.name,
+		);
+	}, [songs, sortData]);
+
+	const sortLabel = `${sortField === "name" ? "NAME" : "DATE"} ${sortDirection === "asc" ? "↑" : "↓"}`;
+
 	return (
 		<>
-			<div className="flex items-center justify-between mb-3">
-				<h2 className="text-base font-semibold text-white uppercase tracking-wider">
-					Songs
-				</h2>
+			<div className="flex items-center justify-between mb-3 gap-2">
+				<Button
+					onClick={cycleSort}
+					variant="ghost"
+					className="h-8 px-3 py-0 border border-gray-700 hover:bg-gray-700 hover:text-blue-400 hover:border-blue-400 text-xs font-semibold uppercase tracking-wider flex-1"
+					title="Cycle sort order"
+				>
+					{sortLabel}
+				</Button>
 				<Button
 					onClick={handleRefresh}
 					variant="ghost"
@@ -54,13 +79,13 @@ export function SongsView({ profileName, onRefresh }: SongsViewProps) {
 				</div>
 			) : error ? (
 				<p className="empty-state">Error loading songs. Try refreshing.</p>
-			) : songs.length === 0 ? (
+			) : sortedSongs.length === 0 ? (
 				<p className="empty-state">
 					No songs yet. Assign songs to recordings to see them here.
 				</p>
 			) : (
 				<div className="space-y-2">
-					{songs.map((song) => (
+					{sortedSongs.map((song) => (
 						<SongCard key={song.id} song={song} profileName={profileName} />
 					))}
 				</div>
