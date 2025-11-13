@@ -60,9 +60,6 @@ export function useConfigPersistence<T>({
 	// Track if this is the first render (to skip saving the initial fetched config)
 	const isFirstRenderRef = useRef(skipFirstSave);
 
-	// Track if there are unsaved changes pending
-	const hasUnsavedChangesRef = useRef(false);
-
 	// Debounce timer
 	const debounceTimerRef = useRef<number | null>(null);
 
@@ -120,9 +117,6 @@ export function useConfigPersistence<T>({
 	const mutation = useMutation({
 		mutationFn,
 		onSuccess: (_data, newValue) => {
-			// Clear unsaved changes flag (save completed successfully)
-			hasUnsavedChangesRef.current = false;
-
 			// Manually update the recording cache with the new config value
 			queryClient.setQueryData(["recording", recordingId], (old: unknown) => {
 				if (!old || typeof old !== "object") return old;
@@ -140,9 +134,6 @@ export function useConfigPersistence<T>({
 			// Invalidating causes unnecessary refetches
 		},
 		onError: () => {
-			// Also clear flag on error (don't block navigation if save failed)
-			hasUnsavedChangesRef.current = false;
-
 			// Show user-friendly error message
 			const displayName =
 				configKey === "playbackPosition"
@@ -182,40 +173,6 @@ export function useConfigPersistence<T>({
 		// to trigger a save. Let it remain true until the next user-initiated change.
 	}, [fetchedConfig, isLoading, configKey]);
 
-	// Prevent navigation/tab close when there are unsaved changes
-	useEffect(() => {
-		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-			// Only block if there's an active debounce timer (unsaved changes waiting to be sent)
-			if (debounceTimerRef.current) {
-				// Clear the timer and trigger immediate save
-				clearTimeout(debounceTimerRef.current);
-				debounceTimerRef.current = null;
-				// Send save using fetch with keepalive (sendBeacon doesn't support PATCH)
-				const token = getToken();
-				if (token) {
-					fetch(`${API_BASE}/api/recordings/${recordingId}/config`, {
-						method: "PATCH",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${token}`,
-						},
-						body: JSON.stringify({ key: configKey, value: configRef.current }),
-						keepalive: true, // Ensures request completes even if page unloads
-					}).catch(() => {
-						// Ignore errors during unload
-					});
-				}
-
-				// Show browser's native warning dialog
-				e.preventDefault();
-				return "";
-			}
-		};
-
-		window.addEventListener("beforeunload", handleBeforeUnload);
-		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-	}, [getToken, recordingId, configKey]); // Removed mutation.isPending to prevent infinite re-renders
-
 	// Debounced save when config changes
 	useEffect(() => {
 		// Skip save until initial fetch completes (prevents race conditions)
@@ -228,9 +185,6 @@ export function useConfigPersistence<T>({
 			isFirstRenderRef.current = false; // Next change will be a real user edit
 			return;
 		}
-
-		// Mark as having unsaved changes (pending timer)
-		hasUnsavedChangesRef.current = true;
 
 		// Clear existing timer
 		if (debounceTimerRef.current) {
@@ -249,7 +203,7 @@ export function useConfigPersistence<T>({
 		return () => {
 			if (debounceTimerRef.current) {
 				clearTimeout(debounceTimerRef.current);
-				debounceTimerRef.current = null; // Clear ref so beforeunload doesn't fire
+				debounceTimerRef.current = null;
 			}
 		};
 	}, [config, debounceMs, isLoading, mutation]);
