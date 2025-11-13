@@ -152,8 +152,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			resetCompressor,
 			updateReverb,
 			resetReverb,
-			updateSoftClipper,
-			resetSoftClipper,
 			// updateStereoExpander,
 			// resetStereoExpander,
 			compressorGainReduction,
@@ -555,9 +553,6 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 							<MasterVolumeControl
 								volume={masterVolume}
 								onVolumeChange={setMasterVolume}
-								softClipperConfig={effectsConfig.softClipper}
-								onSoftClipperUpdate={updateSoftClipper}
-								onSoftClipperReset={resetSoftClipper}
 							/>
 							<ParametricEqPanel
 								config={effectsConfig.parametricEq}

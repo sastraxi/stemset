@@ -134,4 +134,4 @@ When adding new frontend routes:
 1. Create route file in `src/routes/` (e.g., `src/routes/p/$profileName/clips/$clipId.tsx`)
 2. Regenerate route types: `npm run generate:routes`
 3. TypeScript will now recognize the new route paths
-
+- Use bun for frontend always

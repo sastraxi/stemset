@@ -160,9 +160,6 @@ export type RecordingConfigData = {
   reverb?: {
     [key: string]: unknown;
   } | null;
-  softClipper?: {
-    [key: string]: unknown;
-  } | null;
   stereoExpander?: {
     [key: string]: unknown;
   } | null;

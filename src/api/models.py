@@ -56,7 +56,6 @@ class RecordingConfigData(BaseModel):
     parametricEq: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     compressor: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     reverb: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
-    softClipper: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     stereoExpander: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
 
 

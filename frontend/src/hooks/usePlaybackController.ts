@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { StemAudioNode } from "../types";
 
 export interface UsePlaybackControllerOptions {
@@ -38,7 +38,9 @@ export function usePlaybackController({
 
 	// State - all in playback time [0, duration]
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [currentTime, setCurrentTime] = useState(Math.max(0, Math.min(initialPosition, duration)));
+	const [currentTime, setCurrentTime] = useState(
+		Math.max(0, Math.min(initialPosition, duration)),
+	);
 
 	// Refs
 	const isPlayingRef = useRef(false);

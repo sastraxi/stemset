@@ -92,9 +92,6 @@ export interface UseStemPlayerResult {
 	updateReverb: (changes: Partial<EffectsChainConfig["reverb"]>) => void;
 	setReverbEnabled: (enabled: boolean) => void;
 	resetReverb: () => void;
-	updateSoftClipper: (changes: Partial<EffectsChainConfig["softClipper"]>) => void;
-	setSoftClipperEnabled: (enabled: boolean) => void;
-	resetSoftClipper: () => void;
 	updateStereoExpander: (
 		changes: Partial<EffectsChainConfig["stereoExpander"]>,
 	) => void;
@@ -320,7 +317,7 @@ export function useStemPlayer({
 	}, [stems, stemNodes]);
 
 	// 7. Audio effects (each effect persists its own config independently)
-	const { parametricEq, eq, compressor, reverb, softClipper, stereoExpander } =
+	const { parametricEq, eq, compressor, reverb, stereoExpander } =
 		useAudioEffects({
 			audioContext,
 			masterInput,
@@ -522,7 +519,6 @@ export function useStemPlayer({
 			eq: eq.config,
 			compressor: compressor.config,
 			reverb: reverb.config,
-			softClipper: softClipper.config,
 			stereoExpander: stereoExpander.config,
 		},
 		updateParametricEqBand: parametricEq.updateBand,
@@ -540,9 +536,6 @@ export function useStemPlayer({
 		updateStereoExpander: stereoExpander.update,
 		setStereoExpanderEnabled: stereoExpander.setEnabled,
 		resetStereoExpander: stereoExpander.reset,
-		updateSoftClipper: softClipper.update,
-		setSoftClipperEnabled: softClipper.setEnabled,
-		resetSoftClipper: softClipper.reset,
 		compressorGainReduction: compressor.gainReduction,
 		audioContext,
 		getMasterOutput,
