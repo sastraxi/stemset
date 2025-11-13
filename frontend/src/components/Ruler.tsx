@@ -8,6 +8,7 @@ interface RulerProps {
 	onSeek?: (seconds: number) => void;
 	onPreview?: (seconds: number | null) => void; // Preview callback
 	height?: number; // Optional height, defaults to 48px
+	disableSelection?: boolean; // Disable selection functionality
 }
 
 /**
@@ -27,6 +28,7 @@ export function Ruler({
 	onSeek,
 	onPreview,
 	height = 48,
+	disableSelection,
 }: RulerProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -35,10 +37,12 @@ export function Ruler({
 
 	// Try to use range selection context if available (optional - not all uses of Ruler need it)
 	let rangeSelection = null;
-	try {
-		rangeSelection = useRangeSelection();
-	} catch {
-		// Not wrapped in RangeSelectionProvider - that's fine
+	if (!disableSelection) {
+		try {
+			rangeSelection = useRangeSelection();
+		} catch {
+			// Not wrapped in RangeSelectionProvider - that's fine
+		}
 	}
 
 	// Format time in MM:SS format

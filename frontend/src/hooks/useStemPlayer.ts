@@ -47,7 +47,7 @@ export interface UseStemPlayerResult {
 	// Playback controls
 	play: () => void;
 	pause: () => void;
-	stop: () => void;
+	stop: (seekTime?: number) => void;
 	seek: (seconds: number) => void;
 	formatTime: (seconds: number) => string;
 

@@ -276,6 +276,20 @@
 		rgba(15, 20, 30, 0.3) 100%);
 }
 
+.vcr-button[data-active="true"] {
+	border-color: #4a9eff;
+	background: #4a9eff2f;
+	box-shadow: 0 6px 6px #4a9eff2f;
+	color: #4a9eff;
+}
+
+.vcr-button[data-active="true"]:hover:not(:disabled) {
+	border-color: #69b4ff;
+	background: #4a9eff4f;
+	box-shadow: 0 8px 8px #4a9eff4f;
+	color: #69b4ff;
+}
+
 /* Mobile styling - Match desktop aesthetic */
 @media (max-width: 768px) {
 	/* Mobile VCR - Override spacing only */

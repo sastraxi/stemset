@@ -14,7 +14,7 @@ export interface UsePlaybackControllerResult {
 	currentTime: number;
 	play: () => void;
 	pause: () => void;
-	stop: () => void;
+	stop: (seekTime?: number) => void;
 	seek: (seconds: number) => void;
 	formatTime: (seconds: number) => string;
 }
@@ -164,21 +164,25 @@ export function usePlaybackController({
 		}
 	}, [audioContext, stopAllSources]);
 
-	const stop = useCallback(() => {
-		if (!audioContext) return;
+	const stop = useCallback(
+		(seekTime = 0) => {
+			if (!audioContext) return;
 
-		pausedAtRef.current = 0;
-		setCurrentTime(0);
+			const newPosition = Math.max(0, Math.min(seekTime, duration));
+			pausedAtRef.current = newPosition;
+			setCurrentTime(newPosition);
 
-		isPlayingRef.current = false;
-		setIsPlaying(false);
-		stopAllSources();
+			isPlayingRef.current = false;
+			setIsPlaying(false);
+			stopAllSources();
 
-		if (rafRef.current) {
-			cancelAnimationFrame(rafRef.current);
-			rafRef.current = null;
-		}
-	}, [audioContext, stopAllSources]);
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+		},
+		[audioContext, stopAllSources, duration],
+	);
 
 	const seek = useCallback(
 		(playbackPosition: number) => {

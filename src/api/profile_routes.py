@@ -348,6 +348,11 @@ async def create_clip_endpoint(recording_id: UUID, data: CreateClipRequest) -> C
         if recording is None:
             raise NotFoundException(detail=f"Recording {recording_id} not found")
 
+        # Inherit song_id from recording if not provided in request
+        clip_song_id = UUID(data.song_id) if data.song_id else None
+        if clip_song_id is None and recording.song_id:
+            clip_song_id = recording.song_id
+
         # Create clip
         try:
             clip = await create_clip(
@@ -355,7 +360,7 @@ async def create_clip_endpoint(recording_id: UUID, data: CreateClipRequest) -> C
                 recording_id=recording_id,
                 start_time_sec=data.start_time_sec,
                 end_time_sec=data.end_time_sec,
-                song_id=UUID(data.song_id) if data.song_id else None,
+                song_id=clip_song_id,
                 display_name=data.display_name,
             )
         except ValueError as e:
@@ -381,7 +386,10 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        clip = await get_clip(session, clip_id)
+        stmt = select(Clip).where(Clip.id == clip_id).options(selectinload(Clip.song))
+        result = await session.exec(stmt)
+        clip = result.first()
+
         if clip is None:
             raise NotFoundException(detail=f"Clip {clip_id} not found")
 
@@ -435,11 +443,7 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             id=str(clip.id),
             recording_id=str(clip.recording_id),
             song_id=str(clip.song_id) if clip.song_id else None,
-            song=(
-                SongMetadata(id=str(recording.song.id), name=recording.song.name)
-                if recording.song
-                else None
-            ),
+            song=(SongMetadata(id=str(clip.song.id), name=clip.song.name) if clip.song else None),
             start_time_sec=clip.start_time_sec,
             end_time_sec=clip.end_time_sec,
             display_name=clip.display_name,

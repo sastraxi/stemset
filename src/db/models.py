@@ -143,7 +143,7 @@ class Song(SQLModel, table=True):
     recordings: list["Recording"] = Relationship(
         back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
     )
-    clips: list["Clip"] = Relationship(sa_relationship_kwargs={"lazy": "noload"})
+    clips: list["Clip"] = Relationship(back_populates="song", sa_relationship_kwargs={"lazy": "noload"})
 
     # Unique constraint on (profile_id, name)
     __table_args__ = (sa.UniqueConstraint("profile_id", "name", name="uq_profile_song_name"),)
@@ -240,7 +240,7 @@ class Clip(SQLModel, table=True):
     recording: "Recording" = Relationship(
         back_populates="clips", sa_relationship_kwargs={"lazy": "noload"}
     )
-    song: Song | None = Relationship(sa_relationship_kwargs={"lazy": "noload", "overlaps": "clips"})
+    song: Song | None = Relationship(back_populates="clips", sa_relationship_kwargs={"lazy": "noload"})
 
     # Constraint: end_time_sec must be greater than start_time_sec
     __table_args__ = (

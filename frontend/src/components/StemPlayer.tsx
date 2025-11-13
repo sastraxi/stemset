@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import type { StemResponse } from "@/api/generated";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
+import type { RangeSelection } from "../contexts/RangeSelectionContext";
 import { useAudioSession } from "../hooks/useAudioSession";
 import { useClipDetector } from "../hooks/useClipDetector";
 import { useMediaSession } from "../hooks/useMediaSession";
@@ -55,10 +56,17 @@ interface StemPlayerProps {
 	startTimeSec?: number; // Clip start time (optional)
 	endTimeSec?: number; // Clip end time (optional)
 	disablePositionPersistence?: boolean; // Don't persist playback position (for clips)
+	isLooping?: boolean;
+	onToggleLoop?: () => void;
+	hasSelection?: boolean;
+	disableSelection?: boolean;
+	selection?: RangeSelection | null;
 }
 
 export interface StemPlayerHandle {
 	focus: () => void;
+	seek: (time: number) => void;
+	pause: () => void;
 }
 
 /** Simplified StemPlayer using `useStemPlayer` hook.
@@ -79,6 +87,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			startTimeSec,
 			endTimeSec,
 			disablePositionPersistence,
+			isLooping,
+			onToggleLoop,
+			hasSelection,
+			disableSelection,
+			selection,
 		},
 		ref,
 	) => {
@@ -91,6 +104,12 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 		useImperativeHandle(ref, () => ({
 			focus: () => {
 				playerRef.current?.focus();
+			},
+			seek: (time: number) => {
+				seek(time);
+			},
+			pause: () => {
+				handlePause();
 			},
 		}));
 
@@ -200,6 +219,11 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			}
 		}, [pause]);
 
+		const handleStop = useCallback(() => {
+			const seekTime = selection?.startSec ?? 0;
+			stop(seekTime);
+		}, [stop, selection]);
+
 		const handleNextTrack = useCallback(() => {
 			console.log("Next track not implemented");
 		}, []);
@@ -261,14 +285,14 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					case "Digit0":
 					case "Numpad0":
 						e.preventDefault();
-						stop();
+						handleStop();
 						break;
 				}
 			};
 
 			window.addEventListener("keydown", handleKeyDown);
 			return () => window.removeEventListener("keydown", handleKeyDown);
-		}, [isPlaying, play, pause, stop]);
+		}, [isPlaying, play, pause, handleStop]);
 
 		const containerRef = useRef<HTMLDivElement>(null);
 
@@ -351,10 +375,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			isPlaying,
 			onPlay: handlePlay,
 			onPause: handlePause,
-			onStop: stop,
+			onStop: handleStop,
 			disabled: stemOrder.length === 0 || isLoading,
 			vuMeterLevels,
 			clipDetector,
+			isLooping,
+			onToggleLoop,
+			hasSelection,
 		};
 
 		// Render VCR portals (always render, even during loading)
@@ -416,6 +443,7 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 									onSeek={seek}
 									onPreview={setPreviewTime}
 									height={48}
+									disableSelection={disableSelection}
 								/>
 							</div>
 

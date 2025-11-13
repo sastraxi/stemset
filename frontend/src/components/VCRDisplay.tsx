@@ -1,4 +1,4 @@
-import { Pause, Play, Square } from "lucide-react";
+import { Pause, Play, Repeat, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { VuMeter } from "./VuMeter";
 import type { VuMeterLevels } from "../hooks/useVuMeter";
@@ -17,6 +17,8 @@ interface VCRDisplayProps {
 	disabled?: boolean;
 	vuMeterLevels: VuMeterLevels;
 	clipDetector?: ClipDetectorState;
+	isLooping?: boolean;
+	onToggleLoop?: () => void;
 }
 
 export function VCRDisplay({
@@ -32,6 +34,8 @@ export function VCRDisplay({
 	disabled = false,
 	vuMeterLevels,
 	clipDetector,
+	isLooping,
+	onToggleLoop,
 }: VCRDisplayProps) {
 	return (
 		<div className="vcr-display">
@@ -75,6 +79,21 @@ export function VCRDisplay({
 					>
 						⏹
 					</Button>
+					{onToggleLoop && (
+						<Button
+							type="button"
+							onClick={onToggleLoop}
+							title={isLooping ? "Disable Loop" : "Enable Loop"}
+							className="vcr-button"
+							variant="outline"
+							data-active={isLooping}
+						>
+							<Repeat
+								className="h-4 w-4"
+								color={isLooping ? "hsl(var(--primary))" : "currentColor"}
+							/>
+						</Button>
+					)}
 				</div>
 			</div>
 
