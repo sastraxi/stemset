@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type {
 	CompressorConfig,
 	EqConfig,
@@ -63,30 +63,16 @@ export function useAudioEffects({
 	masterOutput,
 	recordingId,
 }: UseAudioEffectsOptions): UseAudioEffectsResult {
-	const parametricEq = useParametricEqEffect({
-		audioContext,
-		recordingId,
-	});
+	const effectOptions = useMemo(
+		() => ({ audioContext, recordingId }),
+		[audioContext, recordingId],
+	);
 
-	const eq = useEqEffect({
-		audioContext,
-		recordingId,
-	});
-
-	const stereoExpander = useStereoExpanderEffect({
-		audioContext,
-		recordingId,
-	});
-
-	const reverb = useReverbEffect({
-		audioContext,
-		recordingId,
-	});
-
-	const compressor = useCompressorEffect({
-		audioContext,
-		recordingId,
-	});
+	const parametricEq = useParametricEqEffect(effectOptions);
+	const eq = useEqEffect(effectOptions);
+	const stereoExpander = useStereoExpanderEffect(effectOptions);
+	const reverb = useReverbEffect(effectOptions);
+	const compressor = useCompressorEffect(effectOptions);
 
 	const allEffects = [parametricEq, eq, stereoExpander, reverb, compressor];
 

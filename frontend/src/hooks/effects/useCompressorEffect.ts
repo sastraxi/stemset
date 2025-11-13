@@ -27,6 +27,13 @@ export const DEFAULT_COMPRESSOR_CONFIG: CompressorConfig = {
 	enabled: false,
 };
 
+/**
+ * This hook is refactored to use a double-loop pattern to avoid re-render cycles:
+ * 1. The AudioWorklet's `onmessage` handler receives high-frequency gain reduction
+ *    updates and stores them in a `useRef`, avoiding state changes.
+ * 2. A `requestAnimationFrame` loop runs at the display refresh rate to update React state
+ *    from the ref, ensuring smooth UI updates without triggering re-renders on every message.
+ */
 export function useCompressorEffect({
 	audioContext,
 	recordingId,
@@ -43,9 +50,13 @@ export function useCompressorEffect({
 	const workletNodeRef = useRef<AudioWorkletNode | null>(null);
 	const workletLoadedRef = useRef(false);
 	const [gainReduction, setGainReduction] = useState(0);
+	const gainReductionRef = useRef(0);
+	const rafRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (!audioContext || workletLoadedRef.current) return;
+
+		let node: AudioWorkletNode | null = null;
 
 		async function loadWorklet() {
 			try {
@@ -56,7 +67,7 @@ export function useCompressorEffect({
 				await audioContext.audioWorklet.addModule("/limiter-processor.js");
 				workletLoadedRef.current = true;
 
-				const node = new AudioWorkletNode(
+				node = new AudioWorkletNode(
 					audioContext,
 					"master-limiter-processor",
 					{ outputChannelCount: [2] },
@@ -64,7 +75,8 @@ export function useCompressorEffect({
 
 				node.port.onmessage = (event) => {
 					if (event.data.type === "gainReduction") {
-						setGainReduction(event.data.value);
+						// Update ref, not state
+						gainReductionRef.current = event.data.value;
 					}
 				};
 
@@ -75,35 +87,46 @@ export function useCompressorEffect({
 					"[useCompressorEffect] Failed to load AudioWorklet:",
 					error,
 				);
-				console.error(
-					"[useCompressorEffect] AudioContext state:",
-					audioContext?.state,
-				);
-				console.error(
-					"[useCompressorEffect] AudioContext sample rate:",
-					audioContext?.sampleRate,
-				);
-				console.error(
-					"[useCompressorEffect] Worklet loaded ref:",
-					workletLoadedRef.current,
-				);
-				console.error("[useCompressorEffect] Error details:", {
-					name: error instanceof Error ? error.name : "Unknown",
-					message: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : "No stack trace",
-				});
 			}
 		}
 
 		loadWorklet();
 
 		return () => {
-			workletNodeRef.current?.port.close();
-			workletNodeRef.current?.disconnect();
+			node?.port.close();
+			node?.disconnect();
 			setIsReady(false);
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [audioContext]);
+
+	// Render loop (requestAnimationFrame) to update state from ref
+	useEffect(() => {
+		if (!config.enabled) {
+			setGainReduction(0);
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+			return;
+		}
+
+		const render = () => {
+			if (gainReductionRef.current !== gainReduction) {
+				setGainReduction(gainReductionRef.current);
+			}
+			rafRef.current = requestAnimationFrame(render);
+		};
+
+		rafRef.current = requestAnimationFrame(render);
+
+		return () => {
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+		};
+	}, [config.enabled, gainReduction]);
 
 	useEffect(() => {
 		if (!audioContext || !isReady || !workletNodeRef.current) return;

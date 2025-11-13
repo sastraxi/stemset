@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface ClipDetectorState {
 	leftClipping: boolean;
@@ -14,13 +14,19 @@ interface ClipDetectorOptions {
 	clipThreshold?: number;
 	/** How long to hold the clip indicator in milliseconds (default: 2000) */
 	clipHoldTime?: number;
-	/** Update interval in milliseconds (default: 16ms ~= 60fps) */
-	updateInterval?: number;
+	/** Update interval in milliseconds (default: 50ms) */
+	processingInterval?: number;
 }
 
 /**
  * Hook to detect audio clipping with sample-accurate peak detection.
  * Monitors stereo audio from master output and tracks peak levels and clipping events.
+ *
+ * This hook is refactored to use a double-loop pattern to avoid re-render cycles:
+ * 1. A `setInterval` loop runs at a lower frequency to perform the expensive audio analysis
+ *    and updates values stored in `useRef`s, avoiding state changes.
+ * 2. A `requestAnimationFrame` loop runs at the display refresh rate to update React state
+ *    from the refs, ensuring smooth UI updates without triggering the analysis loop.
  */
 export function useClipDetector(
 	masterOutputNode: GainNode | null,
@@ -31,7 +37,7 @@ export function useClipDetector(
 	const {
 		clipThreshold = 0.99,
 		clipHoldTime = 2000,
-		updateInterval = 16,
+		processingInterval = 50, // Slower interval for analysis
 	} = options;
 
 	const [leftClipping, setLeftClipping] = useState(false);
@@ -40,79 +46,76 @@ export function useClipDetector(
 	const [rightPeak, setRightPeak] = useState(0);
 	const [clipCount, setClipCount] = useState(0);
 
+	// Refs for audio nodes and data arrays
 	const splitterRef = useRef<ChannelSplitterNode | null>(null);
 	const analyserLeftRef = useRef<AnalyserNode | null>(null);
 	const analyserRightRef = useRef<AnalyserNode | null>(null);
 	const dataArrayLeftRef = useRef<Float32Array | null>(null);
 	const dataArrayRightRef = useRef<Float32Array | null>(null);
 
-	const leftClipTimeRef = useRef<number>(0);
-	const rightClipTimeRef = useRef<number>(0);
-	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	// Refs to hold the latest analysis data, updated by the processing loop
+	const analysisData = useRef({
+		leftPeak: 0,
+		rightPeak: 0,
+		leftClipping: false,
+		rightClipping: false,
+		clipCount: 0,
+		leftClipTime: 0,
+		rightClipTime: 0,
+	});
 
-	// Create analyzer nodes when audio context and master output are available
+	// Refs for managing loops
+	const processingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	const rafRef = useRef<number | null>(null);
+
+	// Create analyzer nodes
 	useEffect(() => {
-		if (!audioContext || !masterOutputNode) {
-			return;
-		}
+		if (!audioContext || !masterOutputNode) return;
 
-		// Create channel splitter to separate L/R
 		const splitter = audioContext.createChannelSplitter(2);
-		splitterRef.current = splitter;
-
-		// Create analyzer for left channel
 		const analyserLeft = audioContext.createAnalyser();
-		analyserLeft.fftSize = 2048; // Larger buffer for accurate peak detection
-		analyserLeft.smoothingTimeConstant = 0; // No smoothing - we want true peaks
-		analyserLeft.minDecibels = -90;
-		analyserLeft.maxDecibels = 0;
-		analyserLeftRef.current = analyserLeft;
-		dataArrayLeftRef.current = new Float32Array(analyserLeft.fftSize);
-
-		// Create analyzer for right channel
+		analyserLeft.fftSize = 2048;
+		analyserLeft.smoothingTimeConstant = 0;
 		const analyserRight = audioContext.createAnalyser();
 		analyserRight.fftSize = 2048;
 		analyserRight.smoothingTimeConstant = 0;
-		analyserRight.minDecibels = -90;
-		analyserRight.maxDecibels = 0;
+
+		masterOutputNode.connect(splitter);
+		splitter.connect(analyserLeft, 0);
+		splitter.connect(analyserRight, 1);
+
+		splitterRef.current = splitter;
+		analyserLeftRef.current = analyserLeft;
 		analyserRightRef.current = analyserRight;
+		dataArrayLeftRef.current = new Float32Array(analyserLeft.fftSize);
 		dataArrayRightRef.current = new Float32Array(analyserRight.fftSize);
 
-		// Connect: masterOutput → splitter → analyzers
-		masterOutputNode.connect(splitter);
-		splitter.connect(analyserLeft, 0); // Left channel
-		splitter.connect(analyserRight, 1); // Right channel
-
 		return () => {
-			// Cleanup
 			masterOutputNode.disconnect(splitter);
 			splitter.disconnect();
-			analyserLeftRef.current = null;
-			analyserRightRef.current = null;
-			splitterRef.current = null;
-			dataArrayLeftRef.current = null;
-			dataArrayRightRef.current = null;
 		};
 	}, [audioContext, masterOutputNode]);
 
-	// Interval loop to update peak levels and detect clipping
+	// Processing loop (setInterval) - performs analysis, updates refs
 	useEffect(() => {
-		if (!isPlaying || !analyserLeftRef.current || !analyserRightRef.current) {
-			// Reset peaks when not playing
-			setLeftPeak(0);
-			setRightPeak(0);
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
+		if (!isPlaying) {
+			if (processingIntervalRef.current) {
+				clearInterval(processingIntervalRef.current);
+				processingIntervalRef.current = null;
 			}
 			return;
 		}
 
-		const updatePeaks = () => {
-			if (!analyserLeftRef.current || !analyserRightRef.current) return;
-			if (!dataArrayLeftRef.current || !dataArrayRightRef.current) return;
+		const processAudio = () => {
+			if (
+				!analyserLeftRef.current ||
+				!analyserRightRef.current ||
+				!dataArrayLeftRef.current ||
+				!dataArrayRightRef.current
+			) {
+				return;
+			}
 
-			// Get time domain data (raw waveform samples in Float32)
 			analyserLeftRef.current.getFloatTimeDomainData(
 				dataArrayLeftRef.current as Float32Array<ArrayBuffer>,
 			);
@@ -120,77 +123,116 @@ export function useClipDetector(
 				dataArrayRightRef.current as Float32Array<ArrayBuffer>,
 			);
 
-			// Find peak values (sample-accurate)
-			const findPeak = (data: Float32Array): number => {
+			const findPeak = (data: Float32Array) => {
 				let peak = 0;
 				for (let i = 0; i < data.length; i++) {
 					const abs = Math.abs(data[i]);
-					if (abs > peak) {
-						peak = abs;
-					}
+					if (abs > peak) peak = abs;
 				}
 				return peak;
 			};
 
 			const currentLeftPeak = findPeak(dataArrayLeftRef.current);
 			const currentRightPeak = findPeak(dataArrayRightRef.current);
-
-			setLeftPeak(currentLeftPeak);
-			setRightPeak(currentRightPeak);
-
-			// Detect clipping
 			const now = Date.now();
 
+			analysisData.current.leftPeak = currentLeftPeak;
+			analysisData.current.rightPeak = currentRightPeak;
+
 			if (currentLeftPeak >= clipThreshold) {
-				if (!leftClipping) {
-					setLeftClipping(true);
-					setClipCount((prev) => prev + 1);
+				if (!analysisData.current.leftClipping) {
+					analysisData.current.leftClipping = true;
+					analysisData.current.clipCount++;
 				}
-				leftClipTimeRef.current = now;
+				analysisData.current.leftClipTime = now;
 			}
 
 			if (currentRightPeak >= clipThreshold) {
-				if (!rightClipping) {
-					setRightClipping(true);
-					setClipCount((prev) => prev + 1);
+				if (!analysisData.current.rightClipping) {
+					analysisData.current.rightClipping = true;
+					analysisData.current.clipCount++;
 				}
-				rightClipTimeRef.current = now;
+				analysisData.current.rightClipTime = now;
 			}
 
-			// Clear clipping indicators after hold time
-			if (leftClipping && now - leftClipTimeRef.current > clipHoldTime) {
-				setLeftClipping(false);
+			if (
+				analysisData.current.leftClipping &&
+				now - analysisData.current.leftClipTime > clipHoldTime
+			) {
+				analysisData.current.leftClipping = false;
 			}
 
-			if (rightClipping && now - rightClipTimeRef.current > clipHoldTime) {
-				setRightClipping(false);
+			if (
+				analysisData.current.rightClipping &&
+				now - analysisData.current.rightClipTime > clipHoldTime
+			) {
+				analysisData.current.rightClipping = false;
 			}
 		};
 
-		intervalRef.current = setInterval(updatePeaks, updateInterval);
+		processingIntervalRef.current = setInterval(
+			processAudio,
+			processingInterval,
+		);
 
 		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
+			if (processingIntervalRef.current) {
+				clearInterval(processingIntervalRef.current);
+				processingIntervalRef.current = null;
 			}
 		};
-	}, [
-		isPlaying,
-		clipThreshold,
-		clipHoldTime,
-		updateInterval,
-	]);
+	}, [isPlaying, processingInterval, clipThreshold, clipHoldTime]);
 
-	const reset = () => {
-		setLeftClipping(false);
-		setRightClipping(false);
+	// Render loop (requestAnimationFrame) - updates state from refs
+	useEffect(() => {
+		if (!isPlaying) {
+			// When playback stops, do one final update to reset peaks to 0
+			setLeftPeak(0);
+			setRightPeak(0);
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+			return;
+		}
+
+		const render = () => {
+			setLeftPeak(analysisData.current.leftPeak);
+			setRightPeak(analysisData.current.rightPeak);
+			setLeftClipping(analysisData.current.leftClipping);
+			setRightClipping(analysisData.current.rightClipping);
+			setClipCount(analysisData.current.clipCount);
+
+			rafRef.current = requestAnimationFrame(render);
+		};
+
+		rafRef.current = requestAnimationFrame(render);
+
+		return () => {
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+		};
+	}, [isPlaying]);
+
+	const reset = useCallback(() => {
+		analysisData.current = {
+			leftPeak: 0,
+			rightPeak: 0,
+			leftClipping: false,
+			rightClipping: false,
+			clipCount: 0,
+			leftClipTime: 0,
+			rightClipTime: 0,
+		};
+		// Immediately update state
 		setLeftPeak(0);
 		setRightPeak(0);
+		setLeftClipping(false);
+		setRightClipping(false);
 		setClipCount(0);
-		leftClipTimeRef.current = 0;
-		rightClipTimeRef.current = 0;
-	};
+	}, []);
 
 	return {
 		leftClipping,

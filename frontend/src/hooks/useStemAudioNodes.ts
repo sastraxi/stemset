@@ -158,7 +158,7 @@ export function useStemAudioNodes({
 				}
 			});
 		};
-	}, [audioContext, masterInput, stems]);
+	}, [audioContext, masterInput, stems.size]);
 
 	return { stemNodes };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StemAudioNode } from "../types";
 
 export interface UsePlaybackControllerOptions {
@@ -20,12 +20,11 @@ export interface UsePlaybackControllerResult {
 }
 
 /**
- * Unified playback controller for both recordings and clips.
- *
- * Key principle: Single timebase - everything is in "playback time" [0, duration].
- * - For recordings: duration = full file, offset = 0
- * - For clips: duration = endTime - startTime, offset = startTime (applied at audio source)
- * - NO time conversions anywhere - Web Audio API handles the offset
+ * This hook is refactored to use a double-loop pattern to avoid re-render cycles:
+ * 1. A `requestAnimationFrame` loop runs at the display refresh rate for accurate timekeeping,
+ *    updating the current time in a `useRef` to avoid state changes.
+ * 2. A `setInterval` loop runs at a slower frequency to update React state from the ref,
+ *    ensuring smooth UI updates without triggering re-renders on every frame.
  */
 export function usePlaybackController({
 	audioContext,
@@ -34,20 +33,21 @@ export function usePlaybackController({
 	initialPosition = 0,
 	startTimeSec = 0,
 }: UsePlaybackControllerOptions): UsePlaybackControllerResult {
-	const audioOffset = startTimeSec; // Offset applied to audio sources
+	const audioOffset = startTimeSec;
 
-	// State - all in playback time [0, duration]
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(
 		Math.max(0, Math.min(initialPosition, duration)),
 	);
 
-	// Refs
 	const isPlayingRef = useRef(false);
-	const pausedAtRef = useRef(Math.max(0, Math.min(initialPosition, duration)));
 	const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
 	const startTimeRef = useRef<number>(0);
+	const currentTimeRef = useRef(
+		Math.max(0, Math.min(initialPosition, duration)),
+	);
 	const rafRef = useRef<number | null>(null);
+	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const playbackGenRef = useRef<number>(0);
 
 	const stopAllSources = useCallback(() => {
@@ -66,70 +66,47 @@ export function usePlaybackController({
 			if (!audioContext) return;
 
 			stopAllSources();
-
-			// Increment generation to invalidate old RAF loops
 			const thisPlaybackGen = ++playbackGenRef.current;
 
-			// Create and start audio sources
-			let allSourcesEnded = false;
 			stemNodes.forEach((node, name) => {
 				const src = audioContext.createBufferSource();
 				src.buffer = node.buffer;
 				src.connect(node.gainNode);
-
-				// Handle natural end
 				src.onended = () => {
 					if (playbackGenRef.current !== thisPlaybackGen) return;
 					sourcesRef.current.delete(name);
-					if (sourcesRef.current.size === 0 && !allSourcesEnded) {
-						allSourcesEnded = true;
+					if (sourcesRef.current.size === 0) {
 						setIsPlaying(false);
 						isPlayingRef.current = false;
-						pausedAtRef.current = 0;
+						currentTimeRef.current = 0;
 						setCurrentTime(0);
 					}
 				};
-
-				// Start at offset position in buffer
 				const audioPosition = playbackPosition + audioOffset;
 				src.start(0, audioPosition);
 				sourcesRef.current.set(name, src);
 			});
 
-			// Track when playback started
 			startTimeRef.current = audioContext.currentTime - playbackPosition;
 
-			// RAF loop to update currentTime
-			if (rafRef.current) {
-				cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
 			const tick = () => {
-				// Double-check generation to prevent stale loops
-				if (playbackGenRef.current !== thisPlaybackGen) return;
-				if (!isPlayingRef.current) return;
+				if (playbackGenRef.current !== thisPlaybackGen || !isPlayingRef.current)
+					return;
 
 				const elapsed = audioContext.currentTime - startTimeRef.current;
-
-				// Stop at end
 				if (elapsed >= duration) {
 					setIsPlaying(false);
 					isPlayingRef.current = false;
-					pausedAtRef.current = 0;
-					stopAllSources();
+					currentTimeRef.current = 0;
 					setCurrentTime(0);
+					stopAllSources();
 					return;
 				}
-
-				setCurrentTime(elapsed);
-
-				// Only schedule next frame if still the current generation
-				if (playbackGenRef.current === thisPlaybackGen) {
-					rafRef.current = requestAnimationFrame(tick);
-				}
+				currentTimeRef.current = elapsed;
+				rafRef.current = requestAnimationFrame(tick);
 			};
-
 			rafRef.current = requestAnimationFrame(tick);
 		},
 		[audioContext, stemNodes, duration, audioOffset, stopAllSources],
@@ -137,31 +114,26 @@ export function usePlaybackController({
 
 	const play = useCallback(() => {
 		if (isPlayingRef.current || !audioContext || stemNodes.size === 0) return;
-
-		if (audioContext.state === "suspended") {
-			audioContext.resume();
-		}
+		if (audioContext.state === "suspended") audioContext.resume();
 
 		setIsPlaying(true);
 		isPlayingRef.current = true;
-		startSources(pausedAtRef.current);
+		startSources(currentTimeRef.current);
 	}, [audioContext, stemNodes.size, startSources]);
 
 	const pause = useCallback(() => {
 		if (!isPlayingRef.current || !audioContext) return;
 
 		const currentPosition = audioContext.currentTime - startTimeRef.current;
-		pausedAtRef.current = currentPosition;
+		currentTimeRef.current = currentPosition;
 		setCurrentTime(currentPosition);
 
 		isPlayingRef.current = false;
 		setIsPlaying(false);
 		stopAllSources();
 
-		if (rafRef.current) {
-			cancelAnimationFrame(rafRef.current);
-			rafRef.current = null;
-		}
+		if (rafRef.current) cancelAnimationFrame(rafRef.current);
+		if (intervalRef.current) clearInterval(intervalRef.current);
 	}, [audioContext, stopAllSources]);
 
 	const stop = useCallback(
@@ -169,17 +141,15 @@ export function usePlaybackController({
 			if (!audioContext) return;
 
 			const newPosition = Math.max(0, Math.min(seekTime, duration));
-			pausedAtRef.current = newPosition;
+			currentTimeRef.current = newPosition;
 			setCurrentTime(newPosition);
 
 			isPlayingRef.current = false;
 			setIsPlaying(false);
 			stopAllSources();
 
-			if (rafRef.current) {
-				cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+			if (intervalRef.current) clearInterval(intervalRef.current);
 		},
 		[audioContext, stopAllSources, duration],
 	);
@@ -187,20 +157,34 @@ export function usePlaybackController({
 	const seek = useCallback(
 		(playbackPosition: number) => {
 			const clamped = Math.max(0, Math.min(playbackPosition, duration));
-			pausedAtRef.current = clamped;
+			currentTimeRef.current = clamped;
 			setCurrentTime(clamped);
 
 			if (isPlayingRef.current && audioContext) {
 				stopAllSources();
-				if (rafRef.current) {
-					cancelAnimationFrame(rafRef.current);
-					rafRef.current = null;
-				}
+				if (rafRef.current) cancelAnimationFrame(rafRef.current);
 				startSources(clamped);
 			}
 		},
 		[duration, audioContext, stopAllSources, startSources],
 	);
+
+	// State update loop (setInterval)
+	useEffect(() => {
+		if (!isPlaying) {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+			return;
+		}
+		intervalRef.current = setInterval(() => {
+			if (currentTime !== currentTimeRef.current) {
+				setCurrentTime(currentTimeRef.current);
+			}
+		}, 50); // ~20fps state updates
+
+		return () => {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+		};
+	}, [isPlaying, currentTime]);
 
 	const formatTime = useCallback((seconds: number) => {
 		const mins = Math.floor(seconds / 60);
@@ -208,13 +192,5 @@ export function usePlaybackController({
 		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	}, []);
 
-	return {
-		isPlaying,
-		currentTime,
-		play,
-		pause,
-		stop,
-		seek,
-		formatTime,
-	};
+	return { isPlaying, currentTime, play, pause, stop, seek, formatTime };
 }

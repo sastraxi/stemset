@@ -4,6 +4,7 @@ import {
 	useCallback,
 	useEffect,
 	useImperativeHandle,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -195,11 +196,13 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 			isPlaying,
 		);
 
+		const clipDetectorOptions = useMemo(() => ({}), []);
 		// Clip detector for master output
 		const clipDetector = useClipDetector(
 			audioContext ? getMasterOutput() : null,
 			audioContext,
 			isPlaying,
+			clipDetectorOptions,
 		);
 
 		const handlePlay = useCallback(() => {
