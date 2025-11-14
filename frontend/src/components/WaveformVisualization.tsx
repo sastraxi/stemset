@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { getToken } from "../lib/storage";
+import { loadWaveformImage } from "../lib/player/canvas/imageLoader";
+import {
+	calculateClipBounds,
+	drawCursor,
+	drawRangeSelection,
+	drawTimeGrid,
+} from "../lib/player/canvas/waveformUtils";
 import { useRangeSelection } from "../contexts/RangeSelectionContext";
 
 interface WaveformVisualizationProps {
@@ -23,9 +29,6 @@ const STEM_COLORS: Record<string, string> = {
 	bass: "#48dbfb", // Cyan
 	other: "#a29bfe", // Purple
 };
-
-/** Consistent cursor color for all tracks */
-const CURSOR_COLOR = "#ffffff";
 
 /**
  * WaveformVisualization - Renders a clickable waveform display with playback position indicator
@@ -75,67 +78,21 @@ export function WaveformVisualization({
 		}
 
 		setIsImageLoaded(false);
-		let objectUrl: string | null = null;
 
-		const loadImage = async () => {
-			try {
-				// Only add auth headers for local /media URLs
-				// Presigned R2 URLs have auth in the URL itself
-				const isLocalMedia = waveformUrl.startsWith("/media");
-				const headers: HeadersInit = {};
-				if (isLocalMedia) {
-					const token = getToken();
-					if (token) {
-						headers.Authorization = `Bearer ${token}`;
-					}
-				}
-
-				const response = await fetch(waveformUrl, {
-					headers,
-					cache: "default", // Allow browser caching
-				});
-				if (!response.ok) {
-					throw new Error(`Failed to fetch waveform: ${response.status}`);
-				}
-
-				const blob = await response.blob();
-				objectUrl = URL.createObjectURL(blob);
-
-				// Load into Image element
-				const img = new Image();
-				img.onload = () => {
-					imageRef.current = img;
-					setIsImageLoaded(true);
-				};
-				img.onerror = (e) => {
-					console.error(
-						`[WaveformVisualization:${stemName}] Failed to load waveform image`,
-						waveformUrl,
-						e,
-					);
-					imageRef.current = null;
-					setIsImageLoaded(false);
-				};
-				img.src = objectUrl;
-			} catch (error) {
+		loadWaveformImage(waveformUrl)
+			.then((img) => {
+				imageRef.current = img;
+				setIsImageLoaded(true);
+			})
+			.catch((error) => {
 				console.error(
-					`[WaveformVisualization:${stemName}] Failed to fetch waveform`,
+					`[WaveformVisualization:${stemName}] Failed to load waveform`,
 					waveformUrl,
 					error,
 				);
 				imageRef.current = null;
 				setIsImageLoaded(false);
-			}
-		};
-
-		loadImage();
-
-		// Cleanup blob URL when component unmounts or URL changes
-		return () => {
-			if (objectUrl) {
-				URL.revokeObjectURL(objectUrl);
-			}
-		};
+			});
 	}, [waveformUrl, stemName]);
 
 	// Render waveform with dual-tone coloring (greyscale left, vibrant right)
@@ -170,20 +127,15 @@ export function WaveformVisualization({
 		const cursorX = progress * canvas.width;
 
 		const stemColor = STEM_COLORS[stemName] || "#4a9eff";
-		const cursorColor = CURSOR_COLOR;
 
 		// Calculate clip bounds for rendering
-		const isClip = startTimeSec !== undefined && endTimeSec !== undefined && fullDuration !== undefined;
-		const clipStart = isClip ? startTimeSec : 0;
-		const clipEnd = isClip ? endTimeSec : fullDuration || duration;
-		const clipDuration = clipEnd - clipStart;
-		const totalDuration = fullDuration || duration;
-
-		// Source rectangle in the waveform image (what portion to draw)
-		const srcX = isClip ? (clipStart / totalDuration) * img.width : 0;
-		const srcWidth = isClip ? (clipDuration / totalDuration) * img.width : img.width;
-		const srcY = 0;
-		const srcHeight = img.height;
+		const { srcX, srcWidth, srcY, srcHeight } = calculateClipBounds(
+			img,
+			startTimeSec,
+			endTimeSec,
+			fullDuration,
+			duration,
+		);
 
 		// LEFT SIDE: Played portion (dark greyscale)
 		ctx.save();
@@ -219,111 +171,16 @@ export function WaveformVisualization({
 		ctx.restore();
 
 		// TIME GRID: Vertical lines for time navigation (DRAWN BEHIND WAVEFORM using destination-over)
-		if (duration > 0) {
-			ctx.globalCompositeOperation = "destination-over";
-
-			// Helper function to draw vertical grid line
-			const drawGridLine = (
-				timeSeconds: number,
-				opacity: number,
-				lineWidth: number = 1,
-				dotted: boolean = false,
-			) => {
-				const x = Math.round((timeSeconds / duration) * canvas.width);
-				if (x >= 0 && x <= canvas.width) {
-					ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-					ctx.lineWidth = lineWidth * dpr;
-
-					// Set dash pattern for dotted lines
-					if (dotted) {
-						ctx.setLineDash([3 * dpr, 3 * dpr]); // 3px dashes with 3px gaps
-					} else {
-						ctx.setLineDash([]); // Solid line
-					}
-
-					ctx.beginPath();
-					ctx.moveTo(x, 0);
-					ctx.lineTo(x, canvas.height);
-					ctx.stroke();
-				}
-			};
-
-			// Draw time grid lines
-			for (let time = 0; time <= duration; time += 15) {
-				if (time % 60 === 0) {
-					// Every minute - solid line with 20% opacity
-					drawGridLine(time, 0.15, 1, false);
-				} else if (time % 30 === 0) {
-					// Every 30 seconds - solid line with 12% opacity
-					drawGridLine(time, 0.12, 1, false);
-				} else {
-					// Every 15 seconds - dotted line with 10% opacity
-					drawGridLine(time, 0.1, 1, true);
-				}
-			}
-		}
+		ctx.globalCompositeOperation = "destination-over";
+		drawTimeGrid(ctx, canvas, duration, dpr);
 
 		// CURSOR: Vertical line at playback position
-		if (duration > 0) {
-			ctx.globalCompositeOperation = "source-over";
-
-			// Vertical line with consistent white color
-			const cursorXRounded = Math.round(cursorX);
-			ctx.strokeStyle = cursorColor;
-			ctx.lineWidth = 2 * dpr;
-			ctx.setLineDash([3 * dpr, 3 * dpr]); // Make the cursor dashed
-			ctx.beginPath();
-			ctx.moveTo(cursorXRounded, 0);
-			ctx.lineTo(cursorXRounded, canvas.height);
-			ctx.stroke();
-			ctx.setLineDash([]); // Reset line dash after drawing the cursor
-		}
+		ctx.globalCompositeOperation = "source-over";
+		drawCursor(ctx, canvas, cursorX, dpr);
 
 		// RANGE SELECTION: Highlight selected region and dim outside regions
-		if (rangeSelection && duration > 0) {
-			const { selection } = rangeSelection;
-			const { startSec, endSec } = selection;
-
-			if (startSec !== null && endSec !== null) {
-				const startX = (startSec / duration) * canvas.width;
-				const endX = (endSec / duration) * canvas.width;
-
-				// Dim regions outside the selection
-				ctx.globalCompositeOperation = "source-over";
-				ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // 60% black overlay
-
-				// Dim left of selection
-				if (startX > 0) {
-					ctx.fillRect(0, 0, startX, canvas.height);
-				}
-
-				// Dim right of selection
-				if (endX < canvas.width) {
-					ctx.fillRect(endX, 0, canvas.width - endX, canvas.height);
-				}
-
-				// Highlight the selected region with subtle blue tint
-				const regionWidth = endX - startX;
-				ctx.fillStyle = "rgba(59, 130, 246, 0.15)"; // Blue, 15% opacity
-				ctx.fillRect(startX, 0, regionWidth, canvas.height);
-
-				// Draw vertical lines at selection boundaries
-				ctx.strokeStyle = "#3b82f6"; // Blue
-				ctx.lineWidth = 2 * dpr;
-				ctx.setLineDash([]);
-
-				// Start boundary
-				ctx.beginPath();
-				ctx.moveTo(Math.round(startX), 0);
-				ctx.lineTo(Math.round(startX), canvas.height);
-				ctx.stroke();
-
-				// End boundary
-				ctx.beginPath();
-				ctx.moveTo(Math.round(endX), 0);
-				ctx.lineTo(Math.round(endX), canvas.height);
-				ctx.stroke();
-			}
+		if (rangeSelection) {
+			drawRangeSelection(ctx, canvas, rangeSelection.selection, duration, dpr);
 		}
 	};
 

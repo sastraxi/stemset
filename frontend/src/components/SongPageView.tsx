@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { apiSongsSongIdClipsGetSongClips } from "@/api/generated";
-import { SongPlayerProvider } from "../contexts/SongPlayerContext";
 import { QRCodeModal } from "./QRCodeModal";
 import { SongClipRow } from "./SongClipRow";
 import { SongPageHeader } from "./SongPageHeader";
@@ -82,47 +81,45 @@ export function SongPageView({
 	}
 
 	return (
-		<SongPlayerProvider>
-			<div className="song-page-view">
-				<SongPageHeader
-					songName={songName}
-					clipCount={clips.length}
-					totalDuration={totalDuration}
-					onShare={handleShare}
+		<div className="song-page-view">
+			<SongPageHeader
+				songName={songName}
+				clipCount={clips.length}
+				totalDuration={totalDuration}
+				onShare={handleShare}
+			/>
+
+			{clips.length === 0 ? (
+				<div className="song-page-empty">
+					<p>No clips in this song yet.</p>
+					<p className="song-page-empty-hint">
+						Create clips from recordings and assign them to this song.
+					</p>
+				</div>
+			) : (
+				<div className="song-clips-list">
+					{clips.map((clip) => (
+						<SongClipRow
+							key={clip.id}
+							clip={clip}
+							profileName={profileName}
+							onShare={() => handleShareClip(clip.id)}
+						/>
+					))}
+				</div>
+			)}
+
+			{/* QR Code Modal */}
+			{showQRModal && (
+				<QRCodeModal
+					isOpen={showQRModal}
+					onClose={() => {
+						setShowQRModal(false);
+						setShareClipId(null);
+					}}
+					url={shareUrl}
 				/>
-
-				{clips.length === 0 ? (
-					<div className="song-page-empty">
-						<p>No clips in this song yet.</p>
-						<p className="song-page-empty-hint">
-							Create clips from recordings and assign them to this song.
-						</p>
-					</div>
-				) : (
-					<div className="song-clips-list">
-						{clips.map((clip) => (
-							<SongClipRow
-								key={clip.id}
-								clip={clip}
-								profileName={profileName}
-								onShare={() => handleShareClip(clip.id)}
-							/>
-						))}
-					</div>
-				)}
-
-				{/* QR Code Modal */}
-				{showQRModal && (
-					<QRCodeModal
-						isOpen={showQRModal}
-						onClose={() => {
-							setShowQRModal(false);
-							setShareClipId(null);
-						}}
-						url={shareUrl}
-					/>
-				)}
-			</div>
-		</SongPlayerProvider>
+			)}
+		</div>
 	);
 }

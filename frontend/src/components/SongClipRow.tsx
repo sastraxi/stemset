@@ -12,12 +12,11 @@ import {
 	QrCode,
 } from "lucide-react";
 import { GiGuitarBassHead } from "react-icons/gi";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { ClipWithStemsResponse } from "@/api/generated";
 import { cn } from "@/lib/utils";
-import { CssWaveform } from "./CssWaveform";
+import { ClipPlayerProvider, useClipPlayer } from "@/lib/player/factories/useClipPlayer";
 import { TimecodeDisplay } from "./TimecodeDisplay";
-import { useSongPlayer } from "../contexts/SongPlayerContext";
 import { Button } from "./ui/button";
 import {
 	DropdownMenu,
@@ -83,58 +82,22 @@ export function SongClipRow({
 	onShare,
 	onEdit,
 }: SongClipRowProps) {
-	const [previewTime, setPreviewTime] = useState<number | null>(null);
-	const {
-		currentClipId,
-		isPlaying,
-		isLoading,
-		currentTime,
-		play,
-		pause,
-		seek,
-		toggleStemMute,
-		isStemMuted,
-	} = useSongPlayer();
+	// Initialize player for this clip
+	const player = useClipPlayer({
+		clip: {
+			id: clip.id,
+			stems: clip.stems,
+			startTimeSec: clip.start_time_sec,
+			endTimeSec: clip.end_time_sec,
+		},
+	});
 
 	const duration = clip.end_time_sec - clip.start_time_sec;
-	const isCurrentClip = currentClipId === clip.id;
-	const displayTime = previewTime !== null ? previewTime : (isCurrentClip ? currentTime : 0);
 
 	// Clip display name
 	const clipName =
 		clip.display_name ||
 		`Clip ${formatTime(clip.start_time_sec)} - ${formatTime(clip.end_time_sec)}`;
-
-	// Handle play/pause
-	const handlePlayPause = () => {
-		if (isCurrentClip && isPlaying) {
-			pause();
-		} else {
-			play({
-				id: clip.id,
-				stems: clip.stems,
-				startTimeSec: clip.start_time_sec,
-				endTimeSec: clip.end_time_sec,
-			});
-		}
-	};
-
-	// Handle seeking
-	const handleSeek = (time: number) => {
-		if (isCurrentClip) {
-			seek(time);
-		} else {
-			// Start playing from this position
-			play({
-				id: clip.id,
-				stems: clip.stems,
-				startTimeSec: clip.start_time_sec,
-				endTimeSec: clip.end_time_sec,
-			}).then(() => {
-				seek(time);
-			});
-		}
-	};
 
 	// Group stems by type
 	const stemTypes = useMemo(() => {
@@ -142,61 +105,63 @@ export function SongClipRow({
 	}, [clip.stems]);
 
 	// Show loading spinner or play/pause icon
-	const PlayButtonIcon = isCurrentClip && isLoading
+	const PlayButtonIcon = player.isLoading
 		? Loader2
-		: isCurrentClip && isPlaying
+		: player.isPlaying
 			? Pause
 			: Play;
 
 	return (
-		<div className={cn("song-clip-row", { "song-clip-row-active": isCurrentClip && isPlaying })}>
-			{/* Top row: Play button, title, duration, stem mutes, menu */}
-			<div className="song-clip-row-header">
-				<Button
-					onClick={handlePlayPause}
-					variant="ghost"
-					size="icon"
-					className="song-clip-play-button"
-					title={isCurrentClip && isPlaying ? "Pause" : "Play"}
-					disabled={isCurrentClip && isLoading}
-				>
-					<PlayButtonIcon
-						className={cn("h-5 w-5", {
-							"animate-spin": isCurrentClip && isLoading,
-						})}
-						fill={isCurrentClip && isPlaying ? "currentColor" : "none"}
-					/>
-				</Button>
+		<ClipPlayerProvider player={player}>
+			<div className={cn("song-clip-row", { "song-clip-row-active": player.isPlaying })}>
+				{/* Top row: Play button, title, duration, stem mutes, menu */}
+				<div className="song-clip-row-header">
+					<Button
+						onClick={player.isPlaying ? player.pause : player.play}
+						variant="ghost"
+						size="icon"
+						className="song-clip-play-button"
+						title={player.isPlaying ? "Pause" : "Play"}
+						disabled={player.isLoading}
+					>
+						<PlayButtonIcon
+							className={cn("h-5 w-5", {
+								"animate-spin": player.isLoading,
+							})}
+							fill={player.isPlaying ? "currentColor" : "none"}
+						/>
+					</Button>
 
-				<div className="song-clip-title-section">
-					<h3 className="song-clip-title">{clipName}</h3>
-					<div className="song-clip-stem-controls">
-						{stemTypes.map((stemType) => {
-							const Icon = getStemIcon(stemType);
-							const muted = isStemMuted(stemType);
-							return (
-								<button
-									key={stemType}
-									type="button"
-									onClick={() => toggleStemMute(stemType)}
-									className={cn("stem-mute-toggle", {
-										muted,
-									})}
-									title={`${muted ? "Unmute" : "Mute"} ${stemType}`}
-								>
-									<Icon className="h-4 w-4" />
-								</button>
-							);
-						})}
+					<div className="song-clip-title-section">
+						<h3 className="song-clip-title">{clipName}</h3>
+						<div className="song-clip-stem-controls">
+							{stemTypes.map((stemType) => {
+								const Icon = getStemIcon(stemType);
+								const stem = player.stems.find((s) => s.stemType === stemType);
+								const muted = stem?.isMuted ?? false;
+								return (
+									<button
+										key={stemType}
+										type="button"
+										onClick={() => player.toggleStemMute(stemType)}
+										className={cn("stem-mute-toggle", {
+											muted,
+										})}
+										title={`${muted ? "Unmute" : "Mute"} ${stemType}`}
+									>
+										<Icon className="h-4 w-4" />
+									</button>
+								);
+							})}
+						</div>
 					</div>
-				</div>
 
-				<TimecodeDisplay
-					currentTime={displayTime}
-					duration={duration}
-					formatTime={formatVcrTime}
-					className="song-clip-duration"
-				/>
+					<TimecodeDisplay
+						currentTime={player.currentTime}
+						duration={duration}
+						formatTime={formatVcrTime}
+						className="song-clip-duration"
+					/>
 
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -238,19 +203,9 @@ export function SongClipRow({
 			</div>
 
 			{/* Waveform */}
-			<div className="song-clip-waveform">
-				<CssWaveform
-					stems={clip.stems}
-					currentTime={displayTime}
-					duration={duration}
-					previewTime={previewTime ?? undefined}
-					onSeek={handleSeek}
-					onPreview={setPreviewTime}
-					startTimeSec={clip.start_time_sec}
-					endTimeSec={clip.end_time_sec}
-					fullDuration={clip.stems[0]?.duration_seconds}
-					height={100}
-				/>
+			<div className="song-clip-waveform" style={{ height: "76px" }}>
+				<player.Waveform mode="composite" height={64} />
+				<player.Ruler variant="minimal" height={12} />
 			</div>
 
 			{/* Recording context */}
@@ -263,5 +218,6 @@ export function SongClipRow({
 				</span>
 			</div>
 		</div>
+		</ClipPlayerProvider>
 	);
 }
