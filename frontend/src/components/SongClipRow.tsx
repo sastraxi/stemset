@@ -204,7 +204,7 @@ export function SongClipRow({
 
 			{/* Waveform */}
 			<div className="song-clip-waveform" style={{ height: "76px" }}>
-				<player.Waveform mode="composite" height={64} />
+				<player.Waveform mode="composite" height={64} showBackground={false} />
 				<player.Ruler variant="minimal" height={12} />
 			</div>
 

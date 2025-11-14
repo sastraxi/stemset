@@ -47,6 +47,7 @@ interface WaveformComponentProps {
 	mode?: "composite";
 	height?: number;
 	className?: string;
+	showBackground?: boolean;
 }
 
 interface RulerComponentProps {
@@ -205,7 +206,7 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
 	// Memoize components
 	const Waveform: React.FC<WaveformComponentProps> = useMemo(
 		() =>
-			({ mode = "composite", height, className }) => {
+			({ mode = "composite", height, className, showBackground = true }) => {
 				const player = useContext(ClipPlayerContext);
 				if (!player) throw new Error("Waveform must be used within ClipPlayer context");
 
@@ -225,6 +226,7 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
 							fullDuration={fullDuration}
 							height={height}
 							className={className}
+							showBackground={showBackground}
 						/>
 					);
 				}

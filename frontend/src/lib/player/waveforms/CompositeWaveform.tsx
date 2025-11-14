@@ -10,6 +10,7 @@ import {
 	drawRangeSelection,
 	drawTimeGrid,
 } from "../canvas/waveformUtils";
+import { cn } from "@/lib/utils";
 
 export interface StemWaveformData {
 	stemType: string;
@@ -28,6 +29,7 @@ export interface CompositeWaveformProps {
 	endTimeSec?: number;
 	fullDuration?: number;
 	height?: number; // Fixed height in pixels
+	showBackground?: boolean; // Controls the background visibility
 	className?: string;
 }
 
@@ -47,6 +49,7 @@ export function CompositeWaveform({
 	endTimeSec,
 	fullDuration,
 	height,
+	showBackground = true,
 	className = "",
 }: CompositeWaveformProps) {
 	const [loadedImages, setLoadedImages] = useState<
@@ -194,14 +197,21 @@ export function CompositeWaveform({
 
 	if (isLoading) {
 		return (
-			<div className={`waveform-container ${className}`}>
+			<div className={cn("waveform-container", className)}>
 				<div className="waveform-placeholder">Loading...</div>
 			</div>
 		);
 	}
 
 	return (
-		<div ref={containerRef} className={`waveform-container ${className}`}>
+		<div
+			ref={containerRef}
+			className={cn(
+				"waveform-container",
+				{ "no-background": !showBackground },
+				className,
+			)}
+		>
 			<canvas
 				ref={canvasRef}
 				className="waveform-canvas"
