@@ -19,7 +19,7 @@ export function TimecodeDisplay({
 	formatTime,
 	className = "",
 }: TimecodeDisplayProps) {
-	const [showTimeRemaining, setShowTimeRemaining] = useState(false);
+	const [showTimeRemaining, setShowTimeRemaining] = useState(true);
 
 	const handleToggle = () => {
 		setShowTimeRemaining((prev) => !prev);

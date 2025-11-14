@@ -272,11 +272,14 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
 
         responses = []
         for clip in clips:
-            # Fetch recording with stems
+            # Fetch recording with stems and location
             stmt = (
                 select(Recording)
                 .where(Recording.id == clip.recording_id)
-                .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+                .options(
+                    selectinload(Recording.stems),      # pyright: ignore[reportArgumentType]
+                    selectinload(Recording.location),   # pyright: ignore[reportArgumentType]
+                )
             )
             result = await session.exec(stmt)
             recording = result.first()
@@ -326,6 +329,14 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
                     updated_at=clip.updated_at.isoformat(),
                     recording_output_name=recording.output_name,
                     stems=stems,
+                    location=(
+                        LocationMetadata(id=str(recording.location.id), name=recording.location.name)
+                        if recording.location
+                        else None
+                    ),
+                    date_recorded=(
+                        recording.date_recorded.isoformat() if recording.date_recorded else None
+                    ),
                 )
             )
 
@@ -398,8 +409,9 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             select(Recording)
             .where(Recording.id == clip.recording_id)
             .options(
-                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
-                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.stems),      # pyright: ignore[reportArgumentType]
+                selectinload(Recording.song),       # pyright: ignore[reportArgumentType]
+                selectinload(Recording.location),   # pyright: ignore[reportArgumentType]
             )
         )
         result = await session.exec(stmt)
@@ -451,6 +463,14 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             updated_at=clip.updated_at.isoformat(),
             recording_output_name=recording.output_name,
             stems=stems,
+            location=(
+                LocationMetadata(id=str(recording.location.id), name=recording.location.name)
+                if recording.location
+                else None
+            ),
+            date_recorded=(
+                recording.date_recorded.isoformat() if recording.date_recorded else None
+            ),
         )
 
 

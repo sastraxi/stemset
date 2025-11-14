@@ -148,6 +148,8 @@ class ClipWithStemsResponse(BaseModel):
     updated_at: str
     recording_output_name: str
     stems: list[StemResponse]
+    location: LocationMetadata | None = None
+    date_recorded: str | None = None
 
 
 class CreateClipRequest(BaseModel):

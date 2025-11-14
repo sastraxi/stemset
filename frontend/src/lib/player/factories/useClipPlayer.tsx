@@ -203,39 +203,39 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
 		[clip.stems, mutedStems],
 	);
 
-	// Memoize components
-	const Waveform: React.FC<WaveformComponentProps> = useMemo(
-		() =>
-			({ mode = "composite", height, className, showBackground = true }) => {
-				const player = useContext(ClipPlayerContext);
-				if (!player) throw new Error("Waveform must be used within ClipPlayer context");
-
-				const stemWaveforms = clip.stems.map((stem) => ({
-					stemType: stem.stem_type,
-					waveformUrl: stem.waveform_url,
-				}));
-
-				if (mode === "composite") {
-					return (
-						<CompositeWaveform
-							stems={stemWaveforms}
-							currentTime={player.currentTime}
-							duration={clipDuration}
-							startTimeSec={clip.startTimeSec}
-							endTimeSec={clip.endTimeSec}
-							fullDuration={fullDuration}
-							height={height}
-							className={className}
-							showBackground={showBackground}
-						/>
-					);
-				}
-
-				return null;
-			},
-		[clip.stems, clip.startTimeSec, clip.endTimeSec, clipDuration, fullDuration],
-	);
-
+			// Memoize components
+		const Waveform: React.FC<WaveformComponentProps> = useMemo(
+			() =>
+				({ mode = "composite", height, className, showBackground = true }) => {
+					const player = useContext(ClipPlayerContext);
+					if (!player) throw new Error("Waveform must be used within ClipPlayer context");
+	
+					const stemWaveforms = clip.stems.map((stem) => ({
+						stemType: stem.stem_type,
+						waveformUrl: stem.waveform_url,
+					}));
+	
+					if (mode === "composite") {
+						return (
+							<CompositeWaveform
+								stems={stemWaveforms}
+								currentTime={player.currentTime}
+								duration={clipDuration}
+								startTimeSec={clip.startTimeSec}
+								endTimeSec={clip.endTimeSec}
+								fullDuration={fullDuration}
+								height={height}
+								className={className}
+								showBackground={showBackground}
+								onSeek={player.seek}
+							/>
+						);
+					}
+	
+					return null;
+				},
+			[clip.stems, clip.startTimeSec, clip.endTimeSec, clipDuration, fullDuration],
+		);
 	const Ruler: React.FC<RulerComponentProps> = useMemo(
 		() =>
 			({ variant = "minimal", height, className }) => {
@@ -249,6 +249,7 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
 							duration={clipDuration}
 							height={height}
 							className={className}
+							onSeek={player.seek}
 						/>
 					);
 				}

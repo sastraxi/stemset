@@ -1,11 +1,14 @@
 import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
 import { formatTime } from "../../../lib/utils";
+import { useCanvasInteraction } from "../canvas/useCanvasInteraction";
 
 export interface MinimalRulerProps {
 	currentTime: number;
 	duration: number;
 	height?: number; // Default: 24px for enhanced look
 	className?: string;
+	onSeek?: (time: number) => void;
+	onPreview?: (time: number | null) => void;
 }
 
 /**
@@ -23,6 +26,8 @@ export function MinimalRuler({
 	duration,
 	height = 24, // Increased height for better visuals
 	className = "",
+	onSeek,
+	onPreview,
 }: MinimalRulerProps) {
 	const onRender = (
 		ctx: CanvasRenderingContext2D,
@@ -165,9 +170,26 @@ export function MinimalRuler({
 		height,
 	});
 
+	const { handleMouseDown, handleMouseMove, handleMouseUp } =
+		useCanvasInteraction({
+			canvasRef,
+			duration,
+			onSeek,
+			onPreview,
+		});
+
 	return (
 		<div ref={containerRef} className={`minimal-ruler ${className}`}>
-			<canvas ref={canvasRef} className="ruler-canvas" />
+			<canvas
+				ref={canvasRef}
+				className="ruler-canvas"
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onTouchStart={handleMouseDown}
+				onTouchMove={handleMouseMove}
+				onTouchEnd={handleMouseUp}
+			/>
 		</div>
 	);
 }

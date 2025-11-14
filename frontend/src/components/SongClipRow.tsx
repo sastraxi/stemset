@@ -14,7 +14,7 @@ import {
 import { GiGuitarBassHead } from "react-icons/gi";
 import { useMemo } from "react";
 import type { ClipWithStemsResponse } from "@/api/generated";
-import { cn } from "@/lib/utils";
+import { cn, formatTime, getRelativeTime } from "@/lib/utils"; // Import getRelativeTime
 import { ClipPlayerProvider, useClipPlayer } from "@/lib/player/factories/useClipPlayer";
 import { TimecodeDisplay } from "./TimecodeDisplay";
 import { Button } from "./ui/button";
@@ -45,25 +45,6 @@ const getStemIcon = (stemType: string) => {
 		default:
 			return Music2;
 	}
-};
-
-/** Format time in MM:SS */
-const formatTime = (seconds: number): string => {
-	const mins = Math.floor(seconds / 60);
-	const secs = Math.floor(seconds % 60);
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
-/** Format time in HH:MM:SS or MM:SS (VCR style) */
-const formatVcrTime = (seconds: number): string => {
-	const hrs = Math.floor(seconds / 3600);
-	const mins = Math.floor((seconds % 3600) / 60);
-	const secs = Math.floor(seconds % 60);
-
-	if (hrs > 0) {
-		return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-	}
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
 /**
@@ -134,6 +115,24 @@ export function SongClipRow({
 
 					<div className="song-clip-title-section">
 						<h3 className="song-clip-title">{clipName}</h3>
+						{clip.location && (
+							<span className="song-clip-metadata-tag">{clip.location.name}</span>
+						)}
+						{clip.date_recorded && (
+							<span className="song-clip-metadata-tag">
+								{getRelativeTime(clip.date_recorded)}
+							</span>
+						)}
+					</div>
+
+					<div className="song-clip-actions">
+						<TimecodeDisplay
+							currentTime={player.currentTime}
+							duration={duration}
+							formatTime={formatTime} // Use imported formatTime
+							className="song-clip-duration"
+						/>
+
 						<div className="song-clip-stem-controls">
 							{stemTypes.map((stemType) => {
 								const Icon = getStemIcon(stemType);
@@ -154,70 +153,61 @@ export function SongClipRow({
 								);
 							})}
 						</div>
+
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="song-clip-menu-button"
+								>
+									<MoreVertical className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								{onShare && (
+									<DropdownMenuItem onClick={onShare}>
+										<QrCode className="mr-2 h-4 w-4" />
+										Share
+									</DropdownMenuItem>
+								)}
+								{onEdit && (
+									<DropdownMenuItem onClick={onEdit}>
+										<Edit className="mr-2 h-4 w-4" />
+										Edit name
+									</DropdownMenuItem>
+								)}
+								<DropdownMenuItem asChild>
+									<Link
+										to="/p/$profileName/clips/$clipId"
+										params={{
+											profileName,
+											clipId: clip.id,
+										}}
+									>
+										<ExternalLink className="mr-2 h-4 w-4" />
+										Open clip detail
+									</Link>
+								</DropdownMenuItem>
+								<div className="song-clip-context">
+									<span className="song-clip-recording-name">
+										{clip.recording_output_name}
+									</span>
+									<span className="song-clip-time-range">
+										{formatTime(clip.start_time_sec)} - {formatTime(clip.end_time_sec)}
+									</span>
+								</div>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
+				</div>
 
-					<TimecodeDisplay
-						currentTime={player.currentTime}
-						duration={duration}
-						formatTime={formatVcrTime}
-						className="song-clip-duration"
-					/>
-
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="song-clip-menu-button"
-						>
-							<MoreVertical className="h-4 w-4" />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						{onShare && (
-							<DropdownMenuItem onClick={onShare}>
-								<QrCode className="mr-2 h-4 w-4" />
-								Share
-							</DropdownMenuItem>
-						)}
-						{onEdit && (
-							<DropdownMenuItem onClick={onEdit}>
-								<Edit className="mr-2 h-4 w-4" />
-								Edit name
-							</DropdownMenuItem>
-						)}
-						<DropdownMenuItem asChild>
-							<Link
-								to="/p/$profileName/clips/$clipId"
-								params={{
-									profileName,
-									clipId: clip.id,
-								}}
-							>
-								<ExternalLink className="mr-2 h-4 w-4" />
-								Open clip detail
-							</Link>
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+				{/* Waveform */}
+				<div className="song-clip-waveform" style={{ height: "80px" }}>
+					<player.Waveform mode="composite" height={56} showBackground={false} />
+					<player.Ruler variant="minimal" height={24} />
+				</div>
 			</div>
-
-			{/* Waveform */}
-			<div className="song-clip-waveform" style={{ height: "76px" }}>
-				<player.Waveform mode="composite" height={64} showBackground={false} />
-				<player.Ruler variant="minimal" height={12} />
-			</div>
-
-			{/* Recording context */}
-			<div className="song-clip-context">
-				<span className="song-clip-recording-name">
-					{clip.recording_output_name}
-				</span>
-				<span className="song-clip-time-range">
-					{formatTime(clip.start_time_sec)} - {formatTime(clip.end_time_sec)}
-				</span>
-			</div>
-		</div>
 		</ClipPlayerProvider>
 	);
 }

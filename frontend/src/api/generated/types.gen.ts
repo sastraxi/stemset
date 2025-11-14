@@ -51,6 +51,8 @@ export type ClipWithStemsResponse = {
   updated_at: string;
   recording_output_name: string;
   stems: Array<StemResponse>;
+  location?: LocationMetadata | null;
+  date_recorded?: string | null;
 };
 
 /**
