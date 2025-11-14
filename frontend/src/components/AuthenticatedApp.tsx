@@ -21,10 +21,8 @@ import "../styles/player.css";
 import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
-import { Music2 } from "lucide-react";
 import type { FileWithStems } from "@/api/generated";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
-import { ClipCard } from "./ClipCard";
 import { ClipsView } from "./ClipsView";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MetadataEditorModal } from "./MetadataEditorModal";
@@ -36,6 +34,7 @@ import { RecordingPlayer } from "./RecordingPlayer";
 import { RecordingsView } from "./RecordingsView";
 import { SongMetadata } from "./SongMetadata";
 import { SongsView } from "./SongsView";
+import { SongPageView } from "./SongPageView";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
 import { UserNav } from "./UserNav";
@@ -544,42 +543,13 @@ export function AuthenticatedApp({
 								<p className="text-2xl font-bold mb-2">Song Not Found</p>
 								<p>The requested song does not exist or has been deleted.</p>
 							</div>
-						) : songClips?.data ? (
-							<div className="container mx-auto p-6">
-								{/* Song header */}
-								<div className="mb-6">
-									<div className="flex items-center gap-3 mb-2">
-										<Music2 className="h-6 w-6 text-primary" />
-										<h1 className="text-3xl font-bold">
-											{songClips.data[0]?.song?.name || "Untitled Song"}
-										</h1>
-									</div>
-									<p className="text-muted-foreground">
-										{songClips.data.length}{" "}
-										{songClips.data.length === 1 ? "clip" : "clips"} across
-										recordings
-									</p>
-								</div>
-
-								{/* Clips list */}
-								{songClips.data.length > 0 ? (
-									<div className="space-y-3">
-										{songClips.data.map((clip) => (
-											<ClipCard
-												key={clip.id}
-												clip={clip}
-												profileName={selectedProfile || ""}
-												showRecordingInfo={true}
-											/>
-										))}
-									</div>
-								) : (
-									<div className="text-center py-12 text-muted-foreground">
-										No clips found for this song.
-									</div>
-								)}
-							</div>
-						) : null
+					) : selectedProfile && initialSong && songClips?.data ? (
+						<SongPageView
+							songId={initialSong}
+							songName={songClips.data[0]?.song?.name || "Untitled Song"}
+							profileName={selectedProfile}
+						/>
+					) : null
 					) : isOnClipRoute && clip?.data && clipRecordingData ? (
 						<>
 							<div className="recording-header">

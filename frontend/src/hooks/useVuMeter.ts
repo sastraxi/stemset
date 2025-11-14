@@ -51,9 +51,7 @@ export function useVuMeter(
 		analyserLeftRef.current = analyserLeft;
 		analyserRightRef.current = analyserRight;
 		dataArrayLeftRef.current = new Uint8Array(analyserLeft.frequencyBinCount);
-		dataArrayRightRef.current = new Uint8Array(
-			analyserRight.frequencyBinCount,
-		);
+		dataArrayRightRef.current = new Uint8Array(analyserRight.frequencyBinCount);
 
 		return () => {
 			masterOutputNode.disconnect(splitter);
@@ -84,10 +82,10 @@ export function useVuMeter(
 			}
 
 			analyserLeftRef.current.getByteTimeDomainData(
-				dataArrayLeftRef.current as Uint8Array,
+				dataArrayLeftRef.current as Uint8Array<ArrayBuffer>,
 			);
 			analyserRightRef.current.getByteTimeDomainData(
-				dataArrayRightRef.current as Uint8Array,
+				dataArrayRightRef.current as Uint8Array<ArrayBuffer>,
 			);
 
 			const calculateRMS = (data: Uint8Array) => {
