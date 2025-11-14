@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { apiSongsSongIdClipsGetSongClips } from "@/api/generated";
+import { SongPlayerProvider } from "../contexts/SongPlayerContext";
 import { QRCodeModal } from "./QRCodeModal";
 import { SongClipRow } from "./SongClipRow";
 import { SongPageHeader } from "./SongPageHeader";
 import { Spinner } from "./ui/spinner";
-import { SongPlayerProvider } from "../contexts/SongPlayerContext";
 import "../styles/song-page.css";
 
 interface SongPageViewProps {

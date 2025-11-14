@@ -10,9 +10,8 @@ interface ClipData {
 }
 
 interface StemAudioNode {
-	source: AudioBufferSourceNode | null;
 	gain: GainNode;
-	buffer: AudioBuffer | null;
+	buffer: AudioBuffer;
 }
 
 interface SongPlayerContextValue {
@@ -49,9 +48,15 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 	const stemNodesRef = useRef<Map<string, StemAudioNode>>(new Map());
 	const loadedClipsRef = useRef<Map<string, Map<string, AudioBuffer>>>(new Map());
 	const currentClipDataRef = useRef<ClipData | null>(null);
+
+	// Playback state refs
+	const isPlayingRef = useRef(false);
+	const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
 	const startTimeRef = useRef<number>(0);
-	const pausedAtRef = useRef<number>(0);
-	const animationFrameRef = useRef<number | null>(null);
+	const currentTimeRef = useRef<number>(0);
+	const rafRef = useRef<number | null>(null);
+	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	const playbackGenRef = useRef<number>(0); // KEY: Playback generation tracking
 
 	// Initialize audio context
 	const getAudioContext = useCallback(() => {
@@ -61,24 +66,15 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 		return audioContextRef.current;
 	}, []);
 
-	// Stop playback and cleanup sources
-	const stopPlayback = useCallback(() => {
-		stemNodesRef.current.forEach((node) => {
-			if (node.source) {
-				try {
-					node.source.stop();
-					node.source.disconnect();
-				} catch (e) {
-					// Already stopped
-				}
-				node.source = null;
+	const stopAllSources = useCallback(() => {
+		sourcesRef.current.forEach((src) => {
+			try {
+				src.stop();
+			} catch {
+				// Already stopped
 			}
 		});
-
-		if (animationFrameRef.current !== null) {
-			cancelAnimationFrame(animationFrameRef.current);
-			animationFrameRef.current = null;
-		}
+		sourcesRef.current.clear();
 	}, []);
 
 	// Load audio buffers for a clip
@@ -122,71 +118,58 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 		return buffers;
 	}, [getAudioContext]);
 
-	// Start playback from a position
-	const startPlayback = useCallback((fromPosition: number) => {
+	const startSources = useCallback((playbackPosition: number) => {
 		const clip = currentClipDataRef.current;
 		const context = audioContextRef.current;
-		if (!clip || !context) return;
+		if (!clip || !context || stemNodesRef.current.size === 0) return;
 
-		stopPlayback();
+		stopAllSources();
+		const thisPlaybackGen = ++playbackGenRef.current;
 
 		const clipDuration = clip.endTimeSec - clip.startTimeSec;
-		const remainingDuration = clipDuration - fromPosition;
 
-		if (remainingDuration <= 0) {
-			setIsPlaying(false);
-			pausedAtRef.current = clipDuration;
-			setCurrentTime(clipDuration);
-			return;
-		}
+		stemNodesRef.current.forEach((node, name) => {
+			const src = context.createBufferSource();
+			src.buffer = node.buffer;
+			src.connect(node.gain);
 
-		// Create source nodes for each stem
-		stemNodesRef.current.forEach((node) => {
-			if (!node.buffer) return;
-
-			const source = context.createBufferSource();
-			source.buffer = node.buffer;
-			source.connect(node.gain);
-
-			// Start from clip.startTimeSec + current position
-			const offset = clip.startTimeSec + fromPosition;
-			source.start(0, offset, remainingDuration);
-
-			// Auto-stop at clip end and reset to beginning
-			source.onended = () => {
-				if (source === node.source) {
+			src.onended = () => {
+				if (playbackGenRef.current !== thisPlaybackGen) return; // Guard against stale handlers
+				sourcesRef.current.delete(name);
+				if (sourcesRef.current.size === 0) {
 					setIsPlaying(false);
-					pausedAtRef.current = 0;
+					isPlayingRef.current = false;
+					currentTimeRef.current = 0;
 					setCurrentTime(0);
 				}
 			};
 
-			node.source = source;
+			const audioPosition = playbackPosition + clip.startTimeSec;
+			src.start(0, audioPosition);
+			sourcesRef.current.set(name, src);
 		});
 
-		startTimeRef.current = context.currentTime;
-		pausedAtRef.current = fromPosition;
+		startTimeRef.current = context.currentTime - playbackPosition;
 
-		// Update current time via animation frame
-		const updateTime = () => {
-			if (!context) return;
+		if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+		const tick = () => {
+			if (playbackGenRef.current !== thisPlaybackGen || !isPlayingRef.current) return;
 
 			const elapsed = context.currentTime - startTimeRef.current;
-			const currentPos = pausedAtRef.current + elapsed;
-
-			if (currentPos >= clipDuration) {
-				// Reset to beginning at end of clip
-				setCurrentTime(0);
-				pausedAtRef.current = 0;
+			if (elapsed >= clipDuration) {
 				setIsPlaying(false);
-			} else {
-				setCurrentTime(currentPos);
-				animationFrameRef.current = requestAnimationFrame(updateTime);
+				isPlayingRef.current = false;
+				currentTimeRef.current = 0;
+				setCurrentTime(0);
+				stopAllSources();
+				return;
 			}
+			currentTimeRef.current = elapsed;
+			rafRef.current = requestAnimationFrame(tick);
 		};
-
-		animationFrameRef.current = requestAnimationFrame(updateTime);
-	}, [stopPlayback]);
+		rafRef.current = requestAnimationFrame(tick);
+	}, [stopAllSources]);
 
 	// Play a clip
 	const play = useCallback(async (clip: ClipData) => {
@@ -195,10 +178,10 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 
 			// If different clip, load it
 			if (currentClipId !== clip.id) {
-				stopPlayback();
+				stopAllSources();
 				setCurrentClipId(clip.id);
 				currentClipDataRef.current = clip;
-				pausedAtRef.current = 0;
+				currentTimeRef.current = 0;
 				setCurrentTime(0);
 
 				// Load stems
@@ -217,7 +200,6 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 					gainNode.gain.value = mutedStems.has(stem.stem_type) ? 0 : 1;
 
 					newNodes.set(stem.stem_type, {
-						source: null,
 						gain: gainNode,
 						buffer,
 					});
@@ -226,44 +208,51 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 				stemNodesRef.current = newNodes;
 			}
 
+			if (audioContextRef.current?.state === "suspended") {
+				await audioContextRef.current.resume();
+			}
+
 			setIsLoading(false);
 			setIsPlaying(true);
-			startPlayback(pausedAtRef.current);
+			isPlayingRef.current = true;
+			startSources(currentTimeRef.current);
 		} catch (error) {
 			console.error("[SongPlayer] Failed to play clip", error);
 			setIsLoading(false);
 			setIsPlaying(false);
 		}
-	}, [currentClipId, loadClipStems, getAudioContext, mutedStems, startPlayback, stopPlayback]);
+	}, [currentClipId, loadClipStems, getAudioContext, mutedStems, stopAllSources, startSources]);
 
-	// Pause playback
 	const pause = useCallback(() => {
-		// Save current playback position before stopping
-		const context = audioContextRef.current;
-		if (context && currentClipDataRef.current) {
-			const elapsed = context.currentTime - startTimeRef.current;
-			const currentPos = pausedAtRef.current + elapsed;
-			const clipDuration =
-				currentClipDataRef.current.endTimeSec - currentClipDataRef.current.startTimeSec;
+		if (!isPlayingRef.current || !audioContextRef.current) return;
 
-			// Clamp to clip duration
-			pausedAtRef.current = Math.min(currentPos, clipDuration);
-			setCurrentTime(pausedAtRef.current);
-		}
+		const currentPosition = audioContextRef.current.currentTime - startTimeRef.current;
+		currentTimeRef.current = currentPosition;
+		setCurrentTime(currentPosition);
 
-		stopPlayback();
+		isPlayingRef.current = false;
 		setIsPlaying(false);
-	}, [stopPlayback]);
+		stopAllSources();
 
-	// Seek to a position
-	const seek = useCallback((time: number) => {
-		pausedAtRef.current = time;
-		setCurrentTime(time);
+		if (rafRef.current) cancelAnimationFrame(rafRef.current);
+		if (intervalRef.current) clearInterval(intervalRef.current);
+	}, [stopAllSources]);
 
-		if (isPlaying) {
-			startPlayback(time);
+	const seek = useCallback((playbackPosition: number) => {
+		const clip = currentClipDataRef.current;
+		if (!clip) return;
+
+		const clipDuration = clip.endTimeSec - clip.startTimeSec;
+		const clamped = Math.max(0, Math.min(playbackPosition, clipDuration));
+		currentTimeRef.current = clamped;
+		setCurrentTime(clamped);
+
+		if (isPlayingRef.current && audioContextRef.current) {
+			stopAllSources();
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+			startSources(clamped);
 		}
-	}, [isPlaying, startPlayback]);
+	}, [stopAllSources, startSources]);
 
 	// Toggle stem mute
 	const toggleStemMute = useCallback((stemType: string) => {
@@ -289,18 +278,37 @@ export function SongPlayerProvider({ children }: { children: React.ReactNode }) 
 		return mutedStems.has(stemType);
 	}, [mutedStems]);
 
+	// State update loop (setInterval) for smooth UI updates
+	useEffect(() => {
+		if (!isPlaying) {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+			return;
+		}
+		intervalRef.current = setInterval(() => {
+			if (currentTime !== currentTimeRef.current) {
+				setCurrentTime(currentTimeRef.current);
+			}
+		}, 50); // ~20fps state updates
+
+		return () => {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+		};
+	}, [isPlaying, currentTime]);
+
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
-			stopPlayback();
+			stopAllSources();
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+			if (intervalRef.current) clearInterval(intervalRef.current);
 			stemNodesRef.current.forEach((node) => {
 				node.gain.disconnect();
 			});
-			if (audioContextRef.current) {
+			if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
 				audioContextRef.current.close();
 			}
 		};
-	}, [stopPlayback]);
+	}, [stopAllSources]);
 
 	const value: SongPlayerContextValue = {
 		currentClipId,

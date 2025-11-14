@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
-	Activity,
+	Drum,
 	Edit,
 	ExternalLink,
 	Loader2,
@@ -10,8 +10,8 @@ import {
 	Pause,
 	Play,
 	QrCode,
-	Volume2,
 } from "lucide-react";
+import { GiGuitarBassHead } from "react-icons/gi";
 import { useMemo, useState } from "react";
 import type { ClipWithStemsResponse } from "@/api/generated";
 import { cn } from "@/lib/utils";
@@ -39,9 +39,9 @@ const getStemIcon = (stemType: string) => {
 		case "vocals":
 			return Mic2;
 		case "drums":
-			return Activity;
+			return Drum;
 		case "bass":
-			return Volume2;
+			return GiGuitarBassHead;
 		case "other":
 		default:
 			return Music2;
