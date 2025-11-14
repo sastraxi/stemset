@@ -6,7 +6,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import httpx
 import modal
 from dotenv import load_dotenv
 
@@ -96,17 +95,17 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     sys.path.insert(0, "/root")
 
     from src.config import OutputConfig, get_config
+    from src.processor.callbacks import (
+        prepare_error_payload,
+        prepare_success_payload,
+        send_callback_with_error_handling_sync,
+    )
     from src.processor.core import (
         convert_stems_to_final_format,
         detect_clips,
         separate_to_wav,
     )
-    from src.processor.models import (
-        ProcessingCallbackPayload,
-        StemData,
-        StemDataModel,
-        WorkerJobPayload,
-    )
+    from src.processor.models import WorkerJobPayload
     from src.storage import R2Storage
     from src.utils import compute_file_hash
 
@@ -194,36 +193,12 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
                     r2_waveform_key,
                 )
 
-            # Step 5: Prepare final data for callback
-            stem_data_list: list[StemData] = []
-            duration = final_stems_metadata.duration
-            for stem_name, stem_meta in final_stems_metadata.stems.items():
-                audio_path = output_dir / stem_meta.stem_url
-                file_size_bytes = audio_path.stat().st_size
-
-                stem_data_list.append(
-                    StemData(
-                        stem_type=stem_name,
-                        measured_lufs=stem_meta.measured_lufs,
-                        peak_amplitude=stem_meta.peak_amplitude,
-                        stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
-                        audio_url=stem_meta.stem_url,
-                        waveform_url=stem_meta.waveform_url,
-                        file_size_bytes=file_size_bytes,
-                        duration_seconds=duration,
-                    )
-                )
-
-            callback_payload = ProcessingCallbackPayload(
-                status="complete",
-                stems=[StemDataModel(**stem) for stem in stem_data_list],
-                clip_boundaries=clip_boundaries,
-            )
-
+            # Step 5: Prepare and send callback
             print(f"Calling back to: {callback_url}")
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(callback_url, json=callback_payload.model_dump())
-                _ = response.raise_for_status()
+            callback_payload = prepare_success_payload(
+                final_stems_metadata, output_dir, clip_boundaries
+            )
+            send_callback_with_error_handling_sync(callback_url, callback_payload)
 
             return {"status": "ok", "recording_id": recording_id}
 
@@ -232,16 +207,8 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
         print(f"Error processing recording {recording_id}: {error_msg}")
 
         # Try to call back with error
-        try:
-            callback_payload = ProcessingCallbackPayload(
-                status="error",
-                error=error_msg,
-            )
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(callback_url, json=callback_payload.model_dump())
-                _ = response.raise_for_status()
-        except Exception as callback_error:
-            print(f"Failed to send error callback: {callback_error}")
+        callback_payload = prepare_error_payload(error_msg)
+        send_callback_with_error_handling_sync(callback_url, callback_payload)
 
         return {"status": "error", "error": error_msg, "recording_id": recording_id}
 

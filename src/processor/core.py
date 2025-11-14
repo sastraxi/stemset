@@ -196,3 +196,51 @@ def convert_stems_to_final_format(
             source_path.unlink(missing_ok=True)
     print("  ✓ Format conversion complete.")
     return final_stems_metadata
+
+
+async def process_audio_pipeline(
+    input_path: Path,
+    output_dir: Path,
+    profile_name: str,
+    strategy_name: str,
+    output_config: OutputConfig,
+    delete_intermediate_wavs: bool = False,
+) -> tuple[StemsMetadata, dict[str, ClipBoundary]]:
+    """Execute the complete audio processing pipeline.
+
+    This is the core processing workflow shared between local and GPU workers:
+    1. Separate audio to WAV stems
+    2. Detect clip boundaries
+    3. Convert to final output format
+
+    Args:
+        input_path: Path to input audio file
+        output_dir: Directory for output files
+        profile_name: Profile name for separation config
+        strategy_name: Strategy name to use
+        output_config: Output format configuration
+        delete_intermediate_wavs: Whether to delete WAV files after conversion
+
+    Returns:
+        Tuple of (final stems metadata, clip boundaries)
+    """
+    # Step 1: Separation to WAV
+    stems_metadata = await separate_to_wav(
+        input_path=input_path,
+        output_dir=output_dir,
+        profile_name=profile_name,
+        strategy_name=strategy_name,
+    )
+
+    # Step 2: Clip detection
+    clip_boundaries = detect_clips(stems_metadata, output_dir)
+
+    # Step 3: Format conversion
+    final_stems_metadata = convert_stems_to_final_format(
+        stems_metadata,
+        output_dir,
+        output_config,
+        delete_intermediate_wavs=delete_intermediate_wavs,
+    )
+
+    return final_stems_metadata, clip_boundaries

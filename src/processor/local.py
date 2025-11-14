@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
-import httpx
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -15,17 +14,17 @@ from src.db.models import AudioFile, Profile, Recording
 
 from ..config import Config
 from ..models.metadata import StemsMetadata
+from ..processor.callbacks import (
+    prepare_error_payload,
+    prepare_success_payload,
+    send_callback_with_error_handling_async,
+)
 from ..processor.core import (
     convert_stems_to_final_format,
     detect_clips,
     separate_to_wav,
 )
-from ..processor.models import (
-    ClipBoundary,
-    ProcessingCallbackPayload,
-    StemData,
-    StemDataModel,
-)
+from ..processor.models import ClipBoundary
 from ..storage import get_storage
 
 
@@ -147,35 +146,13 @@ async def process_locally(recording_id: UUID, config: Config) -> None:
             print(f"[{recording.id}] Skipping R2 upload (handled by sync command).")
 
             # Step 5: Prepare and send callback
-            stem_data_list: list[StemData] = []
-            duration = final_stems_metadata.duration
-            for stem_name, stem_meta in final_stems_metadata.stems.items():
-                audio_path = output_dir / stem_meta.stem_url
-                file_size_bytes = audio_path.stat().st_size if audio_path.exists() else 0
-
-                stem_data_list.append(
-                    StemData(
-                        stem_type=stem_name,
-                        measured_lufs=stem_meta.measured_lufs,
-                        peak_amplitude=stem_meta.peak_amplitude,
-                        stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
-                        audio_url=stem_meta.stem_url,
-                        waveform_url=stem_meta.waveform_url,
-                        file_size_bytes=file_size_bytes,
-                        duration_seconds=duration,
-                    )
-                )
-
-            callback_payload = ProcessingCallbackPayload(
-                status="complete",
-                stems=[StemDataModel(**stem) for stem in stem_data_list],
-                clip_boundaries=clip_boundaries,
-            )
-
             print(f"[{recording.id}] Calling back to: {callback_url}")
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(callback_url, json=callback_payload.model_dump())
-                _ = response.raise_for_status()
+            callback_payload = prepare_success_payload(
+                final_stems_metadata, output_dir, clip_boundaries
+            )
+            await send_callback_with_error_handling_async(
+                callback_url, callback_payload, error_prefix=f"[{recording.id}] "
+            )
 
             print(f"[Local Worker] Recording {recording_id} complete")
 
@@ -193,10 +170,7 @@ async def process_locally(recording_id: UUID, config: Config) -> None:
                     await error_session.commit()
 
             # Try to call back with error
-            try:
-                callback_payload = ProcessingCallbackPayload(status="error", error=str(e))
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.post(callback_url, json=callback_payload.model_dump())
-                    _ = response.raise_for_status()
-            except Exception as callback_error:
-                print(f"[Local Worker] Failed to report error: {callback_error}")
+            callback_payload = prepare_error_payload(e)
+            await send_callback_with_error_handling_async(
+                callback_url, callback_payload, error_prefix="[Local Worker] "
+            )
