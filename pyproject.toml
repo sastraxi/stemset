@@ -54,6 +54,7 @@ processing = [
     # "onnxruntime-gpu>=1.23.1",  # <-- Assuming this will get installed on GPU workers by the above
     "numpy>=2.3.4",
     "pillow>=10.0.0",
+    "librosa>=0.11.0",
 ]
 modal = [
     # Dependencies needed for Modal deployment

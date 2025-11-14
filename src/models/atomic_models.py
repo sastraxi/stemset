@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import librosa
 import numpy as np
 import soundfile
 
-from .audio_separator_base import AudioSeparatorLibraryModel, NeuralAudioSeparator
-from ..processor.audio_utils import read_audio
+from src.config import OutputConfig
 
-if False:
-    from ..config import OutputConfig
+from ..processor.audio_utils import read_audio
+from .audio_separator_base import AudioSeparatorLibraryModel, NeuralAudioSeparator
 
 
 class HTDemucsModel(AudioSeparatorLibraryModel):
@@ -97,6 +95,8 @@ class SimpleStereoSeparator(NeuralAudioSeparator):
         Raises:
             ValueError: If input is not stereo
         """
+        import librosa
+
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # 1. Load audio using ffmpeg-based utilities
@@ -137,9 +137,7 @@ class SimpleStereoSeparator(NeuralAudioSeparator):
         soundfile.write(right_path, right_stem, sr)
         soundfile.write(center_path, center_stem, sr)
 
-        print(
-            f"Spatial separation complete (ILD threshold: {self.ild_threshold_db} dB)"
-        )
+        print(f"Spatial separation complete (ILD threshold: {self.ild_threshold_db} dB)")
 
         return {
             "left": left_path,

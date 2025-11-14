@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypedDict
 
-import librosa
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage
@@ -65,6 +64,8 @@ def detect_clip_boundaries(
         Dictionary mapping clip IDs (e.g., "clip_0", "clip_1") to ClipBoundary objects,
         ordered by start time
     """
+    import librosa
+
     if not stems_dict:
         return {}
 
