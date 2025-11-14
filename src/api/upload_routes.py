@@ -22,13 +22,14 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..config import Config
+from ..config import Config, OutputConfig
 from ..db.config import get_engine
 from ..db.models import AudioFile, Location, Profile, Recording, Song, Stem, User
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
-from ..processor.core import process_audio_file
+from ..processor.core import separate_to_wav
 from ..processor.models import (
     ProcessingCallbackPayload,
+    StemData,
     StemDataModel,
     UploadResponse,
     WorkerAcceptedResponse,
@@ -189,6 +190,7 @@ async def upload_file(
                 input_filename=data.filename,
                 output_name=output_name,
                 callback_url=callback_url,
+                output_config_dict=profile.output.model_dump(),
             )
 
             try:
@@ -233,6 +235,7 @@ async def upload_file(
                 output_name,
                 callback_url,
                 config,
+                profile.output.model_dump(),
             )
 
             return Response(
@@ -258,6 +261,7 @@ async def _process_and_callback(
     output_name: str,
     callback_url: str,
     config: Config,
+    output_config_dict: dict[str, int | str],
 ) -> None:
     """Background task to process audio and call back with results.
 
@@ -269,6 +273,7 @@ async def _process_and_callback(
         output_name: Output name
         callback_url: URL to call back with results
         config: Application config
+        output_config_dict: Dictionary with output format configuration
     """
     try:
         # Get input file path
@@ -278,24 +283,60 @@ async def _process_and_callback(
         # Create output directory
         output_dir = Path("media") / profile_name / output_name
 
-        # Run separation using shared core logic
-        stem_data_list = await process_audio_file(
+        # Step 1: Run separation to lossless WAV format
+        stems_metadata = await separate_to_wav(
             input_path=input_path,
             output_dir=output_dir,
             profile_name=profile_name,
             strategy_name=strategy_name,
         )
 
-        # Detect clip boundaries from separated stems
+        # Step 2: Detect clip boundaries from separated WAV stems
         from src.processor.clip_detection import detect_clip_boundaries
 
         stems_dict = {
-            stem_dict["stem_type"]: output_dir / str(stem_dict["audio_url"])
-            for stem_dict in stem_data_list
+            stem_name: output_dir / stem_meta.stem_url
+            for stem_name, stem_meta in stems_metadata.stems.items()
         }
-
         clip_boundaries = detect_clip_boundaries(stems_dict)
         print(f"[Local Worker] Detected {len(clip_boundaries)} clip(s)")
+
+        # Step 3: Convert to final output format (e.g., M4A)
+        output_config = OutputConfig(**output_config_dict)
+        if output_config.format.value.lower() != "wav":
+            print(f"Converting stems to {output_config.format.value} format...")
+            for stem_name, stem_meta in stems_metadata.stems.items():
+                source_path = output_dir / stem_meta.stem_url
+                dest_path = source_path.with_suffix(f".{output_config.format.value.lower()}")
+
+                _ = output_config.convert(source_path, dest_path)
+
+                # Update metadata to point to new file
+                stem_meta.stem_url = dest_path.name
+                source_path.unlink(missing_ok=True)  # Delete intermediate WAV
+
+            print("  ✓ Format conversion complete.")
+
+        # Step 4: Prepare final data for callback
+        stem_data_list: list[StemData] = []
+        duration = 0.0
+        for stem_name, stem_meta in stems_metadata.stems.items():
+            audio_path = output_dir / stem_meta.stem_url
+            file_size_bytes = audio_path.stat().st_size
+            duration = stem_meta.duration  # All stems have same duration
+
+            stem_data_list.append(
+                StemData(
+                    stem_type=stem_name,
+                    measured_lufs=stem_meta.measured_lufs,
+                    peak_amplitude=stem_meta.peak_amplitude,
+                    stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
+                    audio_url=stem_meta.stem_url,
+                    waveform_url=stem_meta.waveform_url,
+                    file_size_bytes=file_size_bytes,
+                    duration_seconds=duration,
+                )
+            )
 
         # Call callback endpoint
         callback_payload = ProcessingCallbackPayload(

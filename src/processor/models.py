@@ -61,6 +61,7 @@ class WorkerJobPayload(BaseModel):
     input_filename: str
     output_name: str
     callback_url: str  # Contains embedded verification_token in URL path
+    output_config_dict: dict[str, int | str]
 
 
 class WorkerAcceptedResponse(BaseModel):

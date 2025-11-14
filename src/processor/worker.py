@@ -95,9 +95,14 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
 
     sys.path.insert(0, "/root")
 
-    from src.config import get_config
-    from src.processor.core import process_audio_file
-    from src.processor.models import ProcessingCallbackPayload, StemDataModel, WorkerJobPayload
+    from src.config import OutputConfig, get_config
+    from src.processor.core import separate_to_wav
+    from src.processor.models import (
+        ProcessingCallbackPayload,
+        StemData,
+        StemDataModel,
+        WorkerJobPayload,
+    )
     from src.storage import R2Storage
     from src.utils import compute_file_hash
 
@@ -109,6 +114,7 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     input_filename = payload.input_filename
     output_name = payload.output_name
     callback_url = payload.callback_url
+    output_config_dict = payload.output_config_dict
 
     try:
         # Load config
@@ -140,23 +146,52 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
             # Create temp output directory
             output_dir = temp_path / "output"
 
-            # Process the audio using shared core logic
+            # Step 1: Run separation to lossless WAV format
             print(f"Processing with strategy: {strategy_name}")
-            stem_data_list = await process_audio_file(
+            stems_metadata = await separate_to_wav(
                 input_path=input_path,
                 output_dir=output_dir,
                 profile_name=profile_name,
                 strategy_name=strategy_name,
             )
 
-            # Upload stems and waveforms to R2
-            r2_prefix = f"{profile_name}/{output_name}"
-            print(f"Uploading {len(stem_data_list)} stems to R2: {r2_prefix}/")
+            # Step 2: Detect clip boundaries from separated WAV stems
+            print("Detecting clip boundaries...")
+            from src.processor.clip_detection import detect_clip_boundaries
 
-            for stem_dict in stem_data_list:
+            stems_dict = {
+                stem_name: output_dir / stem_meta.stem_url
+                for stem_name, stem_meta in stems_metadata.stems.items()
+            }
+            clip_boundaries = detect_clip_boundaries(stems_dict)
+            print(f"Detected {len(clip_boundaries)} clip(s)")
+
+            # Step 3: Convert to final output format (e.g., M4A)
+            output_config = OutputConfig(**output_config_dict)
+            if output_config.format.value.lower() != "wav":
+                print(f"Converting stems to {output_config.format.value} format...")
+                for stem_name, stem_meta in stems_metadata.stems.items():
+                    source_path = output_dir / stem_meta.stem_url
+                    dest_path = source_path.with_suffix(
+                        f".{output_config.format.value.lower()}"
+                    )
+
+                    _ = output_config.convert(source_path, dest_path)
+
+                    # Update metadata to point to new file
+                    stem_meta.stem_url = dest_path.name
+                    source_path.unlink(missing_ok=True)  # Delete intermediate WAV
+
+                print("  ✓ Format conversion complete.")
+
+            # Step 4: Upload final stems and waveforms to R2
+            r2_prefix = f"{profile_name}/{output_name}"
+            print(f"Uploading {len(stems_metadata.stems)} stems to R2: {r2_prefix}/")
+
+            for stem_meta in stems_metadata.stems.values():
                 # Upload audio file
-                audio_path = output_dir / str(stem_dict["audio_url"])
-                r2_audio_key = f"{r2_prefix}/{stem_dict['audio_url']}"
+                audio_path = output_dir / stem_meta.stem_url
+                r2_audio_key = f"{r2_prefix}/{stem_meta.stem_url}"
                 storage.s3_client.upload_file(
                     str(audio_path),
                     storage.config.bucket_name,
@@ -164,26 +199,34 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
                 )
 
                 # Upload waveform
-                waveform_path = output_dir / str(stem_dict["waveform_url"])
-                r2_waveform_key = f"{r2_prefix}/{stem_dict['waveform_url']}"
+                waveform_path = output_dir / stem_meta.waveform_url
+                r2_waveform_key = f"{r2_prefix}/{stem_meta.waveform_url}"
                 storage.s3_client.upload_file(
                     str(waveform_path),
                     storage.config.bucket_name,
                     r2_waveform_key,
                 )
 
-            # Detect clip boundaries from separated stems
-            print("Detecting clip boundaries...")
-            from src.processor.clip_detection import detect_clip_boundaries
+            # Step 5: Prepare final data for callback
+            stem_data_list: list[StemData] = []
+            duration = 0.0
+            for stem_name, stem_meta in stems_metadata.stems.items():
+                audio_path = output_dir / stem_meta.stem_url
+                file_size_bytes = audio_path.stat().st_size
+                duration = stem_meta.duration  # All stems have same duration
 
-            # Build dict of stem paths for detection
-            stems_dict = {
-                stem_dict["stem_type"]: output_dir / str(stem_dict["audio_url"])
-                for stem_dict in stem_data_list
-            }
-
-            clip_boundaries = detect_clip_boundaries(stems_dict)
-            print(f"Detected {len(clip_boundaries)} clip(s)")
+                stem_data_list.append(
+                    StemData(
+                        stem_type=stem_name,
+                        measured_lufs=stem_meta.measured_lufs,
+                        peak_amplitude=stem_meta.peak_amplitude,
+                        stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
+                        audio_url=stem_meta.stem_url,
+                        waveform_url=stem_meta.waveform_url,
+                        file_size_bytes=file_size_bytes,
+                        duration_seconds=duration,
+                    )
+                )
 
             callback_payload = ProcessingCallbackPayload(
                 status="complete",
