@@ -14,17 +14,6 @@ from src.db.models import AudioFile, Profile, Recording
 
 from ..config import Config
 from ..models.metadata import StemsMetadata
-from ..processor.callbacks import (
-    prepare_error_payload,
-    prepare_success_payload,
-    send_callback_with_error_handling_async,
-)
-from ..processor.core import (
-    convert_stems_to_final_format,
-    detect_clips,
-    separate_to_wav,
-)
-from ..processor.models import ClipBoundary
 from ..storage import get_storage
 
 
@@ -32,6 +21,18 @@ async def process_locally(recording_id: UUID, config: Config) -> None:
     """
     Processes a recording locally. This function is idempotent and can be re-run.
     """
+    from ..processor.callbacks import (
+        prepare_error_payload,
+        prepare_success_payload,
+        send_callback_with_error_handling_async,
+    )
+    from ..processor.core import (
+        convert_stems_to_final_format,
+        detect_clips,
+        separate_to_wav,
+    )
+    from ..processor.models import ClipBoundary
+
     engine = get_engine()
     async with AsyncSession(engine, expire_on_commit=False) as session:
         callback_url = ""  # Will be set after fetching recording

@@ -12,10 +12,12 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import boto3
-from mypy_boto3_s3.client import S3Client
+
+if TYPE_CHECKING:
+    from mypy_boto3_s3.client import S3Client
 
 from .config import Config, R2Config
 
