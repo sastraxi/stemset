@@ -10,14 +10,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import boto3
+
+from src.config import get_config
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
-load_dotenv()
 
-import boto3
-from src.config import get_config
+load_dotenv()
 
 
 def list_r2_files(profile_name: str | None = None):
@@ -30,7 +32,7 @@ def list_r2_files(profile_name: str | None = None):
 
     print(f"🔍 Connecting to R2 bucket: {config.r2.bucket_name}\n")
 
-    s3_client = boto3.client(
+    s3_client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
         "s3",
         endpoint_url=f"https://{config.r2.account_id}.r2.cloudflarestorage.com",
         aws_access_key_id=config.r2.access_key_id,
@@ -42,17 +44,17 @@ def list_r2_files(profile_name: str | None = None):
     prefix = f"{profile_name}/" if profile_name else ""
     print(f"📂 Listing files with prefix: {prefix!r}\n")
 
-    paginator = s3_client.get_paginator('list_objects_v2')
+    paginator = s3_client.get_paginator("list_objects_v2")
     pages = paginator.paginate(Bucket=config.r2.bucket_name, Prefix=prefix)
 
     file_count = 0
     for page in pages:
-        for obj in page.get('Contents', []):
-            print(f"  {obj['Key']} ({obj['Size']} bytes)")
+        for obj in page.get("Contents", []):
+            print(f"  {obj['Key']} ({obj['Size']} bytes)")  # pyright: ignore[reportTypedDictNotRequiredAccess]
             file_count += 1
 
             if file_count >= 50:
-                print(f"\n... (showing first 50 files)")
+                print("\n... (showing first 50 files)")
                 return
 
     print(f"\n✅ Total files found: {file_count}")

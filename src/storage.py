@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Protocol
 
 import boto3
+from mypy_boto3_s3.client import S3Client
 
 from .config import Config, R2Config
 
@@ -105,8 +106,8 @@ class R2Storage:
 
     def __init__(self, r2_config: R2Config):
         """Initialize R2 storage with configuration."""
-        self.config = r2_config
-        self.s3_client = boto3.client(
+        self.config: R2Config = r2_config
+        self.s3_client: S3Client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3",
             endpoint_url=f"https://{r2_config.account_id}.r2.cloudflarestorage.com",
             aws_access_key_id=r2_config.access_key_id,

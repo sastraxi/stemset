@@ -39,7 +39,11 @@ class StemSeparator:
         self.output_config = output_config
 
     async def separate_and_normalize(
-        self, input_file: Path, output_folder: Path, delete_intermediates: bool = True
+        self,
+        input_file: Path,
+        output_folder: Path,
+        delete_intermediates: bool = True,
+        duration: float | None = None,
     ) -> StemsMetadata:
         """Separate audio into stems with metadata asynchronously.
 
@@ -59,10 +63,15 @@ class StemSeparator:
             input_file,
             output_folder,
             delete_intermediates,
+            duration,
         )
 
     def _separate_and_normalize_sync(
-        self, input_file: Path, output_folder: Path, delete_intermediates: bool = True
+        self,
+        input_file: Path,
+        output_folder: Path,
+        delete_intermediates: bool = True,
+        duration: float | None = None,
     ) -> StemsMetadata:
         """Synchronous core logic for audio separation.
 
@@ -75,7 +84,9 @@ class StemSeparator:
         # Generate waveforms and compute LUFS metadata for final stems
         print("Analyzing stem loudness...")
         analyzer = get_metadata_analyzer()
-        stems_metadata: StemsMetadata = analyzer.create_stems_metadata(stem_paths, output_folder)
+        stems_metadata: StemsMetadata = analyzer.create_stems_metadata(
+            stem_paths, output_folder, duration=duration
+        )
 
         print(f"  ✓ Metadata analysis complete ({len(stems_metadata.stems)} stems)")
 

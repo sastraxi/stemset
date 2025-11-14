@@ -9,8 +9,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from src.config import OutputConfig
 from src.models.metadata import StemsMetadata
 from src.processor.audio_utils import get_duration, pad_audio
+from src.processor.clip_detection import detect_clip_boundaries
+from src.processor.models import ClipBoundary
 
 from ..modern_separator import LOSSLESS_OUTPUT_CONFIG, StemSeparator
 
@@ -143,13 +146,53 @@ async def separate_to_wav(
 
     # Ensure input is in WAV format for processing
     converted_input_path = _convert_to_wav_if_needed(input_path)
-    (padded_input_path, _) = _pad_audio_if_too_short(converted_input_path)
+    (padded_input_path, duration) = _pad_audio_if_too_short(converted_input_path)
 
     # Create output directory if needed
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Run separation to lossless format (WAV)
     separator = StemSeparator(profile_name, strategy_name, LOSSLESS_OUTPUT_CONFIG)
-    stems_metadata = await separator.separate_and_normalize(padded_input_path, output_dir)
+    stems_metadata = await separator.separate_and_normalize(
+        padded_input_path, output_dir, duration=duration
+    )
 
     return stems_metadata
+
+
+def detect_clips(
+    stems_metadata: StemsMetadata,
+    output_dir: Path,
+) -> dict[str, ClipBoundary]:
+    """Detect clip boundaries from separated WAV stems."""
+    print("Detecting clip boundaries...")
+    stems_dict = {
+        stem_name: output_dir / stem_meta.stem_url
+        for stem_name, stem_meta in stems_metadata.stems.items()
+    }
+    clip_boundaries = detect_clip_boundaries(stems_dict)
+    print(f"Detected {len(clip_boundaries)} clip(s)")
+    return clip_boundaries
+
+
+def convert_stems_to_final_format(
+    stems_metadata: StemsMetadata,
+    output_dir: Path,
+    output_config: OutputConfig,
+    delete_intermediate_wavs: bool,
+) -> StemsMetadata:
+    """Converts stems to the final output format."""
+    if output_config.format.value.lower() == "wav":
+        return stems_metadata
+
+    final_stems_metadata = stems_metadata.model_copy(deep=True)
+    print(f"Converting stems to {output_config.format.value} format...")
+    for stem_name, stem_meta in final_stems_metadata.stems.items():
+        source_path = output_dir / stems_metadata.stems[stem_name].stem_url
+        dest_path = source_path.with_suffix(f".{output_config.format.value.lower()}")
+        _ = output_config.convert(source_path, dest_path)
+        stem_meta.stem_url = dest_path.name
+        if delete_intermediate_wavs:
+            source_path.unlink(missing_ok=True)
+    print("  ✓ Format conversion complete.")
+    return final_stems_metadata

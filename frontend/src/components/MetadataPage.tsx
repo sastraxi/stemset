@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import type {
 	FileWithStems,
 	RecordingStatusResponse,
@@ -12,6 +13,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	useCreateLocation,
 	useProfileLocations,
@@ -117,6 +120,16 @@ export function MetadataPage({
 		}
 	};
 
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(recordingId);
+			toast.success("Recording ID copied to clipboard!");
+		} catch (err) {
+			console.error("Failed to copy to clipboard:", err);
+			toast.error(`Could not copy Recording ID. ID: ${recordingId}`);
+		}
+	};
+
 	return (
 		<div className="flex items-center justify-center h-full p-4">
 			<Card className="w-full max-w-4xl">
@@ -137,6 +150,12 @@ export function MetadataPage({
 						{showContinueButton &&
 							"Processing complete! Add metadata or continue to playback."}
 					</CardDescription>
+					<div className="flex items-center space-x-2 mt-4">
+						<Input type="text" value={recordingId} readOnly className="flex-grow" />
+						<Button onClick={handleCopy} size="sm">
+							<Copy className="h-4 w-4" />
+						</Button>
+					</div>
 				</CardHeader>
 				<CardContent>
 					<MetadataEditor

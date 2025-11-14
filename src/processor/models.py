@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from pydantic import BaseModel
 
@@ -46,22 +46,21 @@ class ProcessingCallbackPayload(BaseModel):
     status: str  # "complete" or "error"
     stems: list[StemDataModel] | None = None  # Only present when status="complete"
     error: str | None = None  # Only present when status="error"
-    clip_boundaries: dict[str, ClipBoundary] | None = None  # Optional clip detection results (keyed by clip ID)
+    clip_boundaries: dict[str, ClipBoundary] | None = (
+        None  # Optional clip detection results (keyed by clip ID)
+    )
 
 
 class WorkerJobPayload(BaseModel):
-    """Payload sent to worker (Modal or local) to initiate processing.
-
-    Note: verification_token is embedded in callback_url path, not sent separately.
-    """
+    """Payload for the Modal worker."""
 
     recording_id: str
     profile_name: str
     strategy_name: str
     input_filename: str
     output_name: str
-    callback_url: str  # Contains embedded verification_token in URL path
-    output_config_dict: dict[str, int | str]
+    callback_url: str
+    output_config_dict: dict[str, Any]  # pyright: ignore[reportExplicitAny]
 
 
 class WorkerAcceptedResponse(BaseModel):

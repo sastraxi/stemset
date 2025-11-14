@@ -24,6 +24,7 @@ class TimeRange(TypedDict):
     start: float
     end: float
 
+
 # Detection parameters (tunable)
 DEFAULT_THRESHOLD_DB = -40.0  # dB below peak for silence threshold
 DEFAULT_DILATION_SEC = 0.5  # Seconds to bridge brief pauses
@@ -124,7 +125,7 @@ def detect_clip_boundaries(
             )
 
         # Convert binary array to time ranges
-        ranges = _binary_to_time_ranges(active_frames, sr, RMS_HOP_LENGTH)
+        ranges = _binary_to_time_ranges(active_frames, sr, RMS_HOP_LENGTH)  # pyright: ignore[reportArgumentType]
         stem_activity_ranges[stem_type] = ranges
 
     # Step 2: Find Activity Islands (intersection of all stems)
@@ -197,7 +198,7 @@ def _binary_to_time_ranges(
     in_range = False
     start_frame = 0
 
-    for i, active in enumerate(binary_array):
+    for i, active in enumerate(binary_array):  # pyright: ignore[reportAny]
         if active and not in_range:
             # Start of new range
             start_frame = i
@@ -296,7 +297,10 @@ def _merge_overlapping_ranges(
 
         if range_item["start"] <= last_range["end"]:
             # Overlapping or adjacent, merge
-            merged[-1] = {"start": last_range["start"], "end": max(last_range["end"], range_item["end"])}
+            merged[-1] = {
+                "start": last_range["start"],
+                "end": max(last_range["end"], range_item["end"]),
+            }
         else:
             # Non-overlapping, add as new range
             merged.append(range_item)

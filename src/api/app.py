@@ -40,7 +40,6 @@ from .song_routes import create_song, get_profile_songs_by_name
 from .state import AppState
 from .upload_routes import (
     get_recording_status,
-    process_local,
     recording_complete,
     update_recording_metadata,
     upload_file,
@@ -132,12 +131,9 @@ auth_middleware = DefineMiddleware(
     exclude=[
         "/auth",  # Auth routes (login, callback, etc.)
         "/schema",  # OpenAPI schema
-        "/api/process",  # Internal worker endpoint (local processing)
         r"/api/recordings/.*/complete/.*",  # Worker callback endpoint (regex pattern)
     ],
 )
-
-worker_routes = [process_local] if not config.gpu_worker_url else []
 
 app = Litestar(
     route_handlers=[
@@ -166,7 +162,6 @@ app = Litestar(
         recording_complete,
         get_recording_status,
         update_recording_metadata,
-        *worker_routes,
         *static_handlers,
     ],
     middleware=[auth_middleware],

@@ -101,6 +101,7 @@ class AudioMetadataAnalyzer:
         self,
         stem_paths: dict[str, Path],
         output_folder: Path,
+        duration: float | None = None,
     ) -> StemsMetadata:
         """Create metadata for multiple stems and generate waveforms.
 
@@ -190,7 +191,7 @@ class AudioMetadataAnalyzer:
                 waveform_url=waveform_url,
             )
 
-        return StemsMetadata(stems=stems_dict)
+        return StemsMetadata(stems=stems_dict, duration=duration or 0.0)
 
 
 # Global instance for convenience

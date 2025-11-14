@@ -96,7 +96,11 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     sys.path.insert(0, "/root")
 
     from src.config import OutputConfig, get_config
-    from src.processor.core import separate_to_wav
+    from src.processor.core import (
+        convert_stems_to_final_format,
+        detect_clips,
+        separate_to_wav,
+    )
     from src.processor.models import (
         ProcessingCallbackPayload,
         StemData,
@@ -107,7 +111,7 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     from src.utils import compute_file_hash
 
     # Parse and validate job data with Pydantic
-    payload = WorkerJobPayload(**job_data)
+    payload = WorkerJobPayload(**job_data)  # pyright: ignore[reportArgumentType]
     recording_id = payload.recording_id
     profile_name = payload.profile_name
     strategy_name = payload.strategy_name
@@ -156,39 +160,22 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
             )
 
             # Step 2: Detect clip boundaries from separated WAV stems
-            print("Detecting clip boundaries...")
-            from src.processor.clip_detection import detect_clip_boundaries
-
-            stems_dict = {
-                stem_name: output_dir / stem_meta.stem_url
-                for stem_name, stem_meta in stems_metadata.stems.items()
-            }
-            clip_boundaries = detect_clip_boundaries(stems_dict)
-            print(f"Detected {len(clip_boundaries)} clip(s)")
+            clip_boundaries = detect_clips(stems_metadata, output_dir)
 
             # Step 3: Convert to final output format (e.g., M4A)
-            output_config = OutputConfig(**output_config_dict)
-            if output_config.format.value.lower() != "wav":
-                print(f"Converting stems to {output_config.format.value} format...")
-                for stem_name, stem_meta in stems_metadata.stems.items():
-                    source_path = output_dir / stem_meta.stem_url
-                    dest_path = source_path.with_suffix(
-                        f".{output_config.format.value.lower()}"
-                    )
-
-                    _ = output_config.convert(source_path, dest_path)
-
-                    # Update metadata to point to new file
-                    stem_meta.stem_url = dest_path.name
-                    source_path.unlink(missing_ok=True)  # Delete intermediate WAV
-
-                print("  ✓ Format conversion complete.")
+            output_config = OutputConfig(**output_config_dict)  # pyright: ignore[reportAny]
+            final_stems_metadata = convert_stems_to_final_format(
+                stems_metadata,
+                output_dir,
+                output_config,
+                delete_intermediate_wavs=True,
+            )
 
             # Step 4: Upload final stems and waveforms to R2
             r2_prefix = f"{profile_name}/{output_name}"
-            print(f"Uploading {len(stems_metadata.stems)} stems to R2: {r2_prefix}/")
+            print(f"Uploading {len(final_stems_metadata.stems)} stems to R2: {r2_prefix}/")
 
-            for stem_meta in stems_metadata.stems.values():
+            for stem_meta in final_stems_metadata.stems.values():
                 # Upload audio file
                 audio_path = output_dir / stem_meta.stem_url
                 r2_audio_key = f"{r2_prefix}/{stem_meta.stem_url}"
@@ -209,11 +196,10 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
 
             # Step 5: Prepare final data for callback
             stem_data_list: list[StemData] = []
-            duration = 0.0
-            for stem_name, stem_meta in stems_metadata.stems.items():
+            duration = final_stems_metadata.duration
+            for stem_name, stem_meta in final_stems_metadata.stems.items():
                 audio_path = output_dir / stem_meta.stem_url
                 file_size_bytes = audio_path.stat().st_size
-                duration = stem_meta.duration  # All stems have same duration
 
                 stem_data_list.append(
                     StemData(
@@ -278,7 +264,7 @@ def process(job_data: dict[str, str]) -> dict[str, str]:
     from src.processor.models import WorkerAcceptedResponse, WorkerJobPayload
 
     # Validate payload with Pydantic
-    payload = WorkerJobPayload(**job_data)
+    payload = WorkerJobPayload(**job_data)  # pyright: ignore[reportArgumentType]
 
     # Spawn the processing job asynchronously (returns immediately)
     _ = _process_internal.spawn(job_data)

@@ -410,7 +410,7 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             .where(Recording.id == clip.recording_id)
             .options(
                 selectinload(Recording.stems),      # pyright: ignore[reportArgumentType]
-                selectinload(Recording.song),       # pyright: ignore[reportArgumentType]
+                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
                 selectinload(Recording.location),   # pyright: ignore[reportArgumentType]
             )
         )

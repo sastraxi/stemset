@@ -22,17 +22,15 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..config import Config, OutputConfig
-from ..db.config import get_engine
+from src.db.config import get_engine
+
+from ..config import Config
 from ..db.models import AudioFile, Location, Profile, Recording, Song, Stem, User
 from ..db.models import RecordingUserConfig as DBRecordingUserConfig
-from ..processor.core import separate_to_wav
+from ..processor.local import process_locally
 from ..processor.models import (
     ProcessingCallbackPayload,
-    StemData,
-    StemDataModel,
     UploadResponse,
-    WorkerAcceptedResponse,
     WorkerJobPayload,
 )
 from ..storage import get_storage
@@ -164,6 +162,7 @@ async def upload_file(
             verification_token = secrets.token_urlsafe(32)
             recording = Recording(
                 profile_id=profile.id,
+                audio_file_id=audio_file.id,
                 output_name=output_name,
                 display_name=output_name,
                 status="processing",
@@ -195,9 +194,7 @@ async def upload_file(
 
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.post(
-                        gpu_worker_url, json=worker_payload.model_dump()
-                    )
+                    response = await client.post(gpu_worker_url, json=worker_payload.model_dump())
                     _ = response.raise_for_status()
                     print(f"Triggered Modal worker for recording {recording.id}")
             except (httpx.TimeoutException, httpx.HTTPError) as e:
@@ -229,13 +226,7 @@ async def upload_file(
             task = BackgroundTask(
                 _process_and_callback,
                 str(recording.id),
-                profile_name,
-                profile.strategy_name,
-                data.filename,
-                output_name,
-                callback_url,
                 config,
-                profile.output.model_dump(),
             )
 
             return Response(
@@ -255,156 +246,15 @@ async def upload_file(
 
 async def _process_and_callback(
     recording_id: str,
-    profile_name: str,
-    strategy_name: str,
-    input_filename: str,
-    output_name: str,
-    callback_url: str,
     config: Config,
-    output_config_dict: dict[str, int | str],
 ) -> None:
     """Background task to process audio and call back with results.
 
     Args:
         recording_id: Recording identifier
-        profile_name: Profile name
-        strategy_name: Strategy name
-        input_filename: Input filename
-        output_name: Output name
-        callback_url: URL to call back with results
         config: Application config
-        output_config_dict: Dictionary with output format configuration
     """
-    try:
-        # Get input file path
-        storage = get_storage(config)
-        input_path = Path(storage.get_input_url(profile_name, input_filename))
-
-        # Create output directory
-        output_dir = Path("media") / profile_name / output_name
-
-        # Step 1: Run separation to lossless WAV format
-        stems_metadata = await separate_to_wav(
-            input_path=input_path,
-            output_dir=output_dir,
-            profile_name=profile_name,
-            strategy_name=strategy_name,
-        )
-
-        # Step 2: Detect clip boundaries from separated WAV stems
-        from src.processor.clip_detection import detect_clip_boundaries
-
-        stems_dict = {
-            stem_name: output_dir / stem_meta.stem_url
-            for stem_name, stem_meta in stems_metadata.stems.items()
-        }
-        clip_boundaries = detect_clip_boundaries(stems_dict)
-        print(f"[Local Worker] Detected {len(clip_boundaries)} clip(s)")
-
-        # Step 3: Convert to final output format (e.g., M4A)
-        output_config = OutputConfig(**output_config_dict)
-        if output_config.format.value.lower() != "wav":
-            print(f"Converting stems to {output_config.format.value} format...")
-            for stem_name, stem_meta in stems_metadata.stems.items():
-                source_path = output_dir / stem_meta.stem_url
-                dest_path = source_path.with_suffix(f".{output_config.format.value.lower()}")
-
-                _ = output_config.convert(source_path, dest_path)
-
-                # Update metadata to point to new file
-                stem_meta.stem_url = dest_path.name
-                source_path.unlink(missing_ok=True)  # Delete intermediate WAV
-
-            print("  ✓ Format conversion complete.")
-
-        # Step 4: Prepare final data for callback
-        stem_data_list: list[StemData] = []
-        duration = 0.0
-        for stem_name, stem_meta in stems_metadata.stems.items():
-            audio_path = output_dir / stem_meta.stem_url
-            file_size_bytes = audio_path.stat().st_size
-            duration = stem_meta.duration  # All stems have same duration
-
-            stem_data_list.append(
-                StemData(
-                    stem_type=stem_name,
-                    measured_lufs=stem_meta.measured_lufs,
-                    peak_amplitude=stem_meta.peak_amplitude,
-                    stem_gain_adjustment_db=stem_meta.stem_gain_adjustment_db,
-                    audio_url=stem_meta.stem_url,
-                    waveform_url=stem_meta.waveform_url,
-                    file_size_bytes=file_size_bytes,
-                    duration_seconds=duration,
-                )
-            )
-
-        # Call callback endpoint
-        callback_payload = ProcessingCallbackPayload(
-            status="complete",
-            stems=[StemDataModel(**stem) for stem in stem_data_list],
-            clip_boundaries=clip_boundaries,
-        )
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                callback_url,
-                json=callback_payload.model_dump(),
-            )
-            _ = response.raise_for_status()
-
-        print(f"[Local Worker] Recording {recording_id} complete")
-
-    except Exception as e:
-        print(f"[Local Worker] Recording {recording_id} failed: {e}")
-        # Call callback with error
-        try:
-            callback_payload = ProcessingCallbackPayload(
-                status="error",
-                error=str(e),
-            )
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    callback_url,
-                    json=callback_payload.model_dump(),
-                )
-                _ = response.raise_for_status()
-        except Exception as callback_error:
-            print(f"[Local Worker] Failed to report error: {callback_error}")
-
-
-@post("/api/process")
-async def process_local(
-    data: WorkerJobPayload, state: AppState
-) -> Response[WorkerAcceptedResponse]:
-    """Local processing endpoint (acts as GPU worker for development).
-
-    This endpoint receives the same payload as the Modal GPU worker,
-    but processes the audio locally in a background task.
-
-    Args:
-        data: Worker job payload
-        state: Litestar application state
-
-    Returns:
-        Accepted status (processing happens in background)
-    """
-    print(f"[Local Worker] Processing recording {data.recording_id}")
-
-    # Create background task
-    task = BackgroundTask(
-        _process_and_callback,
-        data.recording_id,
-        data.profile_name,
-        data.strategy_name,
-        data.input_filename,
-        data.output_name,
-        data.callback_url,
-        state.config,
-    )
-
-    return Response(
-        WorkerAcceptedResponse(status="accepted", recording_id=data.recording_id),
-        background=task,
-    )
+    await process_locally(UUID(recording_id), config)
 
 
 @post("/api/recordings/{recording_id:uuid}/complete/{verification_token:str}")
@@ -457,28 +307,36 @@ async def recording_complete(
             raise ValueError(f"Profile not found for recording {recording_id}")
 
         # Get AudioFile for linking stems
-        stmt = select(AudioFile).where(AudioFile.profile_id == recording.profile_id)
+        stmt = select(AudioFile).where(AudioFile.id == recording.audio_file_id)
         audio_result = await session.exec(stmt)
         audio_file = audio_result.first()
         if audio_file is None:
             raise ValueError(f"AudioFile not found for recording {recording_id}")
 
-        # Create Stem records from data
+        # Create Stem records from data (idempotent - skip if already exist)
         stems_data = data.stems or []
-        for stem_model in stems_data:
-            stem = Stem(
-                recording_id=recording.id,
-                audio_file_id=audio_file.id,
-                stem_type=stem_model.stem_type,
-                measured_lufs=stem_model.measured_lufs,
-                peak_amplitude=stem_model.peak_amplitude,
-                stem_gain_adjustment_db=stem_model.stem_gain_adjustment_db,
-                audio_url=stem_model.audio_url,
-                waveform_url=stem_model.waveform_url,
-                file_size_bytes=stem_model.file_size_bytes,
-                duration_seconds=stem_model.duration_seconds,
-            )
-            session.add(stem)
+        existing_stems_stmt = select(Stem).where(Stem.recording_id == recording.id)
+        existing_stems_result = await session.exec(existing_stems_stmt)
+        existing_stems = existing_stems_result.all()
+
+        if existing_stems:
+            print(f"Stems already exist for recording {recording.id}, skipping stem creation")
+        else:
+            print(f"Creating {len(stems_data)} stem(s)")
+            for stem_model in stems_data:
+                stem = Stem(
+                    recording_id=recording.id,
+                    audio_file_id=audio_file.id,
+                    stem_type=stem_model.stem_type,
+                    measured_lufs=stem_model.measured_lufs,
+                    peak_amplitude=stem_model.peak_amplitude,
+                    stem_gain_adjustment_db=stem_model.stem_gain_adjustment_db,
+                    audio_url=stem_model.audio_url,
+                    waveform_url=stem_model.waveform_url,
+                    file_size_bytes=stem_model.file_size_bytes,
+                    duration_seconds=stem_model.duration_seconds,
+                )
+                session.add(stem)
 
         # Update recording status
         recording.status = "complete"
@@ -497,21 +355,30 @@ async def recording_complete(
         from src.db.models import Clip
 
         clip_boundaries = data.clip_boundaries or {}
-        print(f"Creating {len(clip_boundaries)} clip(s) from worker boundaries")
 
-        # If multiple clips detected, name them "Section 1", "Section 2", etc.
-        # If single clip detected, leave display_name as None (full recording)
-        for i, (clip_id, boundary) in enumerate(clip_boundaries.items(), start=1):
-            display_name = f"Section {i}" if len(clip_boundaries) > 1 else None
+        # Check if clips already exist for this recording (idempotency)
+        existing_clips_stmt = select(Clip).where(Clip.recording_id == recording.id)
+        existing_clips_result = await session.exec(existing_clips_stmt)
+        existing_clips = existing_clips_result.all()
 
-            clip = Clip(
-                recording_id=recording.id,
-                song_id=recording.song_id,
-                start_time_sec=boundary.start_time_sec,
-                end_time_sec=boundary.end_time_sec,
-                display_name=display_name,
-            )
-            session.add(clip)
+        if existing_clips:
+            print(f"Clips already exist for recording {recording.id}, skipping clip creation")
+        else:
+            print(f"Creating {len(clip_boundaries)} clip(s) from worker boundaries")
+
+            # If multiple clips detected, name them "Section 1", "Section 2", etc.
+            # If single clip detected, leave display_name as None (full recording)
+            for i, (_clip_id, boundary) in enumerate(clip_boundaries.items(), start=1):
+                display_name = f"Section {i}" if len(clip_boundaries) > 1 else None
+
+                clip = Clip(
+                    recording_id=recording.id,
+                    song_id=recording.song_id,
+                    start_time_sec=boundary.start_time_sec,
+                    end_time_sec=boundary.end_time_sec,
+                    display_name=display_name,
+                )
+                session.add(clip)
 
         await session.commit()
 

@@ -165,6 +165,7 @@ class R2Config(BaseModel):
 class Config(BaseModel):
     """Global configuration."""
 
+    backend_url: str | None = None
     strategies: dict[str, Strategy] = Field(
         default_factory=dict, description="Available separation strategies"
     )

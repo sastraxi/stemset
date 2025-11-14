@@ -28,4 +28,5 @@ class StemsMetadata(BaseModel):
     """
 
     stems: dict[str, StemMetadata]
+    duration: float = 0.0
     display_name: str = ""  # Empty string means use the folder name as default

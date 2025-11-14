@@ -138,6 +138,7 @@ class NeuralAudioSeparator(AudioSeparator, ABC):
         Args:
             output_config: Output format and bitrate settings
         """
+        super().__init__(output_config)
         self.output_config = output_config
 
     @property

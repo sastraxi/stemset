@@ -121,6 +121,9 @@ class AudioFile(SQLModel, table=True):
     profile: "Profile" = Relationship(
         back_populates="audio_files", sa_relationship_kwargs={"lazy": "noload"}
     )
+    recordings: list["Recording"] = Relationship(
+        back_populates="audio_file", sa_relationship_kwargs={"lazy": "noload"}
+    )
     stems: list["Stem"] = Relationship(
         back_populates="audio_file", sa_relationship_kwargs={"lazy": "noload"}
     )
@@ -178,6 +181,7 @@ class Recording(SQLModel, table=True):
 
     id: UUID = Field(default_factory=new_uuid, primary_key=True)
     profile_id: UUID = Field(foreign_key="profiles.id", index=True)
+    audio_file_id: UUID = Field(foreign_key="audio_files.id", index=True)
     output_name: str  # Folder name in media/ (e.g., "080805-001")
     display_name: str  # User-editable, defaults to filename
 
@@ -193,6 +197,25 @@ class Recording(SQLModel, table=True):
     error_message: str | None = None
     verification_token: str | None = None  # For callback authentication
 
+    # Serialized metadata for reprocessing
+    stems_metadata_json: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+    clip_boundaries_json: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+
+    # Idempotency flags
+    separated_at: datetime | None = Field(
+        default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
+    )
+    clips_detected_at: datetime | None = Field(
+        default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
+    )
+    converted_at: datetime | None = Field(
+        default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
+    )
+
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
@@ -202,6 +225,9 @@ class Recording(SQLModel, table=True):
 
     # Relationships
     profile: "Profile" = Relationship(
+        back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
+    )
+    audio_file: "AudioFile" = Relationship(
         back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
     )
     stems: list["Stem"] = Relationship(
