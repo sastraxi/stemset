@@ -39,10 +39,7 @@ export function CompressorPanel({
       <div className="limiter-controls">
         <div className="effect-control">
           <label htmlFor="limiter-pregain">
-            Pre-Gain{" "}
-            {config === undefined || config.preGain <= -96
-              ? "-∞"
-              : config.preGain.toFixed(1)}{" "}
+            Pre-Gain {config.preGain <= -96 ? "-∞" : config.preGain.toFixed(1)}{" "}
             dB
           </label>
           <input

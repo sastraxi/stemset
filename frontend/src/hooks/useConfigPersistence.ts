@@ -57,9 +57,9 @@ export function useConfigPersistence<T>({
   // Local state for immediate UI updates
   // Initialize with backend config if available, otherwise use default
   const [config, setConfigState] = useState<T>(() => {
-    // On mount: use backend config if it exists, otherwise default
+    // On mount: use backend config if it exists, merge with defaults for missing fields
     if (backendConfig !== null) {
-      return backendConfig;
+      return { ...defaultValue, ...backendConfig };
     }
     return defaultValue;
   });
@@ -74,16 +74,16 @@ export function useConfigPersistence<T>({
     if (isLoading) return;
 
     if (!initialized) {
-      // First load: set local state to backend value (or default)
+      // First load: set local state to backend value (or default), merging with defaults for missing fields
       if (backendConfig !== null) {
-        setConfigState(backendConfig);
+        setConfigState({ ...defaultValue, ...backendConfig });
       }
       setInitialized(true);
     }
     // Note: We don't update local state on subsequent backend changes
     // because the user might be actively editing. Our debounced save
     // will push local changes to the backend.
-  }, [backendConfig, isLoading, initialized]);
+  }, [backendConfig, isLoading, initialized, defaultValue]);
 
   // Mutation for saving config to backend
   const mutation = useMutation({
