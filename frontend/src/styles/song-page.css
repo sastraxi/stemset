@@ -77,7 +77,7 @@
 .song-clip-row {
   background: #0a0a0a; /* Dark, near-black background */
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.75rem; /* Slightly larger radius */
+  border-radius: 1.5rem;
   padding: 0.75rem 1rem 0; /* No bottom padding */
   transition: all 0.2s ease;
 }
@@ -221,7 +221,7 @@
 
 /* Waveform */
 .song-clip-waveform {
-  border-radius: 0.375rem;
+  border-radius: 0;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.3);
 }

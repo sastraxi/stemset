@@ -53,7 +53,7 @@ export function MinimalRuler({
       const progress = duration > 0 ? displayTime / duration : 0;
       const cursorX = progress * canvas.width;
 
-      // 2. REFINED TICK MARKS (Retrofunk Citypop Edition)
+      // 2. REFINED TICK MARKS (Retrofunk Citypop Edition) - DRAWN FROM TOP
       if (duration > 0) {
         const pxPerSecond = canvas.width / duration;
 
@@ -97,8 +97,8 @@ export function MinimalRuler({
           if (time % midInterval !== 0) {
             const x = (time / duration) * canvas.width;
             ctx.beginPath();
-            ctx.moveTo(x, canvas.height);
-            ctx.lineTo(x, canvas.height - minorTickHeight);
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, minorTickHeight);
             ctx.stroke();
           }
         }
@@ -111,8 +111,8 @@ export function MinimalRuler({
           if (time % majorInterval !== 0) {
             const x = (time / duration) * canvas.width;
             ctx.beginPath();
-            ctx.moveTo(x, canvas.height);
-            ctx.lineTo(x, canvas.height - midTickHeight);
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, midTickHeight);
             ctx.stroke();
           }
         }
@@ -124,8 +124,8 @@ export function MinimalRuler({
         for (let time = 0; time <= duration; time += majorInterval) {
           const x = (time / duration) * canvas.width;
           ctx.beginPath();
-          ctx.moveTo(x, canvas.height);
-          ctx.lineTo(x, canvas.height - majorTickHeight);
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, majorTickHeight);
           ctx.stroke();
 
           // 3. DYNAMIC TIME LABELS
@@ -133,11 +133,8 @@ export function MinimalRuler({
             ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             ctx.font = `${10 * dpr}px 'Inter', sans-serif`;
             ctx.textAlign = "center";
-            ctx.fillText(
-              formatTime(time),
-              x,
-              canvas.height - majorTickHeight - 4 * dpr,
-            );
+            ctx.textBaseline = "top";
+            ctx.fillText(formatTime(time), x, majorTickHeight + 4 * dpr);
           }
         }
       }
@@ -161,17 +158,6 @@ export function MinimalRuler({
         // Reset shadow for other elements
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
-
-        // Modern top pointer
-        const pointerWidth = 8 * dpr;
-        const pointerHeight = 6 * dpr;
-        ctx.fillStyle = "rgba(255, 105, 180, 1)";
-        ctx.beginPath();
-        ctx.moveTo(cursorXRounded, 0);
-        ctx.lineTo(cursorXRounded - pointerWidth / 2, pointerHeight);
-        ctx.lineTo(cursorXRounded + pointerWidth / 2, pointerHeight);
-        ctx.closePath();
-        ctx.fill();
       }
     },
     [currentTime, duration, previewTime],

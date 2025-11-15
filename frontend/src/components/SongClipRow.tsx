@@ -228,9 +228,14 @@ export function SongClipRow({
 
         {/* Waveform */}
         <div
+          role="slider"
           ref={waveformRef}
-          className="song-clip-waveform h-[104px] mt-[-24px] mb-4"
+          className="song-clip-waveform h-[112px] mt-[-16px] mb-4"
           tabIndex={0}
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          aria-valuenow={player.currentTime}
+          aria-label="Audio playback position"
           onKeyDown={(e) => {
             if (e.key === " " || e.code === "Space") {
               e.preventDefault();
@@ -246,6 +251,7 @@ export function SongClipRow({
             mode="composite"
             height={80}
             showBackground={false}
+            className="mb-2"
           />
           <player.Ruler variant="minimal" height={24} />
         </div>
