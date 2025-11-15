@@ -74,7 +74,7 @@ r2_mount = modal.CloudBucketMount(
 @app.function(  # pyright: ignore[reportUnknownMemberType]
     image=image,
     gpu="A100-40GB",
-    timeout=240,
+    timeout=1800,
     volumes={"/r2": r2_mount},
 )
 async def _process_internal(payload: WorkerJobPayload) -> WorkerAcceptedResponse:
