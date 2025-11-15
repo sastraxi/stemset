@@ -337,17 +337,17 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
 					console.table(
 						loadingMetrics.stems.map((t) => ({
 							Stem: t.name,
-							Fetch_ms: t.fetchMs.toFixed(1),
-							Decode_ms: t.decodeMs.toFixed(1),
-							Total_ms: t.totalMs.toFixed(1),
-							KB: (t.bytes / 1024).toFixed(1),
+							Fetch_ms: t.fetchMs?.toFixed(1) ?? "N/A",
+							Decode_ms: t.decodeMs?.toFixed(1) ?? "N/A",
+							Total_ms: t.totalMs?.toFixed(1) ?? "N/A",
+							KB: t.bytes ? (t.bytes / 1024).toFixed(1) : "N/A",
 						})),
 					);
 					console.info(
 						"Metadata fetch ms",
-						loadingMetrics.metadataMs.toFixed(1),
+						loadingMetrics.metadataMs?.toFixed(1) ?? "N/A",
 					);
-					console.info("Overall ms", loadingMetrics.totalMs.toFixed(1));
+					console.info("Overall ms", loadingMetrics.totalMs?.toFixed(1) ?? "N/A");
 				}
 				console.info("Effects", effectsConfig);
 				console.info("Stems", snapshot.stems);
