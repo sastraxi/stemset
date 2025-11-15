@@ -483,14 +483,17 @@ export function AuthenticatedApp({
             <Tabs
               value={sidebarTab}
               onValueChange={setSidebarTab}
-              className="w-full"
+              className="w-full flex flex-col flex-1 min-h-0"
             >
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="recordings">Recordings</TabsTrigger>
                 <TabsTrigger value="songs">Songs</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="recordings" className="mt-0">
+              <TabsContent
+                value="recordings"
+                className="mt-0 flex-1 overflow-y-auto"
+              >
                 <RecordingsView
                   files={sortedFiles}
                   isLoading={filesLoading}
@@ -505,7 +508,7 @@ export function AuthenticatedApp({
                 />
               </TabsContent>
 
-              <TabsContent value="clips" className="mt-0">
+              <TabsContent value="clips" className="mt-0 flex-1 overflow-y-auto">
                 {selectedProfile && (
                   <ClipsView
                     profileName={selectedProfile}
@@ -514,7 +517,7 @@ export function AuthenticatedApp({
                 )}
               </TabsContent>
 
-              <TabsContent value="songs" className="mt-0">
+              <TabsContent value="songs" className="mt-0 flex-1 overflow-y-auto">
                 {selectedProfile && (
                   <SongsView
                     profileName={selectedProfile}
