@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import pool
@@ -12,6 +13,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from alembic.script import ScriptDirectory
 from sqlmodel import SQLModel
 
 # Load environment variables from .env file
@@ -47,6 +49,39 @@ if database_url.startswith("postgresql://"):
 config.set_main_option("sqlalchemy.url", database_url)
 
 
+def get_next_revision_number() -> str:
+    """Get the next sequential revision number based on existing migrations."""
+    script_dir = ScriptDirectory.from_config(config)
+    versions_dir = Path(script_dir.versions)
+
+    # Find all migration files with numeric prefixes
+    existing_numbers = []
+    for filepath in versions_dir.glob("*.py"):
+        if filepath.name == "__init__.py":
+            continue
+        # Extract number from filenames like "001_initial_schema.py"
+        parts = filepath.stem.split("_", 1)
+        if parts[0].isdigit():
+            existing_numbers.append(int(parts[0]))
+
+    # Return next number, zero-padded to 3 digits
+    next_num = max(existing_numbers, default=0) + 1
+    return f"{next_num:03d}"
+
+
+def process_revision_directives(context, revision, directives):
+    """Auto-generate sequential revision IDs."""
+    if config.cmd_opts and config.cmd_opts.autogenerate:
+        # Only modify if autogenerate is being used
+        script = directives[0]
+        if script.upgrade_ops.is_empty():
+            # No changes detected, don't generate migration
+            directives[:] = []
+        else:
+            # Use sequential number as revision ID
+            script.rev_id = get_next_revision_number()
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -65,6 +100,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        process_revision_directives=process_revision_directives,
     )
 
     with context.begin_transaction():
@@ -73,7 +109,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with the given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        process_revision_directives=process_revision_directives,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
