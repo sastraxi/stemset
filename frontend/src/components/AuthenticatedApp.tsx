@@ -147,7 +147,7 @@ export function AuthenticatedApp({
     }
   }, [initialSong, initialClip, initialRecording]);
 
-  const { data: profiles, error: profilesError } = useProfiles();
+  const { data: profiles } = useProfiles();
 
   const {
     data: files,
@@ -394,27 +394,6 @@ export function AuthenticatedApp({
       (file) => file.display_name || file.name,
     );
   }, [files, sortData]);
-
-  // Show backend connection error
-  if (profilesError) {
-    return (
-      <div className="splash-screen">
-        <div className="splash-content">
-          <h1>Stemset</h1>
-          <p className="splash-subtitle">Backend not running</p>
-          <div className="splash-instructions">
-            <p>Please start the backend server:</p>
-            <pre>
-              <code>python -m src.main</code>
-            </pre>
-            <p className="splash-hint">
-              The frontend will automatically connect when the backend is ready.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Calculate file counts for profile selector
   const fileCountByProfile: Record<string, number> = {};

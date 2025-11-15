@@ -20,8 +20,6 @@ export function useProfiles() {
   return useQuery({
     ...apiProfilesGetProfilesOptions(),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds to check backend connection
-    refetchIntervalInBackground: false,
   });
 }
 
