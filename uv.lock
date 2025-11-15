@@ -2062,6 +2062,7 @@ dev = [
 dev = [
     { name = "basedpyright" },
     { name = "boto3-stubs", extra = ["s3"] },
+    { name = "ruff" },
 ]
 modal = [
     { name = "fastapi" },
@@ -2112,6 +2113,7 @@ provides-extras = ["dev"]
 dev = [
     { name = "basedpyright", specifier = ">=1.31.7" },
     { name = "boto3-stubs", extras = ["s3"], specifier = ">=1.40.64" },
+    { name = "ruff", specifier = ">=0.14.1" },
 ]
 modal = [{ name = "fastapi", specifier = ">=0.115.0" }]
 preload-models = [{ name = "audio-separator", specifier = ">=0.39.1" }]

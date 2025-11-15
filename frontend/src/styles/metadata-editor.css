@@ -1,133 +1,133 @@
 /* Metadata Editor Styling - Inspired by QR Modal */
 
 .metadata-editor-modal-content {
-	background: #1a1a1a !important;
-	border: 1px solid rgba(255, 255, 255, 0.1) !important;
-	max-width: 700px !important;
+  background: #1a1a1a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  max-width: 700px !important;
 }
 
 .metadata-editor {
-	display: flex;
-	flex-direction: column;
-	gap: 1.5rem;
-	padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
 }
 
 /* Title Row */
 .metadata-editor-title-row {
-	display: flex;
-	gap: 0.5rem;
-	align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 /* Two Column Layout */
 .metadata-editor-columns {
-	display: grid;
-	grid-template-columns: auto 1fr;
-	gap: 2rem;
-	padding: 0.5rem 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  padding: 0.5rem 0;
 }
 
 /* Calendar Column - Desktop only */
 .metadata-editor-calendar-column {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-	min-width: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: fit-content;
 }
 
 .metadata-editor-calendar {
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 8px;
-	background: rgba(255, 255, 255, 0.02);
-	/* Fixed height to always show full month (up to 6 weeks) */
-	min-height: 380px;
-	display: flex;
-	flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  /* Fixed height to always show full month (up to 6 weeks) */
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Date picker visibility */
 .metadata-editor-calendar-desktop {
-	display: flex;
+  display: flex;
 }
 
 .metadata-editor-date-mobile {
-	display: none;
+  display: none;
 }
 
 /* Fields Column */
 .metadata-editor-fields-column {
-	display: flex;
-	flex-direction: column;
-	gap: 1.25rem;
-	min-width: 0; /* Allow shrinking */
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0; /* Allow shrinking */
 }
 
 /* Action Buttons */
 .metadata-editor-actions {
-	display: flex;
-	flex-direction: row;
-	gap: 0.75rem;
-	justify-content: space-between;
-	align-items: center;
-	padding-top: 1rem;
-	border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .metadata-editor-delete-button {
-	min-width: 180px;
+  min-width: 180px;
 }
 
 .metadata-editor-actions-row {
-	display: flex;
-	gap: 0.75rem;
-	justify-content: flex-end;
-	align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 /* Match QR Modal Button Styling */
 .metadata-editor-actions button {
-	min-width: 100px;
+  min-width: 100px;
 }
 
 /* Responsive */
 @media (max-width: 640px) {
-	.metadata-editor-columns {
-		grid-template-columns: 1fr;
-		gap: 1.5rem;
-	}
+  .metadata-editor-columns {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 
-	/* Hide desktop calendar on mobile */
-	.metadata-editor-calendar-desktop {
-		display: none;
-	}
+  /* Hide desktop calendar on mobile */
+  .metadata-editor-calendar-desktop {
+    display: none;
+  }
 
-	/* Show mobile date picker */
-	.metadata-editor-date-mobile {
-		display: flex;
-		flex-direction: column;
-	}
+  /* Show mobile date picker */
+  .metadata-editor-date-mobile {
+    display: flex;
+    flex-direction: column;
+  }
 
-	.metadata-editor-fields-column {
-		order: 1;
-	}
+  .metadata-editor-fields-column {
+    order: 1;
+  }
 
-	.metadata-editor-actions {
-		flex-direction: column;
-		gap: 0.5rem;
-	}
+  .metadata-editor-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-	.metadata-editor-delete-button {
-		width: 100%;
-		order: 2;
-	}
+  .metadata-editor-delete-button {
+    width: 100%;
+    order: 2;
+  }
 
-	.metadata-editor-actions-row {
-		width: 100%;
-		order: 1;
-	}
+  .metadata-editor-actions-row {
+    width: 100%;
+    order: 1;
+  }
 
-	.metadata-editor-actions-row button {
-		flex: 1;
-	}
+  .metadata-editor-actions-row button {
+    flex: 1;
+  }
 }

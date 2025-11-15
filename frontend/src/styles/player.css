@@ -3,73 +3,73 @@
 /* Flex container for player content (waveforms + effects) */
 /* This fills the remaining space in player-area after the recording-header */
 .player-content-flex {
-	display: flex;
-	flex-direction: column;
-	flex: 1; /* Fill remaining vertical space */
-	min-height: 0; /* Critical for flexbox overflow to work */
-	overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Fill remaining vertical space */
+  min-height: 0; /* Critical for flexbox overflow to work */
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
-	.player-content-flex {
-		/* On mobile, ensure content extends to bottom edge (VCR is fixed) */
-		padding-bottom: 0;
-	}
+  .player-content-flex {
+    /* On mobile, ensure content extends to bottom edge (VCR is fixed) */
+    padding-bottom: 0;
+  }
 }
 
 .stem-player {
-	outline: none;
-	flex-shrink: 0; /* Don't shrink waveforms */
-	padding: 0 1.75rem; /* Desktop: side padding only */
+  outline: none;
+  flex-shrink: 0; /* Don't shrink waveforms */
+  padding: 0 1.75rem; /* Desktop: side padding only */
 }
 
 @media (max-width: 768px) {
-	.stem-player {
-		padding: 0; /* Mobile: no padding - waveforms extend to edges */
-	}
+  .stem-player {
+    padding: 0; /* Mobile: no padding - waveforms extend to edges */
+  }
 }
 
 .stem-player:focus {
-	outline: none;
+  outline: none;
 }
 
 .player-panel {
-	background: transparent;
-	border: none;
+  background: transparent;
+  border: none;
 }
 
 .stem-player.loading {
-	padding: 3rem;
-	text-align: center;
-	color: #888;
-	font-size: 0.9rem;
+  padding: 3rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
 }
 
 .waveform-controls.playback-controls {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
 }
 
 .waveform-controls.playback-controls > button {
-	display: block;
-	width: 2rem;
+  display: block;
+  width: 2rem;
 }
 
 .volume-slider {
-	width: 100%;
+  width: 100%;
 }
 
 .volume-label {
-	text-align: right;
-	font-size: 0.9rem;
-	color: #999;
-	font-variant-numeric: tabular-nums;
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 0.25rem;
+  text-align: right;
+  font-size: 0.9rem;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
 }
 
 .mute-button,
@@ -79,20 +79,20 @@
 .eq-low-button,
 .eq-mid-button,
 .eq-high-button {
-	width: 2rem;
-	padding: 0.3rem 0.5rem;
-	font-size: 0.85rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	color: #888;
-	cursor: pointer;
-	transition: all 0.2s;
-	min-width: unset;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 4px;
-	opacity: 0.6;
+  width: 2rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.6;
 }
 
 .waveform-row:hover .mute-button,
@@ -102,293 +102,293 @@
 .waveform-row:hover .eq-low-button,
 .waveform-row:hover .eq-mid-button,
 .waveform-row:hover .eq-high-button {
-	opacity: 1;
+  opacity: 1;
 }
 
 .mute-button:hover {
-	outline: 2px solid #ff4444;
-	outline-offset: -1px;
-	color: #ff6666;
-	opacity: 1;
+  outline: 2px solid #ff4444;
+  outline-offset: -1px;
+  color: #ff6666;
+  opacity: 1;
 }
 
 .mute-button:hover svg {
-	color: #ff6666 !important;
+  color: #ff6666 !important;
 }
 
 .solo-button:hover {
-	outline: 2px solid #ffa500;
-	outline-offset: -1px;
-	color: #ffb347;
-	opacity: 1;
+  outline: 2px solid #ffa500;
+  outline-offset: -1px;
+  color: #ffb347;
+  opacity: 1;
 }
 
 .solo-button:hover svg {
-	color: #ffb347 !important;
+  color: #ffb347 !important;
 }
 
 .reset-gain:hover {
-	outline: 2px solid #4a9eff;
-	outline-offset: -1px;
-	color: #4a9eff;
-	opacity: 1;
+  outline: 2px solid #4a9eff;
+  outline-offset: -1px;
+  color: #4a9eff;
+  opacity: 1;
 }
 
 .mute-button.muted {
-	background: rgba(255, 68, 68, 0.15);
-	border-color: #ff4444;
-	color: #ff6666;
-	opacity: 1;
+  background: rgba(255, 68, 68, 0.15);
+  border-color: #ff4444;
+  color: #ff6666;
+  opacity: 1;
 }
 
 .mute-button.muted:hover {
-	background: rgba(255, 68, 68, 0.25);
-	border-color: #ff5555;
-	color: #ff7777;
+  background: rgba(255, 68, 68, 0.25);
+  border-color: #ff5555;
+  color: #ff7777;
 }
 
 .mute-button.muted:hover svg {
-	color: #ff7777 !important;
+  color: #ff7777 !important;
 }
 
 .solo-button.soloed {
-	background: rgba(255, 165, 0, 0.15);
-	border-color: #ffa500;
-	color: #ffb347;
-	opacity: 1;
+  background: rgba(255, 165, 0, 0.15);
+  border-color: #ffa500;
+  color: #ffb347;
+  opacity: 1;
 }
 
 .solo-button.soloed svg {
-	color: #ffb347 !important;
+  color: #ffb347 !important;
 }
 
 .solo-button.soloed:hover {
-	background: rgba(255, 165, 0, 0.25);
-	border-color: #ffb347;
-	color: #ffc266;
+  background: rgba(255, 165, 0, 0.25);
+  border-color: #ffb347;
+  color: #ffc266;
 }
 
 .solo-button.soloed:hover svg {
-	color: #ffc266 !important;
+  color: #ffc266 !important;
 }
 
 /* Compression button states - colored backgrounds matching stem colors */
 .compression-button:hover {
-	outline: 2px solid #888;
-	outline-offset: -1px;
-	opacity: 1;
+  outline: 2px solid #888;
+  outline-offset: -1px;
+  opacity: 1;
 }
 
 /* Compression off state - grey (default) */
 .compression-button.off {
-	background: transparent;
-	border-color: rgba(255, 255, 255, 0.1);
-	color: #888;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #888;
 }
 
 /* Compression low state - turquoise (bass color) */
 .compression-button.low {
-	background: rgba(72, 219, 251, 0.15);
-	border-color: #48dbfb;
-	color: #48dbfb;
-	opacity: 1;
+  background: rgba(72, 219, 251, 0.15);
+  border-color: #48dbfb;
+  color: #48dbfb;
+  opacity: 1;
 }
 
 .compression-button.low:hover {
-	background: rgba(72, 219, 251, 0.25);
-	border-color: #5fe5ff;
-	color: #5fe5ff;
+  background: rgba(72, 219, 251, 0.25);
+  border-color: #5fe5ff;
+  color: #5fe5ff;
 }
 
 /* Compression medium state - gold (drums color) */
 .compression-button.medium {
-	background: rgba(255, 159, 67, 0.15);
-	border-color: #ff9f43;
-	color: #ff9f43;
-	opacity: 1;
+  background: rgba(255, 159, 67, 0.15);
+  border-color: #ff9f43;
+  color: #ff9f43;
+  opacity: 1;
 }
 
 .compression-button.medium:hover {
-	background: rgba(255, 159, 67, 0.25);
-	border-color: #ffb366;
-	color: #ffb366;
+  background: rgba(255, 159, 67, 0.25);
+  border-color: #ffb366;
+  color: #ffb366;
 }
 
 /* Compression high state - salmon (vocals color) */
 .compression-button.high {
-	background: rgba(255, 107, 107, 0.15);
-	border-color: #ff6b6b;
-	color: #ff6b6b;
-	opacity: 1;
+  background: rgba(255, 107, 107, 0.15);
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+  opacity: 1;
 }
 
 .compression-button.high:hover {
-	background: rgba(255, 107, 107, 0.25);
-	border-color: #ff8585;
-	color: #ff8585;
+  background: rgba(255, 107, 107, 0.25);
+  border-color: #ff8585;
+  color: #ff8585;
 }
 
 /* EQ button states - using complementary colors for visual distinction */
 
 /* EQ Low-shelf button */
 .eq-low-button:hover {
-	outline: 2px solid #888;
-	outline-offset: -1px;
-	opacity: 1;
+  outline: 2px solid #888;
+  outline-offset: -1px;
+  opacity: 1;
 }
 
 .eq-low-button.off {
-	background: transparent;
-	border-color: rgba(255, 255, 255, 0.1);
-	color: #888;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #888;
 }
 
 .eq-low-button.low {
-	background: rgba(138, 43, 226, 0.15);
-	border-color: #8a2be2;
-	color: #9d4edd;
-	opacity: 1;
+  background: rgba(138, 43, 226, 0.15);
+  border-color: #8a2be2;
+  color: #9d4edd;
+  opacity: 1;
 }
 
 .eq-low-button.low:hover {
-	background: rgba(138, 43, 226, 0.25);
-	border-color: #9d4edd;
-	color: #b085f5;
+  background: rgba(138, 43, 226, 0.25);
+  border-color: #9d4edd;
+  color: #b085f5;
 }
 
 .eq-low-button.medium {
-	background: rgba(138, 43, 226, 0.2);
-	border-color: #9d4edd;
-	color: #b085f5;
-	opacity: 1;
+  background: rgba(138, 43, 226, 0.2);
+  border-color: #9d4edd;
+  color: #b085f5;
+  opacity: 1;
 }
 
 .eq-low-button.medium:hover {
-	background: rgba(138, 43, 226, 0.3);
-	border-color: #b085f5;
-	color: #c4a3ff;
+  background: rgba(138, 43, 226, 0.3);
+  border-color: #b085f5;
+  color: #c4a3ff;
 }
 
 .eq-low-button.high {
-	background: rgba(138, 43, 226, 0.25);
-	border-color: #b085f5;
-	color: #c4a3ff;
-	opacity: 1;
+  background: rgba(138, 43, 226, 0.25);
+  border-color: #b085f5;
+  color: #c4a3ff;
+  opacity: 1;
 }
 
 .eq-low-button.high:hover {
-	background: rgba(138, 43, 226, 0.35);
-	border-color: #c4a3ff;
-	color: #d4b5ff;
+  background: rgba(138, 43, 226, 0.35);
+  border-color: #c4a3ff;
+  color: #d4b5ff;
 }
 
 /* EQ Mid-band button */
 .eq-mid-button:hover {
-	outline: 2px solid #888;
-	outline-offset: -1px;
-	opacity: 1;
+  outline: 2px solid #888;
+  outline-offset: -1px;
+  opacity: 1;
 }
 
 .eq-mid-button.off {
-	background: transparent;
-	border-color: rgba(255, 255, 255, 0.1);
-	color: #888;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #888;
 }
 
 .eq-mid-button.low {
-	background: rgba(34, 197, 94, 0.15);
-	border-color: #22c55e;
-	color: #4ade80;
-	opacity: 1;
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  color: #4ade80;
+  opacity: 1;
 }
 
 .eq-mid-button.low:hover {
-	background: rgba(34, 197, 94, 0.25);
-	border-color: #4ade80;
-	color: #86efac;
+  background: rgba(34, 197, 94, 0.25);
+  border-color: #4ade80;
+  color: #86efac;
 }
 
 .eq-mid-button.medium {
-	background: rgba(34, 197, 94, 0.2);
-	border-color: #4ade80;
-	color: #86efac;
-	opacity: 1;
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #4ade80;
+  color: #86efac;
+  opacity: 1;
 }
 
 .eq-mid-button.medium:hover {
-	background: rgba(34, 197, 94, 0.3);
-	border-color: #86efac;
-	color: #a7f3d0;
+  background: rgba(34, 197, 94, 0.3);
+  border-color: #86efac;
+  color: #a7f3d0;
 }
 
 .eq-mid-button.high {
-	background: rgba(34, 197, 94, 0.25);
-	border-color: #86efac;
-	color: #a7f3d0;
-	opacity: 1;
+  background: rgba(34, 197, 94, 0.25);
+  border-color: #86efac;
+  color: #a7f3d0;
+  opacity: 1;
 }
 
 .eq-mid-button.high:hover {
-	background: rgba(34, 197, 94, 0.35);
-	border-color: #a7f3d0;
-	color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.35);
+  border-color: #a7f3d0;
+  color: #bbf7d0;
 }
 
 /* EQ High-shelf button */
 .eq-high-button:hover {
-	outline: 2px solid #888;
-	outline-offset: -1px;
-	opacity: 1;
+  outline: 2px solid #888;
+  outline-offset: -1px;
+  opacity: 1;
 }
 
 .eq-high-button.off {
-	background: transparent;
-	border-color: rgba(255, 255, 255, 0.1);
-	color: #888;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #888;
 }
 
 .eq-high-button.low {
-	background: rgba(236, 72, 153, 0.15);
-	border-color: #ec4899;
-	color: #f472b6;
-	opacity: 1;
+  background: rgba(236, 72, 153, 0.15);
+  border-color: #ec4899;
+  color: #f472b6;
+  opacity: 1;
 }
 
 .eq-high-button.low:hover {
-	background: rgba(236, 72, 153, 0.25);
-	border-color: #f472b6;
-	color: #f9a8d4;
+  background: rgba(236, 72, 153, 0.25);
+  border-color: #f472b6;
+  color: #f9a8d4;
 }
 
 .eq-high-button.medium {
-	background: rgba(236, 72, 153, 0.2);
-	border-color: #f472b6;
-	color: #f9a8d4;
-	opacity: 1;
+  background: rgba(236, 72, 153, 0.2);
+  border-color: #f472b6;
+  color: #f9a8d4;
+  opacity: 1;
 }
 
 .eq-high-button.medium:hover {
-	background: rgba(236, 72, 153, 0.3);
-	border-color: #f9a8d4;
-	color: #fbcfe8;
+  background: rgba(236, 72, 153, 0.3);
+  border-color: #f9a8d4;
+  color: #fbcfe8;
 }
 
 .eq-high-button.high {
-	background: rgba(236, 72, 153, 0.25);
-	border-color: #f9a8d4;
-	color: #fbcfe8;
-	opacity: 1;
+  background: rgba(236, 72, 153, 0.25);
+  border-color: #f9a8d4;
+  color: #fbcfe8;
+  opacity: 1;
 }
 
 .eq-high-button.high:hover {
-	background: rgba(236, 72, 153, 0.35);
-	border-color: #fbcfe8;
-	color: #fce7f3;
+  background: rgba(236, 72, 153, 0.35);
+  border-color: #fbcfe8;
+  color: #fce7f3;
 }
 
 /* Range Input Styling */
 input[type="range"] {
-	cursor: pointer;
-	accent-color: #3a8eef;
-	height: 6px;
+  cursor: pointer;
+  accent-color: #3a8eef;
+  height: 6px;
 }

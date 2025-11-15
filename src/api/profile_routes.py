@@ -20,7 +20,6 @@ from ..db.operations import (
     create_clip,
     delete_clip,
     delete_recording,
-    get_clip,
     get_clips_for_recording,
     get_clips_for_song,
     update_clip,
@@ -277,8 +276,8 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
                 select(Recording)
                 .where(Recording.id == clip.recording_id)
                 .options(
-                    selectinload(Recording.stems),      # pyright: ignore[reportArgumentType]
-                    selectinload(Recording.location),   # pyright: ignore[reportArgumentType]
+                    selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                    selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
                 )
             )
             result = await session.exec(stmt)
@@ -330,7 +329,9 @@ async def get_song_clips(song_id: UUID) -> list[ClipWithStemsResponse]:
                     recording_output_name=recording.output_name,
                     stems=stems,
                     location=(
-                        LocationMetadata(id=str(recording.location.id), name=recording.location.name)
+                        LocationMetadata(
+                            id=str(recording.location.id), name=recording.location.name
+                        )
                         if recording.location
                         else None
                     ),
@@ -397,7 +398,13 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
     engine = get_engine()
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        stmt = select(Clip).where(Clip.id == clip_id).options(selectinload(Clip.song))
+        stmt = (
+            select(Clip)
+            .where(Clip.id == clip_id)
+            .options(
+                selectinload(Clip.song)  # pyright: ignore[reportArgumentType]
+            )
+        )
         result = await session.exec(stmt)
         clip = result.first()
 
@@ -409,9 +416,9 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
             select(Recording)
             .where(Recording.id == clip.recording_id)
             .options(
-                selectinload(Recording.stems),      # pyright: ignore[reportArgumentType]
+                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
                 selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
-                selectinload(Recording.location),   # pyright: ignore[reportArgumentType]
+                selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
             )
         )
         result = await session.exec(stmt)
@@ -539,12 +546,12 @@ async def get_profile_clips(profile_name: str) -> list[ClipWithStemsResponse]:
         # Get all clips for this profile's recordings
         stmt = (
             select(Clip)
-            .join(Recording, Clip.recording_id == Recording.id)
+            .join(Recording, Clip.recording_id == Recording.id)  # pyright: ignore[reportArgumentType]
             .where(Recording.profile_id == profile.id)
             .order_by(desc(Clip.created_at))
             .options(
-                selectinload(Clip.recording).selectinload(Recording.stems),  # pyright: ignore
-                selectinload(Clip.song),  # pyright: ignore
+                selectinload(Clip.recording).selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                selectinload(Clip.song),  # pyright: ignore[reportArgumentType]
             )
         )
         result = await session.exec(stmt)

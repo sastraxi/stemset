@@ -146,7 +146,9 @@ class Song(SQLModel, table=True):
     recordings: list["Recording"] = Relationship(
         back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
     )
-    clips: list["Clip"] = Relationship(back_populates="song", sa_relationship_kwargs={"lazy": "noload"})
+    clips: list["Clip"] = Relationship(
+        back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
+    )
 
     # Unique constraint on (profile_id, name)
     __table_args__ = (sa.UniqueConstraint("profile_id", "name", name="uq_profile_song_name"),)
@@ -266,7 +268,9 @@ class Clip(SQLModel, table=True):
     recording: "Recording" = Relationship(
         back_populates="clips", sa_relationship_kwargs={"lazy": "noload"}
     )
-    song: Song | None = Relationship(back_populates="clips", sa_relationship_kwargs={"lazy": "noload"})
+    song: Song | None = Relationship(
+        back_populates="clips", sa_relationship_kwargs={"lazy": "noload"}
+    )
 
     # Constraint: end_time_sec must be greater than start_time_sec
     __table_args__ = (
@@ -313,7 +317,9 @@ class RecordingUserConfig(SQLModel, table=True):
     id: UUID = Field(default_factory=new_uuid, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", index=True)
     recording_id: UUID = Field(foreign_key="recordings.id", index=True)
-    config_key: str = Field(max_length=50)  # 'playbackPosition', 'stems', 'eq', 'parametricEq', 'compressor', 'reverb', 'stereoExpander'
+    config_key: str = Field(
+        max_length=50
+    )  # 'playbackPosition', 'stems', 'eq', 'parametricEq', 'compressor', 'reverb', 'stereoExpander'
     config_value: dict[str, float | str | bool] = Field(sa_column=Column(JSONB, nullable=False))
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)

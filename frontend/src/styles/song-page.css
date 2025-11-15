@@ -1,415 +1,420 @@
 /* SoundCloud-inspired Song Page Styles */
 
 .song-page-view {
-	width: 100%;
-	max-width: 1200px;
-	margin: 0 auto;
-	padding: 2rem;
-	background: var(--background);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--background);
 }
 
 /* Header */
 .song-page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 3rem;
-	padding-bottom: 1.5rem;
-	/* Removed border-bottom */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3rem;
+  padding-bottom: 1.5rem;
+  /* Removed border-bottom */
 }
 
 .song-page-header-content {
-	display: flex;
-	align-items: center;
-	gap: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .song-page-icon {
-	width: 3rem;
-	height: 3rem;
-	color: var(--primary);
-	flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 .song-page-title-section {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .song-page-title {
-	font-size: 2rem;
-	font-weight: 700;
-	color: var(--foreground);
-	margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin: 0;
 }
 
 .song-page-stats {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	font-size: 0.875rem;
-	color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
 }
 
 .song-page-stats-separator {
-	opacity: 0.5;
+  opacity: 0.5;
 }
 
 .song-page-actions {
-	display: flex;
-	gap: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
 }
 
 .song-page-action-button {
-	min-width: 100px;
+  min-width: 100px;
 }
 
 /* Clips List */
 .song-clips-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem; /* Reduced gap */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Reduced gap */
 }
 
 /* Clip Row */
 /* Clip Row - Dark Island Style */
 .song-clip-row {
-	background: #0a0a0a; /* Dark, near-black background */
-	border: 1px solid rgba(255, 255, 255, 0.15);
-	border-radius: 0.75rem; /* Slightly larger radius */
-	padding: 0.75rem 1rem 0; /* No bottom padding */
-	transition: all 0.2s ease;
+  background: #0a0a0a; /* Dark, near-black background */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem; /* Slightly larger radius */
+  padding: 0.75rem 1rem 0; /* No bottom padding */
+  transition: all 0.2s ease;
 }
 
 /* No hover effect */
 .song-clip-row:hover {
-	background: #0a0a0a;
-	border-color: rgba(255, 255, 255, 0.15); /* Keep border color same as default */
+  background: #0a0a0a;
+  border-color: rgba(
+    255,
+    255,
+    255,
+    0.15
+  ); /* Keep border color same as default */
 }
 
 .song-clip-row-active {
-	background: #0a0a0a;
-	border-color: rgba(255, 105, 180, 0.6); /* Hot pink border for active state */
-	box-shadow: 0 0 20px rgba(255, 105, 180, 0.3); /* Constant red glow */
+  background: #0a0a0a;
+  border-color: rgba(255, 105, 180, 0.6); /* Hot pink border for active state */
+  box-shadow: 0 0 20px rgba(255, 105, 180, 0.3); /* Constant red glow */
 }
 
 /* Clip Header */
 .song-clip-row-header {
-	display: flex;
-	align-items: center;
-	gap: 1rem;
-	margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .song-clip-play-button {
-	width: 3rem;
-	height: 3rem;
-	border-radius: 50%;
-	background: var(--primary);
-	color: white;
-	flex-shrink: 0;
-	transition: all 0.2s ease;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .song-clip-play-button:hover {
-	transform: scale(1.05);
-	box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
 }
 
 .song-clip-title-section {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	align-items: center;
-	gap: 0.75rem; /* Gap between title and metadata tags */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Gap between title and metadata tags */
 }
 
 .song-clip-title {
-	font-size: 1.125rem;
-	font-weight: 600;
-	color: var(--foreground);
-	margin: 0;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .song-clip-actions {
-	display: flex;
-	align-items: center;
-	gap: 1rem;
-	margin-left: auto; /* Push actions to the right */
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto; /* Push actions to the right */
 }
 
 .song-clip-metadata-tag {
-	background: rgba(255, 255, 255, 0.1);
-	color: rgba(255, 255, 255, 0.7);
-	padding: 0.2rem 0.5rem;
-	border-radius: 0.25rem;
-	font-size: 0.7rem;
-	font-weight: 500;
-	white-space: nowrap;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .song-clip-stem-controls {
-	display: flex;
-	gap: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .stem-mute-toggle {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 2rem;
-	height: 2rem;
-	border-radius: 0.25rem;
-	background: rgba(255, 255, 255, 0.1);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: var(--foreground);
-	transition: all 0.2s ease;
-	cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .stem-mute-toggle:hover {
-	background: rgba(74, 158, 255, 0.2);
-	border-color: var(--primary);
-	color: var(--primary);
+  background: rgba(74, 158, 255, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .stem-mute-toggle.muted {
-	background: rgba(255, 107, 107, 0.2);
-	border-color: rgba(255, 107, 107, 0.5);
-	color: rgba(255, 107, 107, 0.8);
-	opacity: 0.6;
+  background: rgba(255, 107, 107, 0.2);
+  border-color: rgba(255, 107, 107, 0.5);
+  color: rgba(255, 107, 107, 0.8);
+  opacity: 0.6;
 }
 
 .stem-mute-toggle.muted:hover {
-	background: rgba(255, 107, 107, 0.3);
-	opacity: 1;
+  background: rgba(255, 107, 107, 0.3);
+  opacity: 1;
 }
 
 .song-clip-duration {
-	font-size: 0.875rem;
-	color: var(--muted-foreground);
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .timecode-display {
-	font-size: 0.875rem;
-	color: var(--muted-foreground);
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
-	cursor: pointer;
-	user-select: none;
-	transition: color 0.2s ease;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
 }
 
 .timecode-display:hover {
-	color: var(--foreground);
+  color: var(--foreground);
 }
 
 .song-clip-menu-button {
-	flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 /* Waveform */
 .song-clip-waveform {
-	margin: 1rem 0;
-	border-radius: 0.375rem;
-	overflow: hidden;
-	background: rgba(0, 0, 0, 0.3);
+  margin: 1rem 0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* CSS Waveform - Pure CSS rendering */
 .css-waveform-container {
-	position: relative;
-	width: 100%;
-	cursor: pointer;
-	overflow: hidden;
-	border-radius: 0.375rem;
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 0.375rem;
 }
 
 .css-waveform-layer {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-repeat: no-repeat;
-	background-size: 100% 100%;
-	mix-blend-mode: screen;
-	opacity: 0.9;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  mix-blend-mode: screen;
+  opacity: 0.9;
 }
 
 .css-waveform-progress {
-	position: absolute;
-	top: 0;
-	left: 0;
-	height: 100%;
-	background: rgba(255, 255, 255, 0.1);
-	pointer-events: none;
-	/* No transition - updated by RAF at 60fps for smooth movement */
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  /* No transition - updated by RAF at 60fps for smooth movement */
 }
 
 .css-waveform-cursor {
-	position: absolute;
-	top: 0;
-	height: 100%;
-	width: 2px;
-	background: rgba(255, 255, 255, 0.8);
-	pointer-events: none;
-	box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
-	/* No transition - updated by RAF at 60fps for smooth movement */
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+  /* No transition - updated by RAF at 60fps for smooth movement */
 }
 
 .css-waveform-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--muted-foreground);
-	font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
 }
 
 /* Clip Context in Dropdown */
 .song-clip-context {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-	font-size: 0.75rem;
-	color: var(--muted-foreground);
-	padding: 0.5rem 0.75rem;
-	border-top: 1px solid rgba(255, 255, 255, 0.1);
-	margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 0.5rem;
 }
 
 .song-clip-recording-name {
-	font-weight: 500;
-	color: var(--foreground);
+  font-weight: 500;
+  color: var(--foreground);
 }
 
 .song-clip-time-range {
-	opacity: 0.7;
+  opacity: 0.7;
 }
 
 /* Loading/Empty States */
 .song-page-loading {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	min-height: 60vh;
-	gap: 1rem;
-	color: var(--muted-foreground);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 1rem;
+  color: var(--muted-foreground);
 }
 
 .song-page-error {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	min-height: 60vh;
-	color: var(--destructive);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--destructive);
 }
 
 .song-page-empty {
-	text-align: center;
-	padding: 4rem 2rem;
-	color: var(--muted-foreground);
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--muted-foreground);
 }
 
 .song-page-empty p:first-child {
-	font-size: 1.125rem;
-	font-weight: 600;
-	margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
 
 .song-page-empty-hint {
-	font-size: 0.875rem;
-	opacity: 0.7;
+  font-size: 0.875rem;
+  opacity: 0.7;
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-	.song-page-view {
-		padding: 1rem;
-	}
+  .song-page-view {
+    padding: 1rem;
+  }
 
-	.song-page-header {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 1rem;
-	}
+  .song-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
 
-	.song-page-title {
-		font-size: 1.5rem;
-	}
+  .song-page-title {
+    font-size: 1.5rem;
+  }
 
-	.song-page-icon {
-		width: 2rem;
-		height: 2rem;
-	}
+  .song-page-icon {
+    width: 2rem;
+    height: 2rem;
+  }
 
-	.song-page-actions {
-		width: 100%;
-	}
+  .song-page-actions {
+    width: 100%;
+  }
 
-	.song-page-action-button {
-		flex: 1;
-	}
+  .song-page-action-button {
+    flex: 1;
+  }
 
-	.song-clip-row {
-		padding: 1rem;
-	}
+  .song-clip-row {
+    padding: 1rem;
+  }
 
-	.song-clip-row-header {
-		flex-wrap: wrap;
-	}
+  .song-clip-row-header {
+    flex-wrap: wrap;
+  }
 
-	.song-clip-title-section {
-		order: 2;
-		width: 100%;
-		margin-top: 0.5rem;
-	}
+  .song-clip-title-section {
+    order: 2;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
 
-	.song-clip-play-button {
-		order: 1;
-		width: 2.5rem;
-		height: 2.5rem;
-	}
+  .song-clip-play-button {
+    order: 1;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
 
-	.song-clip-duration {
-		order: 3;
-		margin-left: auto;
-	}
+  .song-clip-duration {
+    order: 3;
+    margin-left: auto;
+  }
 
-	.song-clip-menu-button {
-		order: 4;
-	}
+  .song-clip-menu-button {
+    order: 4;
+  }
 
-	.song-clip-title {
-		font-size: 1rem;
-	}
+  .song-clip-title {
+    font-size: 1rem;
+  }
 
-	.song-clip-waveform {
-		margin: 0.75rem 0;
-	}
+  .song-clip-waveform {
+    margin: 0.75rem 0;
+  }
 
-	.song-clip-context {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.25rem;
-	}
+  .song-clip-context {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
 
-	.song-clip-context::before {
-		display: none;
-	}
+  .song-clip-context::before {
+    display: none;
+  }
 }
 
 /* Hover Effects */
 @media (hover: hover) {
-	.song-clip-waveform:hover .composite-waveform-canvas {
-		cursor: pointer;
-	}
+  .song-clip-waveform:hover .composite-waveform-canvas {
+    cursor: pointer;
+  }
 }

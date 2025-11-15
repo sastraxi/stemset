@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
 
 export interface RangeSelection {
   startSec: number | null;
@@ -15,7 +22,9 @@ interface RangeSelectionContextValue {
   setIsSelecting: (selecting: boolean) => void;
 }
 
-const RangeSelectionContext = createContext<RangeSelectionContextValue | null>(null);
+const RangeSelectionContext = createContext<RangeSelectionContextValue | null>(
+  null,
+);
 
 interface RangeSelectionProviderProps {
   children: ReactNode;
@@ -23,62 +32,75 @@ interface RangeSelectionProviderProps {
   enabled?: boolean;
 }
 
-export function RangeSelectionProvider({ children, duration, enabled = true }: RangeSelectionProviderProps) {
+export function RangeSelectionProvider({
+  children,
+  duration,
+  enabled = true,
+}: RangeSelectionProviderProps) {
   const [selection, setSelection] = useState<RangeSelection>({
     startSec: null,
     endSec: null,
   });
   const [isSelecting, setIsSelecting] = useState(false);
 
-  const setInPoint = useCallback((timeSec: number) => {
-    const clampedTime = Math.max(0, Math.min(duration, timeSec));
-    setSelection((prev) => {
-      // If out-point exists and new in-point is after it, adjust out-point
-      if (prev.endSec !== null && clampedTime > prev.endSec) {
+  const setInPoint = useCallback(
+    (timeSec: number) => {
+      const clampedTime = Math.max(0, Math.min(duration, timeSec));
+      setSelection((prev) => {
+        // If out-point exists and new in-point is after it, adjust out-point
+        if (prev.endSec !== null && clampedTime > prev.endSec) {
+          return {
+            startSec: clampedTime,
+            endSec: null, // Clear out-point if it would be before in-point
+          };
+        }
         return {
           startSec: clampedTime,
-          endSec: null, // Clear out-point if it would be before in-point
+          endSec: prev.endSec,
         };
-      }
-      return {
-        startSec: clampedTime,
-        endSec: prev.endSec,
-      };
-    });
-  }, [duration]);
+      });
+    },
+    [duration],
+  );
 
-  const setOutPoint = useCallback((timeSec: number) => {
-    const clampedTime = Math.max(0, Math.min(duration, timeSec));
-    setSelection((prev) => {
-      // If in-point exists and new out-point is before it, adjust in-point
-      if (prev.startSec !== null && clampedTime < prev.startSec) {
+  const setOutPoint = useCallback(
+    (timeSec: number) => {
+      const clampedTime = Math.max(0, Math.min(duration, timeSec));
+      setSelection((prev) => {
+        // If in-point exists and new out-point is before it, adjust in-point
+        if (prev.startSec !== null && clampedTime < prev.startSec) {
+          return {
+            startSec: null, // Clear in-point if it would be after out-point
+            endSec: clampedTime,
+          };
+        }
+        // If in-point exists and new out-point equals it, clear both (zero-length selection)
+        if (prev.startSec !== null && clampedTime === prev.startSec) {
+          return {
+            startSec: null,
+            endSec: null,
+          };
+        }
         return {
-          startSec: null, // Clear in-point if it would be after out-point
+          startSec: prev.startSec,
           endSec: clampedTime,
         };
-      }
-      // If in-point exists and new out-point equals it, clear both (zero-length selection)
-      if (prev.startSec !== null && clampedTime === prev.startSec) {
-        return {
-          startSec: null,
-          endSec: null,
-        };
-      }
-      return {
-        startSec: prev.startSec,
-        endSec: clampedTime,
-      };
-    });
-  }, [duration]);
+      });
+    },
+    [duration],
+  );
 
-  const setRange = useCallback((startSec: number, endSec: number) => {
-    const clampedStart = Math.max(0, Math.min(duration, startSec));
-    const clampedEnd = Math.max(0, Math.min(duration, endSec));
-    setSelection({
-      startSec: Math.min(clampedStart, clampedEnd),
-      endSec: Math.max(clampedStart, clampedEnd),
-    });
-  }, [duration]);
+  const setRange = useCallback(
+    (startSec: number, endSec: number) => {
+      const clampedStart = Math.max(0, Math.min(duration, startSec));
+      const clampedEnd = Math.max(0, Math.min(duration, endSec));
+      setSelection({
+        startSec: Math.min(clampedStart, clampedEnd),
+        endSec: Math.max(clampedStart, clampedEnd),
+      });
+    },
+    [duration],
+  );
 
   const clearSelection = useCallback(() => {
     setSelection({ startSec: null, endSec: null });
@@ -90,7 +112,10 @@ export function RangeSelectionProvider({ children, duration, enabled = true }: R
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
@@ -122,7 +147,9 @@ export function RangeSelectionProvider({ children, duration, enabled = true }: R
 export function useRangeSelection() {
   const context = useContext(RangeSelectionContext);
   if (!context) {
-    throw new Error("useRangeSelection must be used within a RangeSelectionProvider");
+    throw new Error(
+      "useRangeSelection must be used within a RangeSelectionProvider",
+    );
   }
   return context;
 }

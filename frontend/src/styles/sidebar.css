@@ -1,143 +1,141 @@
 /* Sidebar Styles */
 .profile-selector {
-	padding: 1.5rem;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .profile-selector h2 {
-	font-size: 0.7rem;
-	margin-bottom: 0.75rem;
-	color: #888;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	font-weight: 500;
+  font-size: 0.7rem;
+  margin-bottom: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
 }
 
 .profile-selector select {
-	width: 100%;
-	padding: 0.5rem;
-	margin-bottom: 0.75rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 6px;
-	color: #e8e8e8;
-	font-size: 0.9rem;
-	transition: border-color 0.2s;
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e8e8;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
 }
 
 .profile-selector select:hover {
-	border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .profile-selector select:focus {
-	outline: none;
-	border-color: #4a9eff;
+  outline: none;
+  border-color: #4a9eff;
 }
 
 .profile-selector button {
-	width: 100%;
-	padding: 0.6rem 1rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 6px;
-	color: #e8e8e8;
-	font-size: 0.9rem;
-	cursor: pointer;
-	transition: all 0.2s;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e8e8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .profile-selector button:hover:not(:disabled),
 button:hover:not(:disabled) {
-	background: rgba(255, 255, 255, 0.05);
-	border-color: #4a9eff;
-	color: #4a9eff;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #4a9eff;
+  color: #4a9eff;
 }
 
 .profile-selector button:disabled,
 button:disabled {
-	background: transparent;
-	border-color: rgba(255, 255, 255, 0.05);
-	color: #444;
-	cursor: not-allowed;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #444;
+  cursor: not-allowed;
 }
 
 .file-list {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .file-list > div:first-child {
-	/* Header with title and refresh button - fixed, doesn't scroll */
-	flex-shrink: 0;
+  /* Header with title and refresh button - fixed, doesn't scroll */
+  flex-shrink: 0;
 }
 
 .file-list ul,
 .file-list .empty-state,
 .file-list > div:not(:first-child) {
-	/* Scrollable content area */
-	overflow-y: auto;
-	overflow-x: visible;
-	scrollbar-width: none;
-	flex: 1;
-	min-height: 0;
-	margin-right: -1rem;
+  /* Scrollable content area */
+  overflow-y: auto;
+  overflow-x: visible;
+  scrollbar-width: none;
+  flex: 1;
+  min-height: 0;
+  margin-right: -1rem;
 }
 
-
-
 .file-list h2 {
-	font-size: 0.7rem;
-	color: #888;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	font-weight: 500;
+  font-size: 0.7rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
 }
 
 .file-list ul {
-	padding-left: 0;
-	margin-left: 0;
-	padding-right: 01rem;
+  padding-left: 0;
+  margin-left: 0;
+  padding-right: 01rem;
 }
 
 /* Recording List Item - matches upload button styling */
 .recording-list-item {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	padding: 1rem 1.25rem;
-	margin-bottom: 0.5rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 6px;
-	color: #e8e8e8;
-	font-size: 0.9rem;
-	cursor: pointer;
-	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e8e8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: cubic-bezier(0.23, 1, 0.32, 1) 0.8s all;
 }
 
 .recording-list-item:hover,
 .recording-list-item-selected {
-	transform: translateX(3px);
-	border-color: #4a9eff;
-	background: #4a9eff2f;
-	box-shadow: 0 6px 6px #4a9eff2f;
+  transform: translateX(3px);
+  border-color: #4a9eff;
+  background: #4a9eff2f;
+  box-shadow: 0 6px 6px #4a9eff2f;
 }
 
 .recording-time {
-	font-size: 0.8rem;
-	color: rgba(255, 255, 255, 0.4);
-	white-space: nowrap;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
 }
 
 /* VCR Player in Sidebar */
 .sidebar-vcr-container {
-	flex-shrink: 0;
-	padding: 1.25rem 1.75rem;
-	margin: -1.75rem;
-	margin-top: -1.75rem;
+  flex-shrink: 0;
+  padding: 1.25rem 1.75rem;
+  margin: -1.75rem;
+  margin-top: -1.75rem;
 }
 
 /* Note: Container is always rendered, visibility controlled by child .vcr-desktop-only class */

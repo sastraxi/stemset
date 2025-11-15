@@ -1,389 +1,407 @@
 /* VCR Display Styles */
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap");
 
 /* VU Meter Styles */
 .vu-meter {
-	position: absolute;
-	left: 0;
-	right: 0;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	pointer-events: none;
-	z-index: 2;
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Desktop: VU meter aligned with timecode */
 .vcr-desktop-layout .vu-meter {
-	top: -0.5rem;
-	height: 4rem;
-	left: 0;
-	right: 0;
+  top: -0.5rem;
+  height: 4rem;
+  left: 0;
+  right: 0;
 }
 
 /* Mobile: VU meter positioned between buttons/timecode */
 .vcr-mobile-layout .vu-meter {
-	top: 80%;
-	transform: translateX(-50%);
-	left: 50%;
-	justify-content: center;
-	gap:  8px;
+  top: 80%;
+  transform: translateX(-50%);
+  left: 50%;
+  justify-content: center;
+  gap: 8px;
 }
 
 .vu-meter-segment {
-	width: 8px;
-	height: 36px;
-	border-radius: 2px;
-	transition: all 0.1s ease-out;
-	background-color: #2a2a2a;
-	border: 1px solid rgba(0, 0, 0, 0.3);
+  width: 8px;
+  height: 36px;
+  border-radius: 2px;
+  transition: all 0.1s ease-out;
+  background-color: #2a2a2a;
+  border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
 .vu-meter-segment.lit {
-	border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Clip indicators need pointer events enabled and higher z-index than timecode */
 .clip-indicator {
-	pointer-events: auto;
-	position: relative;
-	z-index: 10;
-	/* Make taller and easier to click */
-	height: 100%;
-	padding: 1rem 0.5rem;
-	margin: -1rem -0.5rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/* Make button background transparent */
-	background: transparent !important;
-	box-shadow: none !important;
-	border: none !important;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+  /* Make taller and easier to click */
+  height: 100%;
+  padding: 1rem 0.5rem;
+  margin: -1rem -0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Make button background transparent */
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* The actual LED circle inside the clickable area */
 .clip-indicator::before {
-	content: '';
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	/* These will be set via inline styles on the button element */
-	background-color: var(--clip-bg, #2a2a2a);
-	box-shadow: var(--clip-shadow, none);
-	border: 1px solid #1a1a1a;
-	transition: background-color 0.1s, box-shadow 0.1s;
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* These will be set via inline styles on the button element */
+  background-color: var(--clip-bg, #2a2a2a);
+  box-shadow: var(--clip-shadow, none);
+  border: 1px solid #1a1a1a;
+  transition:
+    background-color 0.1s,
+    box-shadow 0.1s;
 }
 
 /* Desktop: Taller segments for more visual impact */
 @media (min-width: 769px) {
-	.vu-meter-segment {
-		width: 7px;
-		height: 36px;
-	}
+  .vu-meter-segment {
+    width: 7px;
+    height: 36px;
+  }
 }
 
 /* Mobile: Compact and low-profile */
 @media (max-width: 768px) {
-	.vu-meter-segment {
-		width: 8px;
-		height: 4px;
-	}
+  .vu-meter-segment {
+    width: 8px;
+    height: 4px;
+  }
 }
 
 /* Desktop VCR - High-tech, refined design with more presence */
 .vcr-display {
-	background: linear-gradient(135deg,
-		rgba(25, 25, 35, 0.6) 0%,
-		rgba(15, 15, 25, 0.8) 100%);
-	border: 1px solid rgba(100, 120, 180, 0.15);
-	border-radius: 10px;
-	padding: 1.25rem;
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-	position: relative;
-	width: 100%;
-	backdrop-filter: blur(20px);
-	box-shadow:
-		0 4px 16px rgba(0, 0, 0, 0.3),
-		inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  background: linear-gradient(
+    135deg,
+    rgba(25, 25, 35, 0.6) 0%,
+    rgba(15, 15, 25, 0.8) 100%
+  );
+  border: 1px solid rgba(100, 120, 180, 0.15);
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  width: 100%;
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 /* Subtle accent line at top */
 .vcr-display::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 12%;
-	right: 12%;
-	height: 1px;
-	background: linear-gradient(90deg,
-		transparent 0%,
-		rgba(100, 150, 255, 0.3) 50%,
-		transparent 100%);
-	pointer-events: none;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(100, 150, 255, 0.3) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 /* Subtle corner accents */
 .vcr-display::after {
-	content: '';
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	width: 4px;
-	height: 4px;
-	border-radius: 50%;
-	background: rgba(100, 150, 255, 0.2);
-	box-shadow:
-		-180px 0 0 rgba(100, 150, 255, 0.2),
-		0 105px 0 rgba(100, 150, 255, 0.1),
-		-180px 105px 0 rgba(100, 150, 255, 0.1);
-	pointer-events: none;
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(100, 150, 255, 0.2);
+  box-shadow:
+    -180px 0 0 rgba(100, 150, 255, 0.2),
+    0 105px 0 rgba(100, 150, 255, 0.1),
+    -180px 105px 0 rgba(100, 150, 255, 0.1);
+  pointer-events: none;
 }
 
 /* Desktop timecode - elegant, spacious */
 .vcr-timecode {
-	font-family: system-ui, -apple-system, sans-serif;
-	font-size: 1.75rem;
-	font-weight: 300;
-	font-style: normal;
-	color: #d8d8e8;
-	text-align: center;
-	position: relative;
-	z-index: 1;
-	letter-spacing: 0.08em;
-	cursor: pointer;
-	user-select: none;
-	transition: all 0.25s ease;
-	padding: 0.75rem 0;
-	font-variant-numeric: tabular-nums;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 300;
+  font-style: normal;
+  color: #d8d8e8;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s ease;
+  padding: 0.75rem 0;
+  font-variant-numeric: tabular-nums;
 }
 
-	.vcr-desktop-layout .vcr-timecode {
-		padding-top: 0.25rem;
-	}
+.vcr-desktop-layout .vcr-timecode {
+  padding-top: 0.25rem;
+}
 
 .vcr-timecode::after {
-	content: '';
-	position: absolute;
-	bottom: 0;
-	left: 25%;
-	right: 25%;
-	height: 1px;
-	background: linear-gradient(90deg,
-		transparent 0%,
-		rgba(255, 255, 255, 0.08) 50%,
-		transparent 100%);
-	opacity: 0;
-	transition: opacity 0.25s ease;
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .vcr-timecode:hover {
-	color: #ffffff;
-	transform: translateY(-1px);
-	letter-spacing: 0.12em;
+  color: #ffffff;
+  transform: translateY(-1px);
+  letter-spacing: 0.12em;
 }
 
 .vcr-timecode:hover::after {
-	opacity: 1;
+  opacity: 1;
 }
 
 /* Desktop layout - show by default */
 .vcr-desktop-layout {
-	display: flex;
-	flex-direction: column;
-	gap: 0;
-	width: 100%;
-	position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  position: relative;
 }
 
 /* Mobile layout - hidden by default */
 .vcr-mobile-layout {
-	display: none;
-	position: relative;
+  display: none;
+  position: relative;
 }
 
 /* Desktop buttons - refined, tactile design */
 .vcr-button {
-	flex: 1;
-	background: linear-gradient(180deg,
-		rgba(40, 45, 60, 0.3) 0%,
-		rgba(25, 30, 40, 0.5) 100%);
-	border: 1px solid rgba(100, 120, 180, 0.2);
-	color: #b8c2d8;
-	font-size: 1.3rem;
-	padding: 0.6rem 0.5rem;
-	height: auto;
-	min-height: 2.75rem;
-	transition: all 0.2s ease;
-	box-shadow:
-		0 2px 4px rgba(0, 0, 0, 0.2),
-		inset 0 1px 0 rgba(255, 255, 255, 0.03);
-	border-radius: 6px;
-	position: relative;
-	overflow: hidden;
+  flex: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(40, 45, 60, 0.3) 0%,
+    rgba(25, 30, 40, 0.5) 100%
+  );
+  border: 1px solid rgba(100, 120, 180, 0.2);
+  color: #b8c2d8;
+  font-size: 1.3rem;
+  padding: 0.6rem 0.5rem;
+  height: auto;
+  min-height: 2.75rem;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
 }
 
 .vcr-button::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 40%;
-	background: linear-gradient(180deg,
-		rgba(255, 255, 255, 0.04) 0%,
-		transparent 100%);
-	pointer-events: none;
-	opacity: 0;
-	transition: opacity 0.2s ease;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .vcr-button:hover:not(:disabled) {
-	background: linear-gradient(180deg,
-		rgba(60, 70, 90, 0.4) 0%,
-		rgba(40, 50, 70, 0.6) 100%);
-	border-color: rgba(120, 150, 220, 0.4);
-	color: #e8ecf5;
-	box-shadow:
-		0 4px 8px rgba(0, 0, 0, 0.25),
-		inset 0 1px 0 rgba(255, 255, 255, 0.05),
-		0 0 12px rgba(100, 150, 255, 0.1);
-	transform: translateY(-1px);
+  background: linear-gradient(
+    180deg,
+    rgba(60, 70, 90, 0.4) 0%,
+    rgba(40, 50, 70, 0.6) 100%
+  );
+  border-color: rgba(120, 150, 220, 0.4);
+  color: #e8ecf5;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 12px rgba(100, 150, 255, 0.1);
+  transform: translateY(-1px);
 }
 
 .vcr-button:hover:not(:disabled)::before {
-	opacity: 1;
+  opacity: 1;
 }
 
 .vcr-button:active:not(:disabled) {
-	background: linear-gradient(180deg,
-		rgba(30, 35, 50, 0.6) 0%,
-		rgba(20, 25, 40, 0.7) 100%);
-	transform: translateY(0);
-	box-shadow:
-		0 1px 2px rgba(0, 0, 0, 0.3),
-		inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 35, 50, 0.6) 0%,
+    rgba(20, 25, 40, 0.7) 100%
+  );
+  transform: translateY(0);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .vcr-button:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-	border-color: rgba(100, 120, 180, 0.1);
-	color: #555;
-	background: linear-gradient(180deg,
-		rgba(20, 25, 35, 0.2) 0%,
-		rgba(15, 20, 30, 0.3) 100%);
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: rgba(100, 120, 180, 0.1);
+  color: #555;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 25, 35, 0.2) 0%,
+    rgba(15, 20, 30, 0.3) 100%
+  );
 }
 
 .vcr-button[data-active="true"] {
-	border-color: #4a9eff;
-	background: #4a9eff2f;
-	box-shadow: 0 6px 6px #4a9eff2f;
-	color: #4a9eff;
+  border-color: #4a9eff;
+  background: #4a9eff2f;
+  box-shadow: 0 6px 6px #4a9eff2f;
+  color: #4a9eff;
 }
 
 .vcr-button[data-active="true"]:hover:not(:disabled) {
-	border-color: #69b4ff;
-	background: #4a9eff4f;
-	box-shadow: 0 8px 8px #4a9eff4f;
-	color: #69b4ff;
+  border-color: #69b4ff;
+  background: #4a9eff4f;
+  box-shadow: 0 8px 8px #4a9eff4f;
+  color: #69b4ff;
 }
 
 /* Mobile styling - Match desktop aesthetic */
 @media (max-width: 768px) {
-	/* Mobile VCR - Override spacing only */
-	.vcr-display {
-		width: calc(100% + 12px);
-		margin-left: -6px;
-		margin-right: -6px;
-		margin-bottom: -6px;
-		padding: 0.75rem 1.5rem;
-		padding-bottom: 0.9rem;
-	}
+  /* Mobile VCR - Override spacing only */
+  .vcr-display {
+    width: calc(100% + 12px);
+    margin-left: -6px;
+    margin-right: -6px;
+    margin-bottom: -6px;
+    padding: 0.75rem 1.5rem;
+    padding-bottom: 0.9rem;
+  }
 
-	/* Mobile timecode - Match desktop styling */
-	.vcr-timecode-mobile {
-		font-family: system-ui, -apple-system, sans-serif;
-		font-size: 1.5rem;
-		font-weight: 300;
-		font-style: normal;
-		color: #d8d8e8;
-		text-align: center;
-		letter-spacing: 0.08em;
-		cursor: pointer;
-		user-select: none;
-		transition: all 0.25s ease;
-		font-variant-numeric: tabular-nums;
-		flex: 0 0 auto;
-		padding: 0.5rem 1rem;
-		position: relative;
-		top: -0.5rem;
-		z-index: 1;
-	}
+  /* Mobile timecode - Match desktop styling */
+  .vcr-timecode-mobile {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 300;
+    font-style: normal;
+    color: #d8d8e8;
+    text-align: center;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.25s ease;
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+    padding: 0.5rem 1rem;
+    position: relative;
+    top: -0.5rem;
+    z-index: 1;
+  }
 
-	.vcr-timecode-mobile:hover {
-		color: #e8e8f8;
-		letter-spacing: 0.12em;
-	}
+  .vcr-timecode-mobile:hover {
+    color: #e8e8f8;
+    letter-spacing: 0.12em;
+  }
 
-	/* Hide desktop layout */
-	.vcr-desktop-layout {
-		display: none;
-	}
+  /* Hide desktop layout */
+  .vcr-desktop-layout {
+    display: none;
+  }
 
-	/* Show mobile layout */
-	.vcr-mobile-layout {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		width: 100%;
-	}
+  /* Show mobile layout */
+  .vcr-mobile-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+  }
 
-	.vcr-mobile-layout > button {
-		padding: 0 2.5rem;
-	}
+  .vcr-mobile-layout > button {
+    padding: 0 2.5rem;
+  }
 }
 
 /* Mobile button styling - Retro orange buttons */
 .vcr-button-mobile {
-	background: rgba(0, 20, 25, 0.6);
-	border: 2px solid #ff8833;
-	color: #ffaa66;
-	position: relative;
-	z-index: 1;
-	padding: 0.5rem;
-	width: 2.75rem;
-	height: 2.75rem;
-	transition: all 0.2s ease;
-	box-shadow:
-		inset 0 1px 3px rgba(255, 136, 51, 0.2),
-		0 2px 6px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 20, 25, 0.6);
+  border: 2px solid #ff8833;
+  color: #ffaa66;
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  transition: all 0.2s ease;
+  box-shadow:
+    inset 0 1px 3px rgba(255, 136, 51, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .vcr-button-mobile:hover:not(:disabled) {
-	background: rgba(255, 136, 51, 0.15);
-	border-color: #ffaa66;
-	color: #ffcc88;
-	box-shadow:
-		inset 0 1px 3px rgba(255, 136, 51, 0.3),
-		0 0 12px rgba(255, 136, 51, 0.3),
-		0 2px 8px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 136, 51, 0.15);
+  border-color: #ffaa66;
+  color: #ffcc88;
+  box-shadow:
+    inset 0 1px 3px rgba(255, 136, 51, 0.3),
+    0 0 12px rgba(255, 136, 51, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .vcr-button-mobile:active:not(:disabled) {
-	background: rgba(255, 136, 51, 0.25);
-	transform: translateY(1px);
-	box-shadow:
-		inset 0 2px 6px rgba(0, 0, 0, 0.4),
-		0 1px 3px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 136, 51, 0.25);
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .vcr-button-mobile:disabled {
-	opacity: 0.3;
-	cursor: not-allowed;
-	border-color: #663311;
-	color: #884422;
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: #663311;
+  color: #884422;
 }

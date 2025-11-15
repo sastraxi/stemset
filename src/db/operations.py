@@ -135,9 +135,7 @@ async def get_clips_for_recording(session: AsyncSession, recording_id: UUID) -> 
         List of Clip objects
     """
     stmt = (
-        select(Clip)
-        .where(Clip.recording_id == recording_id)
-        .order_by(Clip.start_time_sec)  # pyright: ignore[reportArgumentType]
+        select(Clip).where(Clip.recording_id == recording_id).order_by(Clip.start_time_sec)  # pyright: ignore[reportArgumentType]
     )
     result = await session.exec(stmt)
     return list(result.all())
@@ -154,9 +152,7 @@ async def get_clips_for_song(session: AsyncSession, song_id: UUID) -> list[Clip]
         List of Clip objects
     """
     stmt = (
-        select(Clip)
-        .where(Clip.song_id == song_id)
-        .order_by(Clip.start_time_sec)  # pyright: ignore[reportArgumentType]
+        select(Clip).where(Clip.song_id == song_id).order_by(Clip.start_time_sec)  # pyright: ignore[reportArgumentType]
     )
     result = await session.exec(stmt)
     return list(result.all())

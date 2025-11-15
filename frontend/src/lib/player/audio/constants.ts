@@ -2,10 +2,10 @@
  * Stem color palette matching the dark theme
  */
 export const STEM_COLORS: Record<string, string> = {
-	vocals: "#ff6b6b", // Red
-	drums: "#ff9f43", // Orange
-	bass: "#48dbfb", // Cyan
-	other: "#a29bfe", // Purple
+  vocals: "#ff6b6b", // Red
+  drums: "#ff9f43", // Orange
+  bass: "#48dbfb", // Cyan
+  other: "#a29bfe", // Purple
 };
 
 /**

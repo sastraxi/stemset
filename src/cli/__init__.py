@@ -94,7 +94,9 @@ def cleanup() -> None:
 
         async with AsyncSession(engine, expire_on_commit=False) as session:
             # Fetch all successfully completed recordings
-            stmt = select(Recording, Profile).join(Profile).where(Recording.converted_at.isnot(None))  # pyright: ignore[reportAttributeAccessIssue]
+            stmt = (
+                select(Recording, Profile).join(Profile).where(Recording.converted_at.isnot(None))
+            )  # pyright: ignore[reportAttributeAccessIssue]
             result = await session.exec(stmt)
             recordings_with_profiles = result.all()
 

@@ -1,75 +1,75 @@
 .processing-state {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 400px;
-	padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
 }
 
 .processing-content {
-	text-align: center;
-	max-width: 500px;
+  text-align: center;
+  max-width: 500px;
 }
 
 .processing-content.error {
-	color: #ef4444;
+  color: #ef4444;
 }
 
 .processing-spinner {
-	width: 48px;
-	height: 48px;
-	margin: 0 auto 1.5rem;
-	color: #3b82f6;
-	animation: spin 1s linear infinite;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1.5rem;
+  color: #3b82f6;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .processing-icon.error-icon {
-	font-size: 48px;
-	margin: 0 auto 1.5rem;
+  font-size: 48px;
+  margin: 0 auto 1.5rem;
 }
 
 .processing-title {
-	font-size: 1.5rem;
-	font-weight: 600;
-	color: #e8e8e8;
-	margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin: 0 0 1rem;
 }
 
 .processing-message {
-	font-size: 1rem;
-	color: #a0a0a0;
-	margin: 0 0 1rem;
-	line-height: 1.5;
+  font-size: 1rem;
+  color: #a0a0a0;
+  margin: 0 0 1rem;
+  line-height: 1.5;
 }
 
 .processing-message strong {
-	color: #e8e8e8;
-	font-weight: 600;
+  color: #e8e8e8;
+  font-weight: 600;
 }
 
 .processing-hint {
-	font-size: 0.875rem;
-	color: #707070;
-	margin: 0;
-	line-height: 1.5;
+  font-size: 0.875rem;
+  color: #707070;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .processing-error-detail {
-	font-size: 0.875rem;
-	color: #f87171;
-	margin: 0.5rem 0;
-	padding: 0.75rem;
-	background: rgba(239, 68, 68, 0.1);
-	border: 1px solid rgba(239, 68, 68, 0.2);
-	border-radius: 4px;
-	font-family: monospace;
+  font-size: 0.875rem;
+  color: #f87171;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  font-family: monospace;
 }

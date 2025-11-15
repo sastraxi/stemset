@@ -20,7 +20,7 @@ def get_database_url() -> str:
     if not database_url:
         raise ValueError(
             "DATABASE_URL environment variable is required. "
-            "Set it to your PostgreSQL connection string (e.g., postgresql+asyncpg://user:pass@host/db)"
+            + "Set it to your PostgreSQL connection string (e.g., postgresql+asyncpg://user:pass@host/db)"
         )
 
     # Convert postgresql:// to postgresql+asyncpg:// if needed
@@ -46,7 +46,9 @@ def get_sync_engine() -> Engine:
         if database_url.startswith("postgresql://"):
             database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
         elif database_url.startswith("postgresql+asyncpg://"):
-            database_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+            database_url = database_url.replace(
+                "postgresql+asyncpg://", "postgresql+psycopg2://", 1
+            )
 
         _sync_engine = create_engine(
             database_url,

@@ -1,290 +1,287 @@
 /* Waveform Display */
 .waveforms-section {
-	margin-bottom: 1rem;
-	display: flex;
-	flex-direction: column;
-	gap: 0;
-	border-radius: 0.5rem;
-	overflow: hidden;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
 }
 
 .waveform-row {
-	display: flex;
-	flex-direction: row-reverse;
-	gap: 1.5rem;
-	align-items: center;
-	padding: 0;
-	margin: 0;
-	margin-right: 0rem;
-	/* Add horizontal margin to prevent outline clipping */
-	transition: background 0.15s;
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  margin-right: 0rem;
+  /* Add horizontal margin to prevent outline clipping */
+  transition: background 0.15s;
 }
 
 .waveform-row:hover {
-	background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 @media (max-width: 768px) {
-	.waveform-row {
-		gap: 0.25rem;
-		margin: 0;
-		margin-right: 0;
-	}
+  .waveform-row {
+    gap: 0.25rem;
+    margin: 0;
+    margin-right: 0;
+  }
 }
 
 .waveform-controls {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-	width: 212px;
-	flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 212px;
+  flex-shrink: 0;
 }
 
 .waveform-stem-label {
-	font-weight: 500;
-	text-transform: capitalize;
-	color: #e8e8e8;
-	font-size: 0.85rem;
-	min-width: 60px;
-	position: relative;
-	margin-top: -4px;
-	top: 4px;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: #e8e8e8;
+  font-size: 0.85rem;
+  min-width: 60px;
+  position: relative;
+  margin-top: -4px;
+  top: 4px;
 }
 
 @media (max-width: 768px) {
-	.waveform-controls {
-		width: auto;
-		flex-direction: row;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 0;
-		margin: 0;
-	}
+  .waveform-controls {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    margin: 0;
+  }
 
-	.waveform-controls .waveform-stem-label {
-		display: none !important;
-	}
+  .waveform-controls .waveform-stem-label {
+    display: none !important;
+  }
 
-	.waveform-controls .waveform-volume-control {
-		display: none !important;
-	}
+  .waveform-controls .waveform-volume-control {
+    display: none !important;
+  }
 
-	.waveform-controls .waveform-control-buttons {
-		flex-direction: column !important;
-		gap: 0.25rem !important;
-	}
+  .waveform-controls .waveform-control-buttons {
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+  }
 
-	.waveform-controls .mute-button {
-		display: none !important;
-	}
+  .waveform-controls .mute-button {
+    display: none !important;
+  }
 
-	/* Hide EQ buttons on mobile - keep compression visible */
-	.waveform-controls .eq-low-button,
-	.waveform-controls .eq-mid-button,
-	.waveform-controls .eq-high-button {
-		display: none !important;
-	}
+  /* Hide EQ buttons on mobile - keep compression visible */
+  .waveform-controls .eq-low-button,
+  .waveform-controls .eq-mid-button,
+  .waveform-controls .eq-high-button {
+    display: none !important;
+  }
 
-	/* Ruler controls area on mobile - empty but maintains space for alignment */
-	.waveform-row:first-child .waveform-controls {
-		width: 2rem !important;
-	}
+  /* Ruler controls area on mobile - empty but maintains space for alignment */
+  .waveform-row:first-child .waveform-controls {
+    width: 2rem !important;
+  }
 }
 
 .waveform-controls .volume-slider {
-	width: 120px;
-	flex-grow: 1;
+  width: 120px;
+  flex-grow: 1;
 }
 
 .waveform-controls .waveform-volume-control {
-	display: flex;
-	width: 100%;
-	gap: 0rem;
-	align-items: center;
+  display: flex;
+  width: 100%;
+  gap: 0rem;
+  align-items: center;
 }
 
 .waveform-controls .volume-label {
-	font-size: 0.75rem;
-	color: #888;
-	font-variant-numeric: tabular-nums;
-	min-width: 40px;
-	text-align: right;
+  font-size: 0.75rem;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
 }
 
 /* Playback control buttons in waveform controls */
 .waveform-controls .playback-button {
-	width: auto;
-	padding: 0.35rem 0.6rem;
-	font-size: 0.85rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	color: #888;
-	cursor: pointer;
-	transition: all 0.2s;
-	min-width: unset;
-	border-radius: 6px;
-	margin-right: 0.25rem;
+  width: auto;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: unset;
+  border-radius: 6px;
+  margin-right: 0.25rem;
 }
 
 .waveform-controls .playback-button:hover:not(:disabled) {
-	background: rgba(74, 158, 255, 0.15);
-	border-color: #4a9eff;
-	color: #4a9eff;
+  background: rgba(74, 158, 255, 0.15);
+  border-color: #4a9eff;
+  color: #4a9eff;
 }
 
 .waveform-controls .playback-button:disabled {
-	border-color: rgba(255, 255, 255, 0.05);
-	color: #444;
-	opacity: 0.5;
-	cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #444;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .waveform-container {
-	flex-grow: 1;
-	position: relative;
-	background: rgba(0, 0, 0, 0.2);
-	border: none;
-	border-radius: 0;
-	overflow: hidden;
+  flex-grow: 1;
+  position: relative;
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
 }
 
 .waveform-container.no-background {
-	background: transparent;
+  background: transparent;
 }
 
 .waveform-container.rounded-b-lg {
-	border-bottom-left-radius: 0.5rem;
-	border-bottom-right-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
 }
 
 .waveform-canvas {
-	display: block;
-	cursor: pointer;
-	width: 100%;
-	transition: opacity 0.2s;
-	touch-action: none;
+  display: block;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.2s;
+  touch-action: none;
 
-	/* Smooth image rendering for better waveform display */
-	image-rendering: -webkit-optimize-contrast;
+  /* Smooth image rendering for better waveform display */
+  image-rendering: -webkit-optimize-contrast;
 }
 
 /* Desktop height calculation */
 @media (min-width: 769px) {
-	.waveform-canvas {
-		/* Optimized for ~4 stems, giving more room to effects panel
+  .waveform-canvas {
+    /* Optimized for ~4 stems, giving more room to effects panel
 		   Stems are kept smaller to maximize effects panel space */
-		height: clamp(
-			100px,  /* Reduced minimum */
-			calc(
-				(100vh - 9.25rem - 60px - 48px - 378px) /
-					var(--stem-count)
-			),
-			160px  /* Reduced maximum - stems stay compact */
-		);
-	}
+    height: clamp(
+      100px /* Reduced minimum */,
+      calc((100vh - 9.25rem - 60px - 48px - 378px) / var(--stem-count)),
+      160px /* Reduced maximum - stems stay compact */
+    );
+  }
 }
 
 @media (max-width: 768px) {
-	.waveform-canvas {
-		/* Dynamic height calculation for mobile to fit available vertical space */
-		/* Formula: (viewport - paddings - margins - ruler) / stem count */
-		/* 9rem = 1rem top + 5rem bottom (VCR space) + 3rem waveforms-section margin-bottom */
-		/* 48px = ruler height */
-		height: clamp(
-			120px,
-			calc((100vh - 16rem - 48px) / var(--stem-count)),
-			148px
-		);
-	}
+  .waveform-canvas {
+    /* Dynamic height calculation for mobile to fit available vertical space */
+    /* Formula: (viewport - paddings - margins - ruler) / stem count */
+    /* 9rem = 1rem top + 5rem bottom (VCR space) + 3rem waveforms-section margin-bottom */
+    /* 48px = ruler height */
+    height: clamp(
+      120px,
+      calc((100vh - 16rem - 48px) / var(--stem-count)),
+      148px
+    );
+  }
 }
 
 .waveform-canvas:hover {
-	opacity: 0.9;
+  opacity: 0.9;
 }
 
 .waveform-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	height: 96px;
-	background: rgba(0, 0, 0, 0.2);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 0;
-	color: #666;
-	font-size: 0.75rem;
-	font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  color: #666;
+  font-size: 0.75rem;
+  font-style: italic;
 }
 
 /* Ruler Component */
 .ruler-container {
-	flex-grow: 1;
-	position: relative;
-	background: transparent;
-	overflow: hidden;
-	border-radius: 0;
+  flex-grow: 1;
+  position: relative;
+  background: transparent;
+  overflow: hidden;
+  border-radius: 0;
 }
 
 .ruler-container.rounded-t-lg {
-	border-top-left-radius: 0.5rem;
-	border-top-right-radius: 0.5rem;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
 }
 
 .ruler-canvas {
-	display: block;
-	width: 100%;
-	/* height: 48px; */
-	cursor: pointer;
-	transition: opacity 0.2s;
-	touch-action: none;
+  display: block;
+  width: 100%;
+  /* height: 48px; */
+  cursor: pointer;
+  transition: opacity 0.2s;
+  touch-action: none;
 
-	/* Smooth rendering */
-	image-rendering: -webkit-optimize-contrast;
+  /* Smooth rendering */
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .ruler-canvas:hover {
-	opacity: 0.9;
+  opacity: 0.9;
 }
 
 /* Mobile Volume Control */
 .mobile-volume-button {
-	width: 2rem;
-	height: 1.8rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 6px;
-	border: 2px solid;
-	transition: border-color 0.1s ease;
-	position: relative;
-	background: transparent;
+  width: 2rem;
+  height: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 2px solid;
+  transition: border-color 0.1s ease;
+  position: relative;
+  background: transparent;
 }
 
 .mobile-volume-button:active {
-	transform: scale(0.95);
+  transform: scale(0.95);
 }
 
 /* Floating stem label on waveform */
 .waveform-stem-label-floating {
-	position: absolute;
-	top: 4px;
-	right: 8px;
-	background: rgba(0, 0, 0, 0.7);
-	color: #e8e8e8;
-	padding: 2px 8px;
-	border-radius: 4px;
-	font-size: 0.75rem;
-	font-weight: 500;
-	text-transform: capitalize;
-	pointer-events: none;
-	z-index: 10;
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #e8e8e8;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  pointer-events: none;
+  z-index: 10;
 }
 
 @media (min-width: 769px) {
-	.mobile-volume-button {
-		display: none;
-	}
+  .mobile-volume-button {
+    display: none;
+  }
 
-	.waveform-stem-label-floating {
-		display: none;
-	}
+  .waveform-stem-label-floating {
+    display: none;
+  }
 }

@@ -2,14 +2,14 @@ import { Ruler } from "../../../components/Ruler";
 import type { RangeSelectionContext } from "../canvas/useCanvasInteraction";
 
 export interface FullRulerProps {
-	currentTime: number;
-	duration: number;
-	previewTime?: number;
-	onSeek?: (time: number) => void;
-	onPreview?: (time: number | null) => void;
-	rangeSelection?: RangeSelectionContext | null;
-	height?: number; // Default: 48px
-	className?: string;
+  currentTime: number;
+  duration: number;
+  previewTime?: number;
+  onSeek?: (time: number) => void;
+  onPreview?: (time: number | null) => void;
+  rangeSelection?: RangeSelectionContext | null;
+  height?: number; // Default: 48px
+  className?: string;
 }
 
 /**
@@ -22,24 +22,24 @@ export interface FullRulerProps {
  * - Playback cursor with preview
  */
 export function FullRuler({
-	currentTime,
-	duration,
-	previewTime,
-	onSeek,
-	onPreview,
-	height = 48,
-	className = "",
+  currentTime,
+  duration,
+  previewTime,
+  onSeek,
+  onPreview,
+  height = 48,
+  className = "",
 }: FullRulerProps) {
-	return (
-		<div className={`full-ruler ${className}`}>
-			<Ruler
-				currentTime={currentTime}
-				duration={duration}
-				previewTime={previewTime}
-				onSeek={onSeek}
-				onPreview={onPreview}
-				height={height}
-			/>
-		</div>
-	);
+  return (
+    <div className={`full-ruler ${className}`}>
+      <Ruler
+        currentTime={currentTime}
+        duration={duration}
+        previewTime={previewTime}
+        onSeek={onSeek}
+        onPreview={onPreview}
+        height={height}
+      />
+    </div>
+  );
 }

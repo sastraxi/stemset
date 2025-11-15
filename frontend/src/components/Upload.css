@@ -1,90 +1,89 @@
 /* Upload Sidebar Button */
 .upload-sidebar-button {
-	display: flex;
-	gap: 1rem;
-	align-items: center;
-	justify-content: center;
-	padding: 2rem 1.5rem;
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 6px;
-	color: #e8e8e8;
-	font-size: 1rem;
-	cursor: pointer;
-	transition: cubic-bezier(0.23, 1, 0.320, 1) 0.8s all;
-	position: relative;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e8e8;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: cubic-bezier(0.23, 1, 0.32, 1) 0.8s all;
+  position: relative;
 }
 
 .upload-sidebar-button:hover {
-	/* border-color: #4a9eff;
+  /* border-color: #4a9eff;
 	background: #4a9eff2f; */
-	transform: translateY(-3px);
+  transform: translateY(-3px);
 
-	/* border-color: #ff4a9e;
+  /* border-color: #ff4a9e;
 	background: #ff4a9e2f;
  */
-	border-color: #ff9f43;
-	background: #ff9f432f;
+  border-color: #ff9f43;
+  background: #ff9f432f;
 
-	box-shadow: 0 6px 6px #ff9f432f;
+  box-shadow: 0 6px 6px #ff9f432f;
 }
 
-
-	.upload-sidebar-button span {
-		pointer-events: none;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.9rem;
-	}
+.upload-sidebar-button span {
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.9rem;
+}
 
 /* Full-screen Drop Overlay */
 .upload-fullscreen-overlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(13, 13, 13, 0.98);
-	backdrop-filter: blur(8px);
-	z-index: 9999;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	animation: fadeIn 0.15s ease-out;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(13, 13, 13, 0.98);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease-out;
 }
 
 @keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
+  from {
+    opacity: 0;
+  }
 
-	to {
-		opacity: 1;
-	}
+  to {
+    opacity: 1;
+  }
 }
 
 .upload-fullscreen-content {
-	text-align: center;
-	pointer-events: none;
+  text-align: center;
+  pointer-events: none;
 }
 
 .upload-icon {
-	width: 96px;
-	height: 96px;
-	margin: 0 auto 2rem;
-	color: #4a9eff;
-	opacity: 0.8;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 2rem;
+  color: #4a9eff;
+  opacity: 0.8;
 }
 
 .upload-message {
-	font-size: 1.5rem;
-	font-weight: 500;
-	color: #e8e8e8;
-	margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #e8e8e8;
+  margin: 0 0 0.75rem 0;
 }
 
 .upload-hint {
-	font-size: 0.9rem;
-	color: #888;
-	margin: 0;
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
 }

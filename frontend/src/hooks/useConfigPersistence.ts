@@ -8,18 +8,18 @@ import { apiRecordingsRecordingIdGetRecordingStatusQueryKey } from "@/api/genera
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export interface UseConfigPersistenceOptions<T> {
-	recordingId: string;
-	configKey: string; // 'eq', 'compressor', 'reverb', 'stereoExpander', 'stems', 'playbackPosition'
-	defaultValue: T;
-	debounceMs?: number; // Default: 500ms
+  recordingId: string;
+  configKey: string; // 'eq', 'compressor', 'reverb', 'stereoExpander', 'stems', 'playbackPosition'
+  defaultValue: T;
+  debounceMs?: number; // Default: 500ms
 }
 
 export interface UseConfigPersistenceResult<T> {
-	config: T;
-	setConfig: (value: T | ((prev: T) => T)) => void;
-	isLoading: boolean;
-	isSaving: boolean;
-	error: Error | null;
+  config: T;
+  setConfig: (value: T | ((prev: T) => T)) => void;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: Error | null;
 }
 
 /**
@@ -33,166 +33,180 @@ export interface UseConfigPersistenceResult<T> {
  * 5. Debounce saves to prevent excessive writes
  */
 export function useConfigPersistence<T>({
-	recordingId,
-	configKey,
-	defaultValue,
-	debounceMs = 500,
+  recordingId,
+  configKey,
+  defaultValue,
+  debounceMs = 500,
 }: UseConfigPersistenceOptions<T>): UseConfigPersistenceResult<T> {
-	const { getToken } = useAuth();
-	const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
 
-	// Fetch recording data (uses React Query cache)
-	const { data: recording, isLoading, error } = useRecording(recordingId);
+  // Fetch recording data (uses React Query cache)
+  const { data: recording, isLoading, error } = useRecording(recordingId);
 
-	// Extract the config for this key from the recording
-	// This is the "persisted" value from the backend
-	const backendConfig = useMemo(() => {
-		if (!recording?.config) return null;
-		const value = recording.config[
-			configKey as keyof typeof recording.config
-		] as T | null | undefined;
-		return value ?? null;
-	}, [recording, configKey]);
+  // Extract the config for this key from the recording
+  // This is the "persisted" value from the backend
+  const backendConfig = useMemo(() => {
+    if (!recording?.config) return null;
+    const value = recording.config[
+      configKey as keyof typeof recording.config
+    ] as T | null | undefined;
+    return value ?? null;
+  }, [recording, configKey]);
 
-	// Local state for immediate UI updates
-	// Initialize with backend config if available, otherwise use default
-	const [config, setConfigState] = useState<T>(() => {
-		// On mount: use backend config if it exists, otherwise default
-		if (backendConfig !== null) {
-			return backendConfig;
-		}
-		return defaultValue;
-	});
+  // Local state for immediate UI updates
+  // Initialize with backend config if available, otherwise use default
+  const [config, setConfigState] = useState<T>(() => {
+    // On mount: use backend config if it exists, otherwise default
+    if (backendConfig !== null) {
+      return backendConfig;
+    }
+    return defaultValue;
+  });
 
-	// Track whether we've initialized from backend yet
-	// This prevents saving the initial backend value back to the server
-	const [initialized, setInitialized] = useState(false);
+  // Track whether we've initialized from backend yet
+  // This prevents saving the initial backend value back to the server
+  const [initialized, setInitialized] = useState(false);
 
-	// When backend config loads/changes, update local state
-	// But only if we haven't initialized yet OR if backend changed externally
-	useEffect(() => {
-		if (isLoading) return;
+  // When backend config loads/changes, update local state
+  // But only if we haven't initialized yet OR if backend changed externally
+  useEffect(() => {
+    if (isLoading) return;
 
-		if (!initialized) {
-			// First load: set local state to backend value (or default)
-			if (backendConfig !== null) {
-				setConfigState(backendConfig);
-			}
-			setInitialized(true);
-		}
-		// Note: We don't update local state on subsequent backend changes
-		// because the user might be actively editing. Our debounced save
-		// will push local changes to the backend.
-	}, [backendConfig, isLoading, initialized]);
+    if (!initialized) {
+      // First load: set local state to backend value (or default)
+      if (backendConfig !== null) {
+        setConfigState(backendConfig);
+      }
+      setInitialized(true);
+    }
+    // Note: We don't update local state on subsequent backend changes
+    // because the user might be actively editing. Our debounced save
+    // will push local changes to the backend.
+  }, [backendConfig, isLoading, initialized]);
 
-	// Mutation for saving config to backend
-	const mutation = useMutation({
-		mutationFn: async (value: T) => {
-			const token = getToken();
-			if (!token) {
-				throw new Error("No auth token available");
-			}
+  // Mutation for saving config to backend
+  const mutation = useMutation({
+    mutationFn: async (value: T) => {
+      const token = getToken();
+      if (!token) {
+        throw new Error("No auth token available");
+      }
 
-			const response = await fetch(
-				`${API_BASE}/api/recordings/${recordingId}/config`,
-				{
-					method: "PATCH",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({ key: configKey, value }),
-				},
-			);
+      const response = await fetch(
+        `${API_BASE}/api/recordings/${recordingId}/config`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ key: configKey, value }),
+        },
+      );
 
-			if (!response.ok) {
-				throw new Error(`Server returned ${response.status}`);
-			}
-		},
-		onMutate: async (newValue) => {
-			// Optimistically update the cache immediately
-			const queryKey = apiRecordingsRecordingIdGetRecordingStatusQueryKey({
-				path: { recording_id: recordingId },
-			});
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+    },
+    onMutate: async (newValue) => {
+      // Optimistically update the cache immediately
+      const queryKey = apiRecordingsRecordingIdGetRecordingStatusQueryKey({
+        path: { recording_id: recordingId },
+      });
 
-			// Cancel any outgoing refetches
-			await queryClient.cancelQueries({ queryKey });
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
 
-			// Snapshot the previous value
-			const previousData = queryClient.getQueryData(queryKey);
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(queryKey);
 
-			// Optimistically update
-			queryClient.setQueryData(queryKey, (old: unknown) => {
-				if (!old || typeof old !== "object") return old;
-				return {
-					...old,
-					config: {
-						...(old as { config?: Record<string, unknown> }).config,
-						[configKey]: newValue,
-					},
-				};
-			});
+      // Optimistically update
+      queryClient.setQueryData(queryKey, (old: unknown) => {
+        if (!old || typeof old !== "object") return old;
+        return {
+          ...old,
+          config: {
+            ...(old as { config?: Record<string, unknown> }).config,
+            [configKey]: newValue,
+          },
+        };
+      });
 
-			// Return context for rollback
-			return { previousData, queryKey };
-		},
-		onError: (_err, _newValue, context) => {
-			// Rollback on error
-			if (context?.previousData) {
-				queryClient.setQueryData(context.queryKey, context.previousData);
-			}
+      // Return context for rollback
+      return { previousData, queryKey };
+    },
+    onError: (_err, _newValue, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(context.queryKey, context.previousData);
+      }
 
-			// Show user-friendly error message
-			const displayName =
-				configKey === "playbackPosition"
-					? "playback position"
-					: configKey === "stems"
-						? "volume settings"
-						: configKey;
-			toast.error(
-				`Failed to save ${displayName}. Your changes may not be persisted.`,
-			);
-		},
-	});
+      // Show user-friendly error message
+      const displayName =
+        configKey === "playbackPosition"
+          ? "playback position"
+          : configKey === "stems"
+            ? "volume settings"
+            : configKey;
+      toast.error(
+        `Failed to save ${displayName}. Your changes may not be persisted.`,
+      );
+    },
+  });
 
-	// Debounced save effect
-	useEffect(() => {
-		// Don't save until we've initialized
-		if (!initialized) return;
+  // Debounced save effect
+  useEffect(() => {
+    // Don't save until we've initialized
+    if (!initialized) return;
 
-		// Don't save during initial load
-		if (isLoading) return;
+    // Don't save during initial load
+    if (isLoading) return;
 
-		// Don't save if config matches backend (no change)
-		// Use JSON comparison since we're dealing with objects
-		if (backendConfig !== null && JSON.stringify(config) === JSON.stringify(backendConfig)) {
-			return;
-		}
+    // Don't save if config matches backend (no change)
+    // Use JSON comparison since we're dealing with objects
+    if (
+      backendConfig !== null &&
+      JSON.stringify(config) === JSON.stringify(backendConfig)
+    ) {
+      return;
+    }
 
-		// If backend has no config yet and our config equals default, don't save
-		// This prevents saving defaults on first load
-		if (backendConfig === null && JSON.stringify(config) === JSON.stringify(defaultValue)) {
-			return;
-		}
+    // If backend has no config yet and our config equals default, don't save
+    // This prevents saving defaults on first load
+    if (
+      backendConfig === null &&
+      JSON.stringify(config) === JSON.stringify(defaultValue)
+    ) {
+      return;
+    }
 
-		// Debounce the save
-		const timer = setTimeout(() => {
-			mutation.mutate(config);
-		}, debounceMs);
+    // Debounce the save
+    const timer = setTimeout(() => {
+      mutation.mutate(config);
+    }, debounceMs);
 
-		return () => clearTimeout(timer);
-	}, [config, backendConfig, initialized, isLoading, mutation, debounceMs, defaultValue]);
+    return () => clearTimeout(timer);
+  }, [
+    config,
+    backendConfig,
+    initialized,
+    isLoading,
+    mutation,
+    debounceMs,
+    defaultValue,
+  ]);
 
-	// Wrapper for setState that handles both direct values and updater functions
-	const setConfig = useCallback((value: T | ((prev: T) => T)) => {
-		setConfigState(value);
-	}, []);
+  // Wrapper for setState that handles both direct values and updater functions
+  const setConfig = useCallback((value: T | ((prev: T) => T)) => {
+    setConfigState(value);
+  }, []);
 
-	return {
-		config,
-		setConfig,
-		isLoading,
-		isSaving: mutation.isPending,
-		error: error as Error | null,
-	};
+  return {
+    config,
+    setConfig,
+    isLoading,
+    isSaving: mutation.isPending,
+    error: error as Error | null,
+  };
 }

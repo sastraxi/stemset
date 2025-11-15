@@ -55,9 +55,7 @@ def get_model_class(model_name: str) -> type[AudioSeparator]:
     """
     if model_name not in MODEL_REGISTRY:
         available = ", ".join(MODEL_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown model '{model_name}'. Available models: {available}"
-        )
+        raise ValueError(f"Unknown model '{model_name}'. Available models: {available}")
     return MODEL_REGISTRY[model_name]  # type: ignore[return-value]
 
 

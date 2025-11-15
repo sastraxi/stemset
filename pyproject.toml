@@ -34,7 +34,11 @@ requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
-dev = ["basedpyright>=1.31.7", "boto3-stubs[s3]>=1.40.64"]
+dev = [
+    "basedpyright>=1.31.7",
+    "boto3-stubs[s3]>=1.40.64",
+    "ruff>=0.14.1",
+]
 preload_models = ["audio-separator>=0.39.1"]
 shared = [
     # Shared dependencies used by both API and processing
@@ -65,10 +69,12 @@ modal = [
 [tool.black]
 line-length = 100
 target-version = ['py313']
+indent-width = 4
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+indent-width = 4
 
 [tool.uv]
 allow-insecure-host = ["*.r2.cloudflarestorage.com"]
