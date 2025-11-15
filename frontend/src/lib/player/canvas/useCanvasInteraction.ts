@@ -15,6 +15,14 @@ export interface CanvasInteractionOptions {
   onPreview?: (time: number | null) => void;
   rangeSelection?: RangeSelectionContext | null;
   dragThreshold?: number; // Pixels to drag before it counts as a drag (default: 5)
+  onRenderRequest?: () => void; // Callback to trigger a canvas re-render
+}
+
+export interface CanvasInteractionResult {
+  isDragging: boolean;
+  handleMouseDown: (e: React.MouseEvent | React.TouchEvent) => void;
+  handleMouseMove: (e: React.MouseEvent | React.TouchEvent) => void;
+  handleMouseUp: () => void;
 }
 
 /**
@@ -27,10 +35,12 @@ export function useCanvasInteraction({
   onPreview,
   rangeSelection,
   dragThreshold = 5,
-}: CanvasInteractionOptions) {
+  onRenderRequest,
+}: CanvasInteractionOptions): CanvasInteractionResult {
   const [isDragging, setIsDragging] = useState(false);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const dragStartPos = useRef<{ x: number; time: number } | null>(null);
+  const lastPreviewTime = useRef<number | null>(null);
 
   // Convert client X position to seek time
   const getSeekTime = useCallback(
@@ -48,7 +58,7 @@ export function useCanvasInteraction({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (!onSeek || !onPreview) return;
+      if (!onSeek) return;
 
       e.preventDefault();
       setIsDragging(true);
@@ -64,7 +74,7 @@ export function useCanvasInteraction({
         if (rangeSelection) {
           rangeSelection.setIsSelecting(true);
         } else {
-          onPreview(seekTime);
+          onPreview?.(seekTime);
         }
       }
     },
@@ -98,7 +108,9 @@ export function useCanvasInteraction({
       if (dragMode === "select" && rangeSelection) {
         rangeSelection.setRange(dragStartPos.current.time, seekTime);
       } else if (dragMode === "seek") {
+        lastPreviewTime.current = seekTime;
         onPreview?.(seekTime);
+        onRenderRequest?.(); // Request immediate re-render for smooth preview
       }
     },
     [
@@ -108,6 +120,7 @@ export function useCanvasInteraction({
       onPreview,
       rangeSelection,
       dragThreshold,
+      onRenderRequest,
     ],
   );
 
@@ -119,13 +132,11 @@ export function useCanvasInteraction({
         onPreview?.(null);
       }
       // Commit seek
-      else if (dragMode === "seek" && onSeek && onPreview) {
-        // Preview time should be the last previewed value
-        const canvas = canvasRef.current;
-        if (canvas) {
-          onSeek(dragStartPos.current!.time);
-          onPreview(null);
-        }
+      else if (dragMode === "seek" && onSeek && lastPreviewTime.current !== null) {
+        onSeek(lastPreviewTime.current);
+        lastPreviewTime.current = null;
+        onPreview?.(null);
+        onRenderRequest?.(); // Clear preview cursor
       }
       // End selection
       else if (dragMode === "select" && rangeSelection) {
@@ -137,7 +148,7 @@ export function useCanvasInteraction({
       setDragMode(null);
       dragStartPos.current = null;
     }
-  }, [isDragging, dragMode, onSeek, onPreview, rangeSelection, canvasRef]);
+  }, [isDragging, dragMode, onSeek, onPreview, rangeSelection, canvasRef, onRenderRequest]);
 
   // Global event handlers for dragging outside canvas
   useEffect(() => {
@@ -166,7 +177,9 @@ export function useCanvasInteraction({
       if (dragMode === "select" && rangeSelection) {
         rangeSelection.setRange(dragStartPos.current.time, seekTime);
       } else if (dragMode === "seek") {
+        lastPreviewTime.current = seekTime;
         onPreview?.(seekTime);
+        onRenderRequest?.();
       }
     };
 
@@ -186,6 +199,7 @@ export function useCanvasInteraction({
           } else {
             setDragMode("seek");
             onPreview?.(dragStartPos.current.time);
+            onRenderRequest?.();
           }
         }
       }
@@ -194,7 +208,9 @@ export function useCanvasInteraction({
       if (dragMode === "select" && rangeSelection) {
         rangeSelection.setRange(dragStartPos.current.time, seekTime);
       } else if (dragMode === "seek") {
+        lastPreviewTime.current = seekTime;
         onPreview?.(seekTime);
+        onRenderRequest?.();
       }
     };
 
@@ -221,6 +237,7 @@ export function useCanvasInteraction({
     onPreview,
     rangeSelection,
     dragThreshold,
+    onRenderRequest,
   ]);
 
   return {

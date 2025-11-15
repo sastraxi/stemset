@@ -3,20 +3,24 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { StemResponse } from "../../../api/generated/types.gen";
 import {
+  useAudioContext,
   useAudioBufferLoader,
-  useAudioGraph,
-  usePlaybackController,
-} from "../audio/core";
+  usePlaybackEngine,
+  useStemAudioGraph,
+  useReadOnlyRecordingConfig,
+  useAudioEffects,
+  type PlaybackNode,
+} from "../../audio";
 import { MinimalRuler } from "../rulers/MinimalRuler";
 import { CompositeWaveform } from "../waveforms/CompositeWaveform";
 
 export interface ClipData {
   id: string;
+  recordingId: string; // NEW: Required for loading saved config
   stems: StemResponse[];
   startTimeSec: number;
   endTimeSec: number;
@@ -29,7 +33,6 @@ export interface UseClipPlayerOptions {
 export interface StemState {
   stemType: string;
   isMuted: boolean;
-  gainNode: GainNode | null;
 }
 
 export interface ClipPlayerAPI {
@@ -38,11 +41,13 @@ export interface ClipPlayerAPI {
   isLoading: boolean;
   currentTime: number;
   duration: number;
+  previewTime: number | null;
 
   // Playback controls
-  play: () => Promise<void>;
+  play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  setPreviewTime: (time: number | null) => void;
 
   // Stem controls
   stems: StemState[];
@@ -76,154 +81,117 @@ interface ControlsComponentProps {
 const ClipPlayerContext = createContext<ClipPlayerAPI | null>(null);
 
 /**
- * Factory hook for clip player (inline playback)
- * Returns both state/actions and pre-wired components
+ * Factory hook for clip player (inline playback).
+ *
+ * NEW ARCHITECTURE:
+ * - Uses shared audio library hooks
+ * - Applies saved recording configuration (compression, EQ, master effects)
+ * - Supports temporary local mutes (non-persisted)
+ * - Matches audio quality from StemPlayer
+ *
+ * Returns both state/actions and pre-wired components.
  */
 export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
-  const { getContext } = useAudioGraph(44100, true); // Use shared context
-  const audioContext = getContext();
-
   const clipDuration = clip.endTimeSec - clip.startTimeSec;
 
+  // 1. Audio context (dedicated per player, as per user preference)
+  const { getContext, getMasterInput, getMasterOutput } = useAudioContext({
+    sampleRate: 44100,
+  });
+  const audioContext = getContext();
+  const masterInput = getMasterInput();
+  const masterOutput = getMasterOutput();
+
+  // 2. Load saved recording config (read-only, no persistence)
+  const { stemConfig, isLoading: isLoadingConfig } =
+    useReadOnlyRecordingConfig(clip.recordingId);
+
+  // 3. Load audio buffers
   const {
+    isLoading: isLoadingBuffers,
     buffers,
     duration: fullDuration,
-    isLoading,
   } = useAudioBufferLoader({
     stems: clip.stems,
     audioContext,
+    trackMetrics: false, // ClipPlayer doesn't need detailed metrics
   });
 
-  const [mutedStems, setMutedStems] = useState<Set<string>>(new Set());
-  const stemNodesRef = useRef<Map<string, { gain: GainNode }>>(new Map());
-  const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
-  const playbackGenRef = useRef(0);
+  // 4. Local mute state (temporary, non-persisted)
+  const [localMutes, setLocalMutes] = useState<Record<string, boolean>>({});
 
-  // Create audio nodes when buffers load
-  useMemo(() => {
-    if (!audioContext || buffers.size === 0) {
-      stemNodesRef.current.clear();
-      return;
-    }
+  // 5. Create stem audio graphs with saved config + local mutes
+  const { stemNodes } = useStemAudioGraph({
+    audioContext,
+    masterInput,
+    buffers,
+    config: stemConfig,
+    localMutes,
+  });
 
-    const newNodes = new Map<string, { gain: GainNode }>();
-    for (const [stemType] of buffers) {
-      const gainNode = audioContext.createGain();
-      gainNode.connect(audioContext.destination);
-      gainNode.gain.value = mutedStems.has(stemType) ? 0 : 1;
+  // 6. Master effects (uses saved recording config)
+  useAudioEffects({
+    audioContext,
+    masterInput,
+    masterOutput,
+    recordingId: clip.recordingId,
+  });
 
-      newNodes.set(stemType, { gain: gainNode });
-    }
-    stemNodesRef.current = newNodes;
-  }, [audioContext, buffers, mutedStems]);
-
-  const stopAllSources = useCallback(() => {
-    for (const src of sourcesRef.current.values()) {
-      try {
-        src.stop();
-      } catch {
-        // Already stopped
+  // 7. Prepare playback nodes
+  const playbackNodes = useMemo((): Map<string, PlaybackNode> => {
+    const nodes = new Map<string, PlaybackNode>();
+    stemNodes.forEach((node, name) => {
+      const loadedStem = buffers.get(name);
+      if (loadedStem) {
+        nodes.set(name, {
+          buffer: loadedStem.buffer,
+          entryPoint: node.gainNode, // Source connects to first node in effects chain
+        });
       }
-    }
-    sourcesRef.current.clear();
-  }, []);
+    });
+    return nodes;
+  }, [stemNodes, buffers]);
 
-  const startSources = useCallback(
-    (playbackPosition: number) => {
-      if (!audioContext || stemNodesRef.current.size === 0) return;
+  // 8. Preview state for cursor visualization while dragging
+  const [previewTime, setPreviewTime] = useState<number | null>(null);
 
-      stopAllSources();
-      const thisGen = ++playbackGenRef.current;
-
-      for (const [stemType, stemBuffer] of buffers) {
-        const node = stemNodesRef.current.get(stemType);
-        if (!node) continue;
-
-        const src = audioContext.createBufferSource();
-        src.buffer = stemBuffer.buffer;
-        src.connect(node.gain);
-
-        src.onended = () => {
-          if (playbackGenRef.current !== thisGen) return;
-          sourcesRef.current.delete(stemType);
-        };
-
-        const audioPosition = playbackPosition + clip.startTimeSec;
-        src.start(0, audioPosition);
-        sourcesRef.current.set(stemType, src);
-      }
-    },
-    [audioContext, buffers, clip.startTimeSec, stopAllSources],
-  );
-
-  const {
-    isPlaying,
-    currentTime,
-    play: controllerPlay,
-    pause: controllerPause,
-    seek: controllerSeek,
-  } = usePlaybackController({
+  // 9. Playback engine
+  const { isPlaying, currentTime, play, pause, seek } = usePlaybackEngine({
     audioContext,
     duration: clipDuration,
+    nodes: playbackNodes,
+    initialPosition: 0,
+    startOffset: clip.startTimeSec, // Offset into the audio buffer
   });
 
-  const play = useCallback(async () => {
-    if (!audioContext) return;
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
-    startSources(currentTime);
-    controllerPlay();
-  }, [audioContext, currentTime, startSources, controllerPlay]);
-
-  const pause = useCallback(() => {
-    stopAllSources();
-    controllerPause();
-  }, [stopAllSources, controllerPause]);
-
-  const seek = useCallback(
-    (time: number) => {
-      controllerSeek(time);
-      if (isPlaying) {
-        stopAllSources();
-        startSources(time);
-      }
-    },
-    [controllerSeek, isPlaying, stopAllSources, startSources],
-  );
-
+  // 10. Stem controls
   const toggleStemMute = useCallback((stemType: string) => {
-    setMutedStems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(stemType)) {
-        newSet.delete(stemType);
-      } else {
-        newSet.add(stemType);
-      }
-
-      // Update gain immediately
-      const node = stemNodesRef.current.get(stemType);
-      if (node) {
-        node.gain.gain.value = newSet.has(stemType) ? 0 : 1;
-      }
-
-      return newSet;
-    });
+    setLocalMutes((prev) => ({
+      ...prev,
+      [stemType]: !prev[stemType],
+    }));
   }, []);
 
   const stems: StemState[] = useMemo(
     () =>
       clip.stems.map((stem) => ({
         stemType: stem.stem_type,
-        isMuted: mutedStems.has(stem.stem_type),
-        gainNode: stemNodesRef.current.get(stem.stem_type)?.gain || null,
+        isMuted: localMutes[stem.stem_type] || false,
       })),
-    [clip.stems, mutedStems],
+    [clip.stems, localMutes],
   );
 
-  // Memoize components
+  // 11. Memoize waveform data to prevent re-renders
+  const stemWaveforms = useMemo(
+    () =>
+      clip.stems.map((stem) => ({
+        stemType: stem.stem_type,
+        waveformUrl: stem.waveform_url,
+      })),
+    [clip.stems],
+  );
+
+  // 12. Components
   const Waveform: React.FC<WaveformComponentProps> = useMemo(
     () =>
       ({ mode = "composite", height, className, showBackground = true }) => {
@@ -231,17 +199,13 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
         if (!player)
           throw new Error("Waveform must be used within ClipPlayer context");
 
-        const stemWaveforms = clip.stems.map((stem) => ({
-          stemType: stem.stem_type,
-          waveformUrl: stem.waveform_url,
-        }));
-
         if (mode === "composite") {
           return (
             <CompositeWaveform
               stems={stemWaveforms}
               currentTime={player.currentTime}
               duration={clipDuration}
+              previewTime={player.previewTime ?? undefined}
               startTimeSec={clip.startTimeSec}
               endTimeSec={clip.endTimeSec}
               fullDuration={fullDuration}
@@ -249,20 +213,17 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
               className={className}
               showBackground={showBackground}
               onSeek={player.seek}
+              onPreview={player.setPreviewTime}
+              cursorStyle="retrofunk"
             />
           );
         }
 
         return null;
       },
-    [
-      clip.stems,
-      clip.startTimeSec,
-      clip.endTimeSec,
-      clipDuration,
-      fullDuration,
-    ],
+    [stemWaveforms, clipDuration, clip.startTimeSec, clip.endTimeSec, fullDuration],
   );
+
   const Ruler: React.FC<RulerComponentProps> = useMemo(
     () =>
       ({ variant = "minimal", height, className }) => {
@@ -278,6 +239,8 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
               height={height}
               className={className}
               onSeek={player.seek}
+              onPreview={player.setPreviewTime}
+              previewTime={player.previewTime ?? undefined}
             />
           );
         }
@@ -300,7 +263,7 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
           >
             <button
               type="button"
-              onClick={player.isPlaying ? player.pause : player.play}
+              onClick={player.isPlaying ? player.pause : () => player.play()}
               disabled={player.isLoading}
             >
               {player.isPlaying ? "Pause" : "Play"}
@@ -321,14 +284,18 @@ export function useClipPlayer({ clip }: UseClipPlayerOptions): ClipPlayerAPI {
     [],
   );
 
+  const isLoading = isLoadingConfig || isLoadingBuffers;
+
   const api: ClipPlayerAPI = {
     isPlaying,
     isLoading,
     currentTime,
     duration: clipDuration,
+    previewTime,
     play,
     pause,
     seek,
+    setPreviewTime,
     stems,
     toggleStemMute,
     Waveform,

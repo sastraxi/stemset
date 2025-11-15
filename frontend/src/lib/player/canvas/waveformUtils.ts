@@ -106,6 +106,56 @@ export function drawCursor(
 }
 
 /**
+ * Draw retrofunk-styled cursor matching MinimalRuler aesthetic
+ * Features hot pink glowing line with cyan/magenta/yellow tick marks
+ */
+export function drawRetrofunkCursor(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  cursorX: number,
+  dpr: number,
+) {
+  const cursorXRounded = Math.round(cursorX);
+
+  // Glowing effect for the cursor line (hot pink)
+  ctx.shadowColor = "rgba(255, 105, 180, 0.7)";
+  ctx.shadowBlur = 8 * dpr;
+
+  // Main cursor line
+  ctx.strokeStyle = "rgba(255, 105, 180, 1)";
+  ctx.lineWidth = 2 * dpr;
+  ctx.beginPath();
+  ctx.moveTo(cursorXRounded, 0);
+  ctx.lineTo(cursorXRounded, canvas.height);
+  ctx.stroke();
+
+  // Reset shadow for tick marks
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+
+  // Draw tick marks along the cursor line (retrofunk style)
+  const tickSpacing = 20 * dpr; // Distance between ticks
+  const tickWidth = 6 * dpr; // Horizontal width of tick marks
+  const tickColors = [
+    "rgba(0, 255, 255, 0.8)", // Cyan
+    "rgba(255, 0, 255, 0.8)", // Magenta
+    "rgba(255, 255, 0, 0.8)", // Yellow
+  ];
+
+  ctx.lineWidth = 1.5 * dpr;
+  let colorIndex = 0;
+
+  for (let y = tickSpacing; y < canvas.height; y += tickSpacing) {
+    ctx.strokeStyle = tickColors[colorIndex % tickColors.length];
+    ctx.beginPath();
+    ctx.moveTo(cursorXRounded - tickWidth / 2, y);
+    ctx.lineTo(cursorXRounded + tickWidth / 2, y);
+    ctx.stroke();
+    colorIndex++;
+  }
+}
+
+/**
  * Draw range selection overlay (dims outside, highlights inside)
  */
 export function drawRangeSelection(

@@ -485,9 +485,8 @@ export function AuthenticatedApp({
               onValueChange={setSidebarTab}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="recordings">Recordings</TabsTrigger>
-                <TabsTrigger value="clips">Clips</TabsTrigger>
                 <TabsTrigger value="songs">Songs</TabsTrigger>
               </TabsList>
 

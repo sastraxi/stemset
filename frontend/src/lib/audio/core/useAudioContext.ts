@@ -80,7 +80,7 @@ export function useAudioContext({
     }
 
     return masterOutputRef.current;
-  }, [getContext]);
+  }, [getContext, masterVolume]);
 
   const getMasterInput = useCallback((): GainNode => {
     const ctx = getContext();

@@ -7,6 +7,7 @@ import {
   drawTimeGrid,
 } from "../lib/player/canvas/waveformUtils";
 import { useRangeSelection } from "../contexts/RangeSelectionContext";
+import { STEM_COLORS } from "../lib/player/audio/constants";
 
 interface WaveformVisualizationProps {
   waveformUrl: string | null;
@@ -21,14 +22,6 @@ interface WaveformVisualizationProps {
   fullDuration?: number; // Full recording duration (needed for clip rendering)
   waveformClasses?: string; // Optional additional CSS classes for styling
 }
-
-/** Stem color palette matching the dark theme */
-const STEM_COLORS: Record<string, string> = {
-  vocals: "#ff6b6b", // Red
-  drums: "#ff9f43", // Orange
-  bass: "#48dbfb", // Cyan
-  other: "#a29bfe", // Purple
-};
 
 /**
  * WaveformVisualization - Renders a clickable waveform display with playback position indicator

@@ -11,14 +11,14 @@ import {
   Play,
   QrCode,
 } from "lucide-react";
+import { useMemo, useRef } from "react";
 import { GiGuitarBassHead } from "react-icons/gi";
-import { useMemo } from "react";
 import type { ClipWithStemsResponse } from "@/api/generated";
-import { cn, formatTime, getRelativeTime } from "@/lib/utils"; // Import getRelativeTime
 import {
   ClipPlayerProvider,
   useClipPlayer,
 } from "@/lib/player/factories/useClipPlayer";
+import { cn, formatTime, getRelativeTime } from "@/lib/utils"; // Import getRelativeTime
 import { TimecodeDisplay } from "./TimecodeDisplay";
 import { Button } from "./ui/button";
 import {
@@ -70,12 +70,14 @@ export function SongClipRow({
   const player = useClipPlayer({
     clip: {
       id: clip.id,
+      recordingId: clip.recording_id,
       stems: clip.stems,
       startTimeSec: clip.start_time_sec,
       endTimeSec: clip.end_time_sec,
     },
   });
 
+  const waveformRef = useRef<HTMLDivElement>(null);
   const duration = clip.end_time_sec - clip.start_time_sec;
 
   // Clip display name
@@ -105,7 +107,13 @@ export function SongClipRow({
         {/* Top row: Play button, title, duration, stem mutes, menu */}
         <div className="song-clip-row-header">
           <Button
-            onClick={player.isPlaying ? player.pause : player.play}
+            onClick={(e) => {
+              player.isPlaying ? player.pause() : player.play();
+              if (e.detail > 0) {
+                // Mouse click, relinquish focus
+                waveformRef.current?.focus();
+              }
+            }}
             variant="ghost"
             size="icon"
             className="song-clip-play-button"
@@ -151,7 +159,13 @@ export function SongClipRow({
                   <button
                     key={stemType}
                     type="button"
-                    onClick={() => player.toggleStemMute(stemType)}
+                    onClick={(e) => {
+                      player.toggleStemMute(stemType);
+                      if (e.detail > 0) {
+                        // Mouse click, relinquish focus
+                        waveformRef.current?.focus();
+                      }
+                    }}
                     className={cn("stem-mute-toggle", {
                       muted,
                     })}
@@ -213,10 +227,24 @@ export function SongClipRow({
         </div>
 
         {/* Waveform */}
-        <div className="song-clip-waveform" style={{ height: "80px" }}>
+        <div
+          ref={waveformRef}
+          className="song-clip-waveform h-[104px] mt-[-24px] mb-4"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === " " || e.code === "Space") {
+              e.preventDefault();
+              player.isPlaying ? player.pause() : player.play();
+            }
+          }}
+          onMouseUp={() => {
+            // After a click/drag on the waveform, focus it for keyboard control
+            waveformRef.current?.focus();
+          }}
+        >
           <player.Waveform
             mode="composite"
-            height={56}
+            height={80}
             showBackground={false}
           />
           <player.Ruler variant="minimal" height={24} />

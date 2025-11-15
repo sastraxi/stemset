@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { STEM_COLORS } from "../audio/constants";
 import { loadWaveformImage } from "../canvas/imageLoader";
 import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
-import type { RangeSelectionContext } from "../canvas/useCanvasInteraction";
 import { useCanvasInteraction } from "../canvas/useCanvasInteraction";
 import {
   calculateClipBounds,
   drawCursor,
-  drawRangeSelection,
+  drawRetrofunkCursor,
   drawTimeGrid,
 } from "../canvas/waveformUtils";
 import { cn } from "@/lib/utils";
@@ -24,12 +23,12 @@ export interface CompositeWaveformProps {
   previewTime?: number;
   onSeek?: (time: number) => void;
   onPreview?: (time: number | null) => void;
-  rangeSelection?: RangeSelectionContext | null;
   startTimeSec?: number; // For clips
   endTimeSec?: number;
   fullDuration?: number;
   height?: number; // Fixed height in pixels
   showBackground?: boolean; // Controls the background visibility
+  cursorStyle?: "default" | "retrofunk"; // Cursor visual style
   className?: string;
 }
 
@@ -44,18 +43,20 @@ export function CompositeWaveform({
   previewTime,
   onSeek,
   onPreview,
-  rangeSelection,
   startTimeSec,
   endTimeSec,
   fullDuration,
   height,
   showBackground = true,
+  cursorStyle = "default",
   className = "",
 }: CompositeWaveformProps) {
   const [loadedImages, setLoadedImages] = useState<
     Map<string, HTMLImageElement>
   >(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const renderRequestRef = useRef<number | null>(null);
+  const previewTimeRef = useRef<number | null>(null);
 
   // Load all waveform images
   // Use stable key based on URLs to prevent reloading
@@ -98,83 +99,101 @@ export function CompositeWaveform({
   }, [stemKey]);
 
   // Render function
-  const onRender = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    dpr: number,
-  ) => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const onRender = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      canvas: HTMLCanvasElement,
+      dpr: number,
+    ) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (isLoading || loadedImages.size === 0) return;
+      if (isLoading || loadedImages.size === 0) return;
 
-    const displayTime = previewTime !== undefined ? previewTime : currentTime;
-    const progress = duration > 0 ? displayTime / duration : 0;
-    const cursorX = progress * canvas.width;
+      // Use preview time from ref if available (for smooth dragging), otherwise use props
+      const displayTime =
+        previewTimeRef.current !== null
+          ? previewTimeRef.current
+          : previewTime !== undefined
+            ? previewTime
+            : currentTime;
+      const progress = duration > 0 ? displayTime / duration : 0;
+      const cursorX = progress * canvas.width;
 
-    // Render each stem waveform with blend mode
-    // Use lighten blend mode to sum stems (brighter values win)
-    let firstStem = true;
-    for (const [stemType, img] of loadedImages) {
-      const stemColor = STEM_COLORS[stemType] || "#4a9eff";
+      // Render each stem waveform with blend mode
+      // Use lighten blend mode to sum stems (brighter values win)
+      let firstStem = true;
+      for (const [stemType, img] of loadedImages) {
+        const stemColor = STEM_COLORS[stemType] || "#4a9eff";
 
-      // Calculate clip bounds for this stem
-      const { srcX, srcWidth, srcY, srcHeight } = calculateClipBounds(
-        img,
-        startTimeSec,
-        endTimeSec,
-        fullDuration,
-        duration,
-      );
+        // Calculate clip bounds for this stem
+        const { srcX, srcWidth, srcY, srcHeight } = calculateClipBounds(
+          img,
+          startTimeSec,
+          endTimeSec,
+          fullDuration,
+          duration,
+        );
 
-      // Create an offscreen canvas to color the waveform
-      const offscreen = document.createElement("canvas");
-      offscreen.width = canvas.width;
-      offscreen.height = canvas.height;
-      const offCtx = offscreen.getContext("2d");
-      if (!offCtx) continue;
+        // Create an offscreen canvas to color the waveform
+        const offscreen = document.createElement("canvas");
+        offscreen.width = canvas.width;
+        offscreen.height = canvas.height;
+        const offCtx = offscreen.getContext("2d");
+        if (!offCtx) continue;
 
-      // Draw waveform image to offscreen
-      offCtx.drawImage(
-        img,
-        srcX,
-        srcY,
-        srcWidth,
-        srcHeight,
-        0,
-        0,
-        offscreen.width,
-        offscreen.height,
-      );
+        // Draw waveform image to offscreen
+        offCtx.drawImage(
+          img,
+          srcX,
+          srcY,
+          srcWidth,
+          srcHeight,
+          0,
+          0,
+          offscreen.width,
+          offscreen.height,
+        );
 
-      // Apply stem color
-      offCtx.globalCompositeOperation = "source-in";
-      offCtx.fillStyle = stemColor;
-      offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+        // Apply stem color
+        offCtx.globalCompositeOperation = "source-in";
+        offCtx.fillStyle = stemColor;
+        offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
 
-      // Composite onto main canvas with lighten mode (except first stem)
-      ctx.globalCompositeOperation = firstStem ? "source-over" : "lighten";
-      ctx.drawImage(offscreen, 0, 0);
-      firstStem = false;
-    }
+        // Composite onto main canvas with lighten mode (except first stem)
+        ctx.globalCompositeOperation = firstStem ? "source-over" : "lighten";
+        ctx.drawImage(offscreen, 0, 0);
+        firstStem = false;
+      }
 
-    // Reset composite mode for overlays
-    ctx.globalCompositeOperation = "source-over";
+      // Reset composite mode for overlays
+      ctx.globalCompositeOperation = "source-over";
 
-    // TIME GRID: Vertical lines (drawn behind waveform)
-    ctx.globalCompositeOperation = "destination-over";
-    drawTimeGrid(ctx, canvas, duration, dpr);
+      // TIME GRID: Vertical lines (drawn behind waveform)
+      ctx.globalCompositeOperation = "destination-over";
+      drawTimeGrid(ctx, canvas, duration, dpr);
 
-    // Reset for cursor drawing
-    ctx.globalCompositeOperation = "source-over";
+      // Reset for cursor drawing
+      ctx.globalCompositeOperation = "source-over";
 
-    // CURSOR: Dashed white vertical line
-    drawCursor(ctx, canvas, cursorX, dpr);
-
-    // RANGE SELECTION: Highlight and dim
-    if (rangeSelection) {
-      drawRangeSelection(ctx, canvas, rangeSelection.selection, duration, dpr);
-    }
-  };
+      // CURSOR: Draw cursor based on style
+      if (cursorStyle === "retrofunk") {
+        drawRetrofunkCursor(ctx, canvas, cursorX, dpr);
+      } else {
+        drawCursor(ctx, canvas, cursorX, dpr);
+      }
+    },
+    [
+      isLoading,
+      loadedImages,
+      currentTime,
+      previewTime,
+      duration,
+      cursorStyle,
+      startTimeSec,
+      endTimeSec,
+      fullDuration,
+    ],
+  );
 
   const { canvasRef, containerRef } = useCanvasRenderer({
     onRender,
@@ -184,18 +203,39 @@ export function CompositeWaveform({
       currentTime,
       previewTime,
       duration,
-      rangeSelection?.selection,
+      cursorStyle,
     ],
     height, // Pass fixed height to renderer
   });
+
+  // Request a re-render via RAF for smooth preview cursor tracking
+  const requestRender = useCallback(() => {
+    if (renderRequestRef.current) {
+      cancelAnimationFrame(renderRequestRef.current);
+    }
+    renderRequestRef.current = requestAnimationFrame(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      onRender(ctx, canvas, dpr);
+    });
+  }, [canvasRef, onRender]);
 
   const { handleMouseDown, handleMouseMove, handleMouseUp } =
     useCanvasInteraction({
       canvasRef,
       duration,
       onSeek,
-      onPreview,
-      rangeSelection,
+      onPreview: (time) => {
+        previewTimeRef.current = time;
+        onPreview?.(time);
+        if (time === null) {
+          requestRender(); // Final render to clear preview
+        }
+      },
+      onRenderRequest: requestRender,
     });
 
   if (isLoading) {

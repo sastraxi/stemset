@@ -57,9 +57,10 @@ export function useConfigPersistence<T>({
   // Local state for immediate UI updates
   // Initialize with backend config if available, otherwise use default
   const [config, setConfigState] = useState<T>(() => {
-    // On mount: use backend config if it exists, merge with defaults for missing fields
+    // On mount: use backend config if it exists
+    // Don't merge with defaults - backend config is the source of truth
     if (backendConfig !== null) {
-      return { ...defaultValue, ...backendConfig };
+      return backendConfig as T;
     }
     return defaultValue;
   });
@@ -74,16 +75,16 @@ export function useConfigPersistence<T>({
     if (isLoading) return;
 
     if (!initialized) {
-      // First load: set local state to backend value (or default), merging with defaults for missing fields
+      // First load: set local state to backend value (no merge with defaults)
       if (backendConfig !== null) {
-        setConfigState({ ...defaultValue, ...backendConfig });
+        setConfigState(backendConfig as T);
       }
       setInitialized(true);
     }
     // Note: We don't update local state on subsequent backend changes
     // because the user might be actively editing. Our debounced save
     // will push local changes to the backend.
-  }, [backendConfig, isLoading, initialized, defaultValue]);
+  }, [backendConfig, isLoading, initialized]);
 
   // Mutation for saving config to backend
   const mutation = useMutation({
@@ -155,6 +156,17 @@ export function useConfigPersistence<T>({
     },
   });
 
+  // Stable JSON strings for comparison (avoid re-computing on every render)
+  const configJson = useMemo(() => JSON.stringify(config), [config]);
+  const backendConfigJson = useMemo(
+    () => (backendConfig !== null ? JSON.stringify(backendConfig) : null),
+    [backendConfig],
+  );
+  const defaultValueJson = useMemo(
+    () => JSON.stringify(defaultValue),
+    [defaultValue],
+  );
+
   // Debounced save effect
   useEffect(() => {
     // Don't save until we've initialized
@@ -164,20 +176,13 @@ export function useConfigPersistence<T>({
     if (isLoading) return;
 
     // Don't save if config matches backend (no change)
-    // Use JSON comparison since we're dealing with objects
-    if (
-      backendConfig !== null &&
-      JSON.stringify(config) === JSON.stringify(backendConfig)
-    ) {
+    if (backendConfigJson !== null && configJson === backendConfigJson) {
       return;
     }
 
     // If backend has no config yet and our config equals default, don't save
     // This prevents saving defaults on first load
-    if (
-      backendConfig === null &&
-      JSON.stringify(config) === JSON.stringify(defaultValue)
-    ) {
+    if (backendConfigJson === null && configJson === defaultValueJson) {
       return;
     }
 
@@ -188,13 +193,14 @@ export function useConfigPersistence<T>({
 
     return () => clearTimeout(timer);
   }, [
-    config,
-    backendConfig,
+    configJson,
+    backendConfigJson,
+    defaultValueJson,
     initialized,
     isLoading,
     mutation,
     debounceMs,
-    defaultValue,
+    config,
   ]);
 
   // Wrapper for setState that handles both direct values and updater functions

@@ -16,8 +16,7 @@ export type {
   StemState,
 } from "./factories/useClipPlayer";
 
-// Core audio utilities
-export { formatTime } from "./audio/core";
+// Core audio utilities (formatTime now in usePlaybackEngine)
 export { STEM_COLORS, CURSOR_COLOR, SELECTION_COLOR } from "./audio/constants";
 
 // Waveform components

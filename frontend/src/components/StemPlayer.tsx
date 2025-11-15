@@ -330,26 +330,26 @@ export const StemPlayer = forwardRef<StemPlayerHandle, StemPlayerProps>(
         // eslint-disable-next-line no-console
         console.groupCollapsed(`StemPlayer Load Profile: ${key}`);
         console.info("Summary", {
-          totalMs: loadingMetrics?.totalMs,
+          totalFetchMs: loadingMetrics?.totalFetchTimeMs,
+          totalDecodeMs: loadingMetrics?.totalDecodeTimeMs,
           stemCount: snapshot.stemCount,
         });
         if (loadingMetrics) {
           console.table(
             loadingMetrics.stems.map((t) => ({
               Stem: t.name,
-              Fetch_ms: t.fetchMs?.toFixed(1) ?? "N/A",
-              Decode_ms: t.decodeMs?.toFixed(1) ?? "N/A",
-              Total_ms: t.totalMs?.toFixed(1) ?? "N/A",
+              Fetch_ms: t.fetchTimeMs?.toFixed(1) ?? "N/A",
+              Decode_ms: t.decodeTimeMs?.toFixed(1) ?? "N/A",
               KB: t.bytes ? (t.bytes / 1024).toFixed(1) : "N/A",
             })),
           );
           console.info(
-            "Metadata fetch ms",
-            loadingMetrics.metadataMs?.toFixed(1) ?? "N/A",
+            "Total fetch ms",
+            loadingMetrics.totalFetchTimeMs?.toFixed(1) ?? "N/A",
           );
           console.info(
-            "Overall ms",
-            loadingMetrics.totalMs?.toFixed(1) ?? "N/A",
+            "Total decode ms",
+            loadingMetrics.totalDecodeTimeMs?.toFixed(1) ?? "N/A",
           );
         }
         console.info("Effects", effectsConfig);

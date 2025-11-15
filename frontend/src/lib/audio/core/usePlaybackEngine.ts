@@ -1,66 +1,70 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { PlaybackNode } from "../types";
 
-/**
- * Generic audio node interface for playback.
- * Only requires a buffer and an entry point to connect the source.
- */
-export interface PlaybackNode {
-  buffer: AudioBuffer;
-  entryPoint: AudioNode;
-}
-
-export interface UseAudioPlaybackOptions {
+export interface UsePlaybackEngineOptions {
   audioContext: AudioContext | null;
   duration: number;
   nodes: Map<string, PlaybackNode>;
   initialPosition?: number;
-  startOffset?: number;
+  startOffset?: number; // For clips: offset into the audio buffer
   onPlaybackEnd?: () => void;
 }
 
-export interface UseAudioPlaybackResult {
+export interface UsePlaybackEngineResult {
   isPlaying: boolean;
   currentTime: number;
   play: () => void;
   pause: () => void;
   stop: (seekTime?: number) => void;
   seek: (seconds: number) => void;
+  formatTime: (seconds: number) => string;
 }
 
 /**
- * Core audio playback controller using Web Audio API.
- *
- * Uses a double-loop pattern for efficient time tracking:
- * 1. requestAnimationFrame loop runs at display refresh rate for accurate timekeeping
- * 2. setInterval loop runs at ~20fps to update React state without excessive re-renders
+ * Unified playback engine for both StemPlayer and ClipPlayer.
  *
  * Features:
+ * - Double-loop pattern for efficient time tracking:
+ *   1. requestAnimationFrame loop runs at display refresh rate for accurate timekeeping
+ *   2. setInterval loop runs at ~20fps to update React state without excessive re-renders
  * - Playback generation tracking to prevent race conditions with stale callbacks
  * - Automatic reset to beginning when playback ends
- * - Support for offset playback (e.g., for clips)
+ * - Support for offset playback (for clips)
+ * - Works with any audio node chain (simple or complex)
+ *
+ * Usage:
+ * - StemPlayer: nodes include full effects chain (gain → EQ → compression → master)
+ * - ClipPlayer: nodes include basic chain (gain → master)
  */
-export function useAudioPlayback({
+export function usePlaybackEngine({
   audioContext,
   duration,
   nodes,
   initialPosition = 0,
   startOffset = 0,
   onPlaybackEnd,
-}: UseAudioPlaybackOptions): UseAudioPlaybackResult {
+}: UsePlaybackEngineOptions): UsePlaybackEngineResult {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(
-    Math.max(0, Math.min(initialPosition, duration)),
-  );
+  const [currentTime, setCurrentTime] = useState(initialPosition);
 
   const isPlayingRef = useRef(false);
   const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
   const startTimeRef = useRef<number>(0);
-  const currentTimeRef = useRef(
-    Math.max(0, Math.min(initialPosition, duration)),
-  );
+  const currentTimeRef = useRef(initialPosition);
   const rafRef = useRef<number | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const playbackGenRef = useRef<number>(0);
+  const hasInitializedPosition = useRef(false);
+
+  // Initialize position once duration is loaded
+  useEffect(() => {
+    if (duration > 0 && !hasInitializedPosition.current) {
+      const clampedPosition = Math.max(0, Math.min(initialPosition, duration));
+      currentTimeRef.current = clampedPosition;
+      setCurrentTime(clampedPosition);
+      hasInitializedPosition.current = true;
+    }
+  }, [duration, initialPosition]);
 
   const stopAllSources = useCallback(() => {
     sourcesRef.current.forEach((src) => {
@@ -80,14 +84,18 @@ export function useAudioPlayback({
       stopAllSources();
       const thisPlaybackGen = ++playbackGenRef.current;
 
-      nodes.forEach((node, name) => {
+      nodes.forEach((playbackNode, name) => {
         const src = audioContext.createBufferSource();
-        src.buffer = node.buffer;
-        src.connect(node.entryPoint);
+        src.buffer = playbackNode.buffer;
+        // Connect to the first node in the audio chain (e.g., gainNode)
+        // The effects chain handles routing to destination
+        src.connect(playbackNode.entryPoint);
+
         src.onended = () => {
           if (playbackGenRef.current !== thisPlaybackGen) return;
           sourcesRef.current.delete(name);
-          if (sourcesRef.current.size === 0) {
+          // Only reset to 0 if we're still playing (natural end, not manual stop)
+          if (sourcesRef.current.size === 0 && isPlayingRef.current) {
             setIsPlaying(false);
             isPlayingRef.current = false;
             currentTimeRef.current = 0;
@@ -95,6 +103,7 @@ export function useAudioPlayback({
             onPlaybackEnd?.();
           }
         };
+
         const audioPosition = playbackPosition + startOffset;
         src.start(0, audioPosition);
         sourcesRef.current.set(name, src);
@@ -183,6 +192,19 @@ export function useAudioPlayback({
     [duration, audioContext, stopAllSources, startSources],
   );
 
+  const formatTime = useCallback((seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }, []);
+
   // State update loop (setInterval)
   useEffect(() => {
     if (!isPlaying) {
@@ -200,5 +222,14 @@ export function useAudioPlayback({
     };
   }, [isPlaying, currentTime]);
 
-  return { isPlaying, currentTime, play, pause, stop, seek };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAllSources();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [stopAllSources]);
+
+  return { isPlaying, currentTime, play, pause, stop, seek, formatTime };
 }

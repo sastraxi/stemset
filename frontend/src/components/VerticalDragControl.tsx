@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useId } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export interface VerticalDragControlProps {
   value: number; // Current value
@@ -51,7 +51,7 @@ export function VerticalDragControl({
     (linear: number): number => {
       if (!logarithmic) return linear;
       // Inverse of above
-      const normalized = (Math.pow(10, linear) - 1) / 9;
+      const normalized = (10 ** linear - 1) / 9;
       return min + normalized * (max - min);
     },
     [logarithmic, min, max],
