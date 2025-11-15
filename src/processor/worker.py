@@ -9,6 +9,8 @@ from pathlib import Path
 import modal
 from dotenv import load_dotenv
 
+from src.processor.models import WorkerAcceptedResponse, WorkerJobPayload
+
 # Load .env file for build-time configuration
 _ = load_dotenv()
 
@@ -75,7 +77,7 @@ r2_mount = modal.CloudBucketMount(
     timeout=240,
     volumes={"/r2": r2_mount},
 )
-async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
+async def _process_internal(payload: WorkerJobPayload) -> WorkerAcceptedResponse:
     """Internal function that performs actual processing (spawned asynchronously).
 
     Workflow:
@@ -85,10 +87,10 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
     4. Call back to API with pointers to metadata
 
     Args:
-        job_data: Worker job payload dict (WorkerJobPayload.model_dump())
+        payload: Worker job payload
 
     Returns:
-        Status dict
+        Worker accepted response
     """
     import sys
 
@@ -105,12 +107,10 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
         detect_clips,
         separate_to_wav,
     )
-    from src.processor.models import WorkerJobPayload
     from src.storage import R2Storage
     from src.utils import compute_file_hash
 
-    # Parse and validate job data with Pydantic
-    payload = WorkerJobPayload(**job_data)  # pyright: ignore[reportArgumentType]
+    # Extract payload fields
     recording_id = payload.recording_id
     profile_name = payload.profile_name
     strategy_name = payload.strategy_name
@@ -200,7 +200,7 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
             )
             send_callback_with_error_handling_sync(callback_url, callback_payload)
 
-            return {"status": "ok", "recording_id": recording_id}
+            return WorkerAcceptedResponse(status="accepted", recording_id=recording_id)
 
     except Exception as e:
         error_msg = str(e)
@@ -210,33 +210,23 @@ async def _process_internal(job_data: dict[str, str]) -> dict[str, str]:
         callback_payload = prepare_error_payload(error_msg)
         send_callback_with_error_handling_sync(callback_url, callback_payload)
 
-        return {"status": "error", "error": error_msg, "recording_id": recording_id}
+        return WorkerAcceptedResponse(status="error", recording_id=recording_id)
 
 
 @app.function(image=image)  # pyright: ignore[reportUnknownMemberType]
 @modal.fastapi_endpoint(method="POST")  # pyright: ignore[reportUnknownMemberType]
-def process(job_data: dict[str, str]) -> dict[str, str]:
+def process(payload: WorkerJobPayload) -> WorkerAcceptedResponse:
     """FastAPI endpoint that spawns processing job and returns immediately.
 
     Args:
-        job_data: Worker job payload dict (from WorkerJobPayload.model_dump())
+        payload: Worker job payload
 
     Returns:
-        WorkerAcceptedResponse as dict
+        WorkerAcceptedResponse
     """
-    import sys
-
-    sys.path.insert(0, "/root")
-
-    from src.processor.models import WorkerAcceptedResponse, WorkerJobPayload
-
-    # Validate payload with Pydantic
-    payload = WorkerJobPayload(**job_data)  # pyright: ignore[reportArgumentType]
-
     # Spawn the processing job asynchronously (returns immediately)
-    _ = _process_internal.spawn(job_data)
+    _ = _process_internal.spawn(payload)
 
     print(f"Spawned processing job for recording {payload.recording_id}")
 
-    response = WorkerAcceptedResponse(status="accepted", recording_id=payload.recording_id)
-    return response.model_dump()
+    return WorkerAcceptedResponse(status="accepted", recording_id=payload.recording_id)
