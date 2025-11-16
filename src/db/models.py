@@ -143,9 +143,6 @@ class Song(SQLModel, table=True):
 
     # Relationships
     profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
-    recordings: list["Recording"] = Relationship(
-        back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
-    )
     clips: list["Clip"] = Relationship(
         back_populates="song", sa_relationship_kwargs={"lazy": "noload"}
     )
@@ -188,7 +185,6 @@ class Recording(SQLModel, table=True):
     display_name: str  # User-editable, defaults to filename
 
     # Metadata fields
-    song_id: UUID | None = Field(default=None, foreign_key="songs.id", index=True)
     location_id: UUID | None = Field(default=None, foreign_key="locations.id", index=True)
     date_recorded: datetime | None = Field(
         default=None, sa_column=Column(sa.DateTime(timezone=False), nullable=True)
@@ -237,9 +233,6 @@ class Recording(SQLModel, table=True):
     )
     clips: list["Clip"] = Relationship(
         back_populates="recording", sa_relationship_kwargs={"lazy": "noload"}
-    )
-    song: Song | None = Relationship(
-        back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}
     )
     location: Location | None = Relationship(
         back_populates="recordings", sa_relationship_kwargs={"lazy": "noload"}

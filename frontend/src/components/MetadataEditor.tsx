@@ -30,17 +30,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCreateSong, useProfileSongs } from "@/hooks/queries";
+import {
+  useCreateLocation,
+  useCreateSong,
+  useProfileLocations,
+  useProfileSongs,
+} from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 
 interface MetadataEditorProps {
   profileName: string;
   displayName: string;
-  selectedSongId: string | null;
+  selectedSongId?: string | null;
   selectedLocationName: string | null;
   selectedDate: Date | undefined;
   onDisplayNameChange: (value: string) => void;
-  onSongChange: (songId: string | null) => void;
+  onSongChange?: (songId: string | null) => void;
   onLocationChange?: (locationName: string | null) => void;
   onDateChange?: (date: Date | undefined) => void;
   onSave: () => void;
@@ -70,6 +75,8 @@ export function MetadataEditor({
 }: MetadataEditorProps) {
   const { data: songs = [] } = useProfileSongs(profileName);
   const createSong = useCreateSong();
+  const { data: locations = [] } = useProfileLocations(profileName);
+  const createLocation = useCreateLocation();
 
   // Popover open states
   const [songOpen, setSongOpen] = useState(false);
@@ -78,30 +85,32 @@ export function MetadataEditor({
   // Song search
   const [songSearch, setSongSearch] = useState("");
 
+  // Location search
+  const [locationSearch, setLocationSearch] = useState("");
+  const [locationOpen, setLocationOpen] = useState(false);
+
   // Delete countdown state
   const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
   const [deleteDropdownOpen, setDeleteDropdownOpen] = useState(false);
-
-  // LocationIQ location search state
-  const [locationSearch, setLocationSearch] = useState("");
-  const [locationResults, setLocationResults] = useState<
-    Array<{
-      place_id: string;
-      display_name: string;
-      address: { state?: string; country?: string };
-    }>
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [locationOpen, setLocationOpen] = useState(false);
 
   const handleCreateSong = async (name: string) => {
     const result = await createSong.mutateAsync({
       path: { profile_name: profileName },
       body: { name },
     });
-    onSongChange(result.id);
+    onSongChange?.(result.id);
     setSongOpen(false);
     setSongSearch("");
+  };
+
+  const handleCreateLocation = async (name: string) => {
+    await createLocation.mutateAsync({
+      path: { profile_name: profileName },
+      body: { name },
+    });
+    onLocationChange?.(name);
+    setLocationOpen(false);
+    setLocationSearch("");
   };
 
   const handleAutoGenerateTitle = () => {
@@ -114,48 +123,6 @@ export function MetadataEditor({
     const generated = `${datePart} - ${songPart} (${locationPart})`;
     onDisplayNameChange(generated);
   };
-
-  // Debounced location search
-  useEffect(() => {
-    if (locationSearch.length < 3) {
-      setLocationResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-
-    // Debounce: wait 500ms after user stops typing
-    const timer = setTimeout(async () => {
-      try {
-        const apiKey = import.meta.env.VITE_LOCATIONIQ_ACCESS_TOKEN;
-
-        if (!apiKey) {
-          console.warn("LocationIQ API key not configured, search disabled");
-          setLocationResults([]);
-          setIsSearching(false);
-          return;
-        }
-
-        const response = await fetch(
-          `https://us1.locationiq.com/v1/search?format=json&q=${encodeURIComponent(locationSearch)}&limit=8&addressdetails=1&key=${apiKey}`,
-        );
-
-        if (!response.ok) {
-          throw new Error(`LocationIQ API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setLocationResults(data);
-      } catch (error) {
-        console.error("Location search failed:", error);
-        setLocationResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [locationSearch]);
 
   // Delete countdown timer - starts when dropdown opens
   useEffect(() => {
@@ -266,73 +233,75 @@ export function MetadataEditor({
             </div>
           </div>
 
-          {/* Song Name */}
-          <div className="space-y-2">
-            <Label htmlFor="song">Song Name</Label>
-            <Popover open={songOpen} onOpenChange={setSongOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="song"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={songOpen}
-                  className="w-full justify-between"
-                >
-                  {selectedSong ? selectedSong.name : "Select song..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput
-                    placeholder="Search or create song..."
-                    value={songSearch}
-                    onValueChange={setSongSearch}
-                  />
-                  <CommandList>
-                    <CommandEmpty>
-                      {songSearch && (
-                        <Button
-                          variant="ghost"
-                          className="w-full"
-                          onClick={() => handleCreateSong(songSearch)}
-                          disabled={createSong.isPending}
-                        >
-                          Create "{songSearch}"
-                        </Button>
-                      )}
-                      {!songSearch && "No songs found."}
-                    </CommandEmpty>
-                    <CommandGroup>
-                      {songs.map((song) => (
-                        <CommandItem
-                          key={song.id}
-                          value={song.name}
-                          onSelect={() => {
-                            onSongChange(song.id);
-                            setSongOpen(false);
-                            setSongSearch("");
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedSongId === song.id
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                          {song.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+          {/* Song Name - only shown for clips */}
+          {onSongChange && (
+            <div className="space-y-2">
+              <Label htmlFor="song">Song Name</Label>
+              <Popover open={songOpen} onOpenChange={setSongOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="song"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={songOpen}
+                    className="w-full justify-between"
+                  >
+                    {selectedSong ? selectedSong.name : "Select song..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search or create song..."
+                      value={songSearch}
+                      onValueChange={setSongSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {songSearch && (
+                          <Button
+                            variant="ghost"
+                            className="w-full"
+                            onClick={() => handleCreateSong(songSearch)}
+                            disabled={createSong.isPending}
+                          >
+                            Create "{songSearch}"
+                          </Button>
+                        )}
+                        {!songSearch && "No songs found."}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {songs.map((song) => (
+                          <CommandItem
+                            key={song.id}
+                            value={song.name}
+                            onSelect={() => {
+                              onSongChange(song.id);
+                              setSongOpen(false);
+                              setSongSearch("");
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedSongId === song.id
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {song.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
-          {/* Location (LocationIQ) */}
+          {/* Location */}
           {onLocationChange && (
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -345,12 +314,12 @@ export function MetadataEditor({
                     aria-expanded={locationOpen}
                     className="w-full justify-between"
                   >
-                    {selectedLocationName || "Search for location..."}
+                    {selectedLocationName || "Select location..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-full p-0" align="start">
-                  <Command shouldFilter={false}>
+                  <Command>
                     <CommandInput
                       placeholder="Search location..."
                       value={locationSearch}
@@ -358,56 +327,41 @@ export function MetadataEditor({
                     />
                     <CommandList>
                       <CommandEmpty>
-                        {isSearching && "Searching..."}
-                        {!isSearching &&
-                          locationSearch.length < 3 &&
-                          "Type at least 3 characters"}
-                        {!isSearching &&
-                          locationSearch.length >= 3 &&
-                          locationResults.length === 0 &&
-                          "No locations found"}
+                        {locationSearch ? (
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start text-sm"
+                            onClick={() => handleCreateLocation(locationSearch)}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Create &quot;{locationSearch}&quot;
+                          </Button>
+                        ) : (
+                          "No location selected"
+                        )}
                       </CommandEmpty>
                       <CommandGroup>
-                        {locationResults.map((result) => {
-                          const stateCountry = [
-                            result.address?.state,
-                            result.address?.country,
-                          ]
-                            .filter(Boolean)
-                            .join(", ");
-
-                          return (
-                            <CommandItem
-                              key={result.place_id}
-                              value={result.display_name}
-                              onSelect={() => {
-                                onLocationChange(result.display_name);
-                                setLocationOpen(false);
-                                setLocationSearch("");
-                              }}
-                              className="flex items-center justify-between"
-                            >
-                              <div className="flex items-center">
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedLocationName === result.display_name
-                                      ? "opacity-100"
-                                      : "opacity-0",
-                                  )}
-                                />
-                                <span className="truncate max-w-[300px]">
-                                  {result.display_name}
-                                </span>
-                              </div>
-                              {stateCountry && (
-                                <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                                  {stateCountry}
-                                </span>
+                        {locations.map((location) => (
+                          <CommandItem
+                            key={location.id}
+                            value={location.name}
+                            onSelect={() => {
+                              onLocationChange(location.name);
+                              setLocationOpen(false);
+                              setLocationSearch("");
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedLocationName === location.name
+                                  ? "opacity-100"
+                                  : "opacity-0",
                               )}
-                            </CommandItem>
-                          );
-                        })}
+                            />
+                            {location.name}
+                          </CommandItem>
+                        ))}
                       </CommandGroup>
                     </CommandList>
                   </Command>

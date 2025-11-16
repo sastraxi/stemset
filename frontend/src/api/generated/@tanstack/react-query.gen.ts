@@ -7,7 +7,6 @@ import {
   apiClipsClipIdDeleteClipEndpoint,
   apiClipsClipIdGetClipEndpoint,
   apiClipsClipIdUpdateClipEndpoint,
-  apiProcessProcessLocal,
   apiProfilesGetProfiles,
   apiProfilesProfileNameClipsGetProfileClips,
   apiProfilesProfileNameFilesGetProfileFiles,
@@ -40,9 +39,6 @@ import type {
   ApiClipsClipIdUpdateClipEndpointData,
   ApiClipsClipIdUpdateClipEndpointError,
   ApiClipsClipIdUpdateClipEndpointResponse,
-  ApiProcessProcessLocalData,
-  ApiProcessProcessLocalError,
-  ApiProcessProcessLocalResponse,
   ApiProfilesGetProfilesData,
   ApiProfilesProfileNameClipsGetProfileClipsData,
   ApiProfilesProfileNameFilesGetProfileFilesData,
@@ -779,33 +775,6 @@ export const apiRecordingsRecordingIdMetadataUpdateRecordingMetadataMutation = (
           ...fnOptions,
           throwOnError: true,
         });
-      return data;
-    },
-  };
-  return mutationOptions;
-};
-
-/**
- * ProcessLocal
- */
-export const apiProcessProcessLocalMutation = (
-  options?: Partial<Options<ApiProcessProcessLocalData>>,
-): UseMutationOptions<
-  ApiProcessProcessLocalResponse,
-  ApiProcessProcessLocalError,
-  Options<ApiProcessProcessLocalData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    ApiProcessProcessLocalResponse,
-    ApiProcessProcessLocalError,
-    Options<ApiProcessProcessLocalData>
-  > = {
-    mutationFn: async (fnOptions) => {
-      const { data } = await apiProcessProcessLocal({
-        ...options,
-        ...fnOptions,
-        throwOnError: true,
-      });
       return data;
     },
   };

@@ -17,9 +17,6 @@ import type {
   ApiClipsClipIdUpdateClipEndpointData,
   ApiClipsClipIdUpdateClipEndpointErrors,
   ApiClipsClipIdUpdateClipEndpointResponses,
-  ApiProcessProcessLocalData,
-  ApiProcessProcessLocalErrors,
-  ApiProcessProcessLocalResponses,
   ApiProfilesGetProfilesData,
   ApiProfilesGetProfilesResponses,
   ApiProfilesProfileNameClipsGetProfileClipsData,
@@ -607,26 +604,6 @@ export const apiRecordingsRecordingIdMetadataUpdateRecordingMetadata = <
     ThrowOnError
   >({
     url: "/api/recordings/{recording_id}/metadata",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * ProcessLocal
- */
-export const apiProcessProcessLocal = <ThrowOnError extends boolean = false>(
-  options: Options<ApiProcessProcessLocalData, ThrowOnError>,
-) => {
-  return (options.client ?? client).post<
-    ApiProcessProcessLocalResponses,
-    ApiProcessProcessLocalErrors,
-    ThrowOnError
-  >({
-    url: "/api/process",
     ...options,
     headers: {
       "Content-Type": "application/json",

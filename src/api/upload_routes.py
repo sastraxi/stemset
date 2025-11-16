@@ -373,7 +373,7 @@ async def recording_complete(
 
                 clip = Clip(
                     recording_id=recording.id,
-                    song_id=recording.song_id,
+                    song_id=None,  # Clips created without a song, user can set later
                     start_time_sec=boundary.start_time_sec,
                     end_time_sec=boundary.end_time_sec,
                     display_name=display_name,
@@ -489,7 +489,6 @@ async def get_recording_status(
 class UpdateRecordingMetadataRequest(BaseModel):
     """Request to update recording metadata."""
 
-    song_id: UUID | None = None
     location_id: UUID | None = None
     date_recorded: str | None = None  # ISO format date string (YYYY-MM-DD)
 
@@ -498,7 +497,7 @@ class UpdateRecordingMetadataRequest(BaseModel):
 async def update_recording_metadata(
     recording_id: UUID, data: UpdateRecordingMetadataRequest
 ) -> RecordingStatusResponse:
-    """Update metadata (song, location, date_recorded) for a recording.
+    """Update metadata (location, date_recorded) for a recording.
 
     Args:
         recording_id: Recording identifier
@@ -508,7 +507,7 @@ async def update_recording_metadata(
         Updated recording status
 
     Raises:
-        NotFoundException: If recording, song, or location not found
+        NotFoundException: If recording or location not found
     """
     engine = get_engine()
 
@@ -519,7 +518,6 @@ async def update_recording_metadata(
             .where(Recording.id == recording_id)
             .options(
                 selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
-                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
                 selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
             )
         )
@@ -528,14 +526,6 @@ async def update_recording_metadata(
 
         if recording is None:
             raise NotFoundException(f"Recording {recording_id} not found")
-
-        # Validate and update song_id if provided
-        if data.song_id is not None:
-            song_result = await session.exec(select(Song).where(Song.id == data.song_id))
-            song = song_result.first()
-            if song is None:
-                raise NotFoundException(f"Song {data.song_id} not found")
-            recording.song_id = data.song_id
 
         # Validate and update location_id if provided
         if data.location_id is not None:
@@ -592,6 +582,20 @@ async def update_recording_metadata(
                         }
                     )
 
+        # Build location metadata if present
+        location_metadata = None
+        if recording.location:
+            from ..api.models import LocationMetadata
+
+            location_metadata = LocationMetadata(
+                id=str(recording.location.id), name=recording.location.name
+            )
+
+        # Format date_recorded if present
+        date_recorded_str = None
+        if recording.date_recorded:
+            date_recorded_str = recording.date_recorded.isoformat()
+
         return RecordingStatusResponse(
             recording_id=str(recording.id),
             status=recording.status,
@@ -600,4 +604,6 @@ async def update_recording_metadata(
             display_name=recording.display_name,
             stems=stems_list,
             config=RecordingConfigData(),  # Empty config for metadata update
+            location=location_metadata,
+            date_recorded=date_recorded_str,
         )

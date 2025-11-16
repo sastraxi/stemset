@@ -2,15 +2,15 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 import { cn } from "@/lib/utils";
-import type { FileWithStems } from "@/api/generated";
+import type { RecordingWithStems } from "@/api/generated";
 import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 
 interface RecordingsViewProps {
-  files: FileWithStems[] | undefined;
+  files: RecordingWithStems[] | undefined;
   isLoading: boolean;
   error: Error | null;
   selectedFileName: string | null;
-  onFileSelect: (file: FileWithStems) => void;
+  onFileSelect: (file: RecordingWithStems) => void;
   onRefresh: () => void;
   getRelativeTime: (dateString: string | null | undefined) => string;
   sortField: SortField;

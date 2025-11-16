@@ -43,7 +43,7 @@ class StemResponse(BaseModel):
 
 
 class RecordingConfigData(BaseModel):
-    """User-specific recording configuration (nested in FileWithStems).
+    """User-specific recording configuration (nested in RecordingWithStems).
 
     Config values are stored flexibly - can be primitives or complex nested structures.
     """
@@ -73,8 +73,8 @@ class LocationMetadata(BaseModel):
     name: str
 
 
-class FileWithStems(BaseModel):
-    """File with stems information from database."""
+class RecordingWithStems(BaseModel):
+    """Recording with stems information from database."""
 
     id: str  # recording UUID
     name: str  # output_name
@@ -85,7 +85,6 @@ class FileWithStems(BaseModel):
     config: RecordingConfigData | None = (
         None  # User-specific config (only populated when fetching single recording)
     )
-    song: SongMetadata | None = None
     location: LocationMetadata | None = None
     date_recorded: str | None = None  # ISO format date string
 
@@ -119,6 +118,8 @@ class RecordingStatusResponse(BaseModel):
     display_name: str
     stems: list[dict[str, str | float | int]]
     config: RecordingConfigData | None = None
+    location: LocationMetadata | None = None
+    date_recorded: str | None = None  # ISO format date string
 
 
 class ClipResponse(BaseModel):

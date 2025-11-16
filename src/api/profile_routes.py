@@ -28,7 +28,7 @@ from .models import (
     ClipResponse,
     ClipWithStemsResponse,
     CreateClipRequest,
-    FileWithStems,
+    RecordingWithStems,
     LocationMetadata,
     ProfileResponse,
     SongMetadata,
@@ -70,7 +70,7 @@ async def get_profile(profile_name: str) -> ProfileResponse:
 
 
 @get("/api/profiles/{profile_name:str}/files")
-async def get_profile_files(profile_name: str) -> list[FileWithStems]:
+async def get_profile_files(profile_name: str) -> list[RecordingWithStems]:
     """Get all processed files for a profile (metadata only, no config).
 
     For full recording data with config, use GET /api/recordings/{recording_id}
@@ -84,13 +84,12 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
         if profile is None:
             raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
-        # Query recordings with stems, song, and location (use selectinload to avoid N+1)
+        # Query recordings with stems and location (use selectinload to avoid N+1)
         stmt = (
             select(Recording)
             .where(Recording.profile_id == profile.id)
             .options(
                 selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
-                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
                 selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
             )
             .order_by(desc(Recording.created_at))
@@ -131,18 +130,14 @@ async def get_profile_files(profile_name: str) -> list[FileWithStems]:
             status = recording.status if recording.status in ("processing", "error") else None
 
             files.append(
-                FileWithStems(
+                RecordingWithStems(
                     id=str(recording.id),
                     name=recording.output_name,
                     display_name=recording.display_name,
                     stems=stems,
                     created_at=recording.created_at.isoformat(),
                     status=status,
-                    song=(
-                        SongMetadata(id=str(recording.song.id), name=recording.song.name)
-                        if recording.song
-                        else None
-                    ),
+                    song=None,  # Recordings no longer have songs, only clips do
                     location=(
                         LocationMetadata(
                             id=str(recording.location.id), name=recording.location.name
@@ -362,8 +357,7 @@ async def create_clip_endpoint(recording_id: UUID, data: CreateClipRequest) -> C
 
         # Inherit song_id from recording if not provided in request
         clip_song_id = UUID(data.song_id) if data.song_id else None
-        if clip_song_id is None and recording.song_id:
-            clip_song_id = recording.song_id
+        # Recordings no longer have song_id, clips must specify their own
 
         # Create clip
         try:
@@ -411,13 +405,12 @@ async def get_clip_endpoint(clip_id: UUID) -> ClipWithStemsResponse:
         if clip is None:
             raise NotFoundException(detail=f"Clip {clip_id} not found")
 
-        # Fetch recording with stems and song
+        # Fetch recording with stems and location
         stmt = (
             select(Recording)
             .where(Recording.id == clip.recording_id)
             .options(
                 selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
-                selectinload(Recording.song),  # pyright: ignore[reportArgumentType]
                 selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
             )
         )

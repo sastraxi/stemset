@@ -1,11 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import type { FileWithStems } from "@/api/generated/types.gen";
+import type { RecordingWithStems } from "@/api/generated/types.gen";
 import { Badge } from "@/components/ui/badge";
 import { RecordingMenu } from "./RecordingMenu";
 
 export interface SongMetadataProps {
-  recording: FileWithStems;
-  profileName: string;
+  recording: RecordingWithStems;
   onEdit: () => void;
   onShowQR: () => void;
   onDelete: () => void;
@@ -16,7 +14,6 @@ export interface SongMetadataProps {
 
 export function SongMetadata({
   recording,
-  profileName,
   onEdit,
   onShowQR,
   onDelete,
@@ -51,26 +48,6 @@ export function SongMetadata({
       <div className="flex flex-col items-start gap-2">
         <h2 className="recording-name">{recording.display_name}</h2>
         <div className="song-metadata-badges">
-          {recording.song ? (
-            <Link
-              to="/p/$profileName/songs/$songId"
-              params={{
-                profileName,
-                songId: recording.song.id,
-              }}
-            >
-              <Badge
-                variant="secondary"
-                className="cursor-pointer hover:bg-primary/20 transition-colors"
-              >
-                {recording.song.name}
-              </Badge>
-            </Link>
-          ) : (
-            <Badge variant="outline" className="text-muted-foreground">
-              No song
-            </Badge>
-          )}
           {recording.location ? (
             <Badge variant="secondary">{recording.location.name}</Badge>
           ) : (

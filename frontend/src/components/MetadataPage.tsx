@@ -3,9 +3,10 @@ import { Check, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type {
-  FileWithStems,
+  RecordingWithStems,
   RecordingStatusResponse,
 } from "@/api/generated/types.gen";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   useCreateLocation,
@@ -25,7 +25,7 @@ import { MetadataEditor } from "./MetadataEditor";
 import "../styles/metadata-editor.css";
 
 interface MetadataPageProps {
-  recording: RecordingStatusResponse | FileWithStems;
+  recording: RecordingStatusResponse | RecordingWithStems;
   profileName: string;
   wasInitiallyProcessing: boolean;
   onContinue?: () => void;
@@ -58,9 +58,6 @@ export function MetadataPage({
         ? recording.name
         : "",
   );
-  const [selectedSongId, setSelectedSongId] = useState<string | null>(
-    "song" in recording && recording.song ? recording.song.id : null,
-  );
   const [selectedLocationName, setSelectedLocationName] = useState<
     string | null
   >(
@@ -80,7 +77,7 @@ export function MetadataPage({
 
   const handleSave = async () => {
     try {
-      // Handle location: find or create from LocationIQ name
+      // Handle location: find or create from name
       let locationId: string | undefined;
       if (selectedLocationName) {
         // Check if location already exists
@@ -90,7 +87,7 @@ export function MetadataPage({
         if (existingLocation) {
           locationId = existingLocation.id;
         } else {
-          // Create new location from LocationIQ result
+          // Create new location from name
           const newLocation = await createLocation.mutateAsync({
             path: { profile_name: profileName },
             body: { name: selectedLocationName },
@@ -103,7 +100,6 @@ export function MetadataPage({
       await updateMetadata.mutateAsync({
         path: { recording_id: recordingId },
         body: {
-          song_id: selectedSongId || undefined,
           location_id: locationId,
           date_recorded: selectedDate
             ? format(selectedDate, "yyyy-MM-dd")
@@ -166,11 +162,9 @@ export function MetadataPage({
           <MetadataEditor
             profileName={profileName}
             displayName={displayName}
-            selectedSongId={selectedSongId}
             selectedLocationName={selectedLocationName}
             selectedDate={selectedDate}
             onDisplayNameChange={setDisplayName}
-            onSongChange={setSelectedSongId}
             onLocationChange={setSelectedLocationName}
             onDateChange={setSelectedDate}
             onSave={handleSave}

@@ -81,22 +81,6 @@ export type CreateSongRequest = {
 };
 
 /**
- * FileWithStems
- */
-export type FileWithStems = {
-  id: string;
-  name: string;
-  display_name: string;
-  stems: Array<StemResponse>;
-  created_at: string;
-  status?: string | null;
-  config?: RecordingConfigData | null;
-  song?: SongMetadata | null;
-  location?: LocationMetadata | null;
-  date_recorded?: string | null;
-};
-
-/**
  * LocationMetadata
  */
 export type LocationMetadata = {
@@ -181,6 +165,23 @@ export type RecordingStatusResponse = {
     [key: string]: string | number | number;
   }>;
   config?: RecordingConfigData | null;
+  location?: LocationMetadata | null;
+  date_recorded?: string | null;
+};
+
+/**
+ * RecordingWithStems
+ */
+export type RecordingWithStems = {
+  id: string;
+  name: string;
+  display_name: string;
+  stems: Array<StemResponse>;
+  created_at: string;
+  status?: string | null;
+  config?: RecordingConfigData | null;
+  location?: LocationMetadata | null;
+  date_recorded?: string | null;
 };
 
 /**
@@ -277,7 +278,6 @@ export type UpdateDisplayNameResponse = {
  * UpdateRecordingMetadataRequest
  */
 export type UpdateRecordingMetadataRequest = {
-  song_id?: string | null;
   location_id?: string | null;
   date_recorded?: string | null;
 };
@@ -292,26 +292,6 @@ export type UploadResponse = {
   filename: string;
   status: string;
   message?: string | null;
-};
-
-/**
- * WorkerAcceptedResponse
- */
-export type WorkerAcceptedResponse = {
-  status: string;
-  recording_id: string;
-};
-
-/**
- * WorkerJobPayload
- */
-export type WorkerJobPayload = {
-  recording_id: string;
-  profile_name: string;
-  strategy_name: string;
-  input_filename: string;
-  output_name: string;
-  callback_url: string;
 };
 
 export type AuthStatusAuthStatusData = {
@@ -485,7 +465,7 @@ export type ApiProfilesProfileNameFilesGetProfileFilesResponses = {
   /**
    * Request fulfilled, document follows
    */
-  200: Array<FileWithStems>;
+  200: Array<RecordingWithStems>;
 };
 
 export type ApiProfilesProfileNameFilesGetProfileFilesResponse =
@@ -1186,39 +1166,3 @@ export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses = {
 
 export type ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponse =
   ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses[keyof ApiRecordingsRecordingIdMetadataUpdateRecordingMetadataResponses];
-
-export type ApiProcessProcessLocalData = {
-  body: WorkerJobPayload;
-  path?: never;
-  query?: never;
-  url: "/api/process";
-};
-
-export type ApiProcessProcessLocalErrors = {
-  /**
-   * Validation Exception
-   */
-  400: {
-    status_code: number;
-    detail: string;
-    extra?:
-      | null
-      | {
-          [key: string]: unknown;
-        }
-      | Array<unknown>;
-  };
-};
-
-export type ApiProcessProcessLocalError =
-  ApiProcessProcessLocalErrors[keyof ApiProcessProcessLocalErrors];
-
-export type ApiProcessProcessLocalResponses = {
-  /**
-   * Document created, URL follows
-   */
-  201: WorkerAcceptedResponse;
-};
-
-export type ApiProcessProcessLocalResponse =
-  ApiProcessProcessLocalResponses[keyof ApiProcessProcessLocalResponses];

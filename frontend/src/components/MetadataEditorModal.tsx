@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { FileWithStems } from "@/api/generated/types.gen";
+import type { RecordingWithStems } from "@/api/generated/types.gen";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import { MetadataEditor } from "./MetadataEditor";
 import "../styles/metadata-editor.css";
 
 interface MetadataEditorModalProps {
-  recording: FileWithStems;
+  recording: RecordingWithStems;
   clip?: {
     id: string;
     display_name?: string | null;
@@ -29,7 +29,7 @@ interface MetadataEditorModalProps {
   profileName: string;
   open: boolean;
   onClose: () => void;
-  onUpdate?: (updatedRecording: FileWithStems) => void;
+  onUpdate?: (updatedRecording: RecordingWithStems) => void;
 }
 
 export function MetadataEditorModal({
@@ -42,15 +42,13 @@ export function MetadataEditorModal({
 }: MetadataEditorModalProps) {
   // Determine initial values from clip or recording
   const initialDisplayName = clip?.display_name ?? recording.display_name;
-  const initialSongId =
-    clip?.song_id ?? (recording.song ? recording.song.id : null);
 
   // Local state for form values
   const [displayName, setDisplayName] = useState(initialDisplayName);
+  // Song is only for clips now
   const [selectedSongId, setSelectedSongId] = useState<string | null>(
-    initialSongId,
+    clip?.song_id ?? null,
   );
-  // For OSM, we'll store the location name as a string
   const [selectedLocationName, setSelectedLocationName] = useState<
     string | null
   >(recording.location ? recording.location.name : null);
@@ -68,9 +66,7 @@ export function MetadataEditorModal({
   // Sync local state with recording/clip props when they change
   useEffect(() => {
     setDisplayName(clip?.display_name ?? recording.display_name);
-    setSelectedSongId(
-      clip?.song_id ?? (recording.song ? recording.song.id : null),
-    );
+    setSelectedSongId(clip?.song_id ?? null);
     setSelectedLocationName(
       recording.location ? recording.location.name : null,
     );
@@ -104,7 +100,7 @@ export function MetadataEditorModal({
           });
         }
 
-        // Handle location: find or create from LocationIQ name
+        // Handle location: find or create from name
         let locationId: string | undefined;
         if (selectedLocationName) {
           // Check if location already exists
@@ -114,7 +110,7 @@ export function MetadataEditorModal({
           if (existingLocation) {
             locationId = existingLocation.id;
           } else {
-            // Create new location from LocationIQ result
+            // Create new location
             const newLocation = await createLocation.mutateAsync({
               path: { profile_name: profileName },
               body: { name: selectedLocationName },
@@ -123,12 +119,10 @@ export function MetadataEditorModal({
           }
         }
 
-        // Update metadata
-        // FIXME: return song and location in response
-        await updateMetadata.mutateAsync({
+        // Update metadata - API now returns location and date_recorded
+        const updatedRecording = await updateMetadata.mutateAsync({
           path: { recording_id: recording.id },
           body: {
-            song_id: selectedSongId || undefined,
             location_id: locationId,
             date_recorded: selectedDate
               ? format(selectedDate, "yyyy-MM-dd")
@@ -136,15 +130,12 @@ export function MetadataEditorModal({
           },
         });
 
-        // Build updated recording object
-        const updatedRecordingData: FileWithStems = {
+        // Build updated recording object with response data
+        const updatedRecordingData: RecordingWithStems = {
           ...recording,
           display_name: displayName,
-          // song: updatedRecording.song,
-          // location: updatedRecording.location,
-          date_recorded: selectedDate
-            ? format(selectedDate, "yyyy-MM-dd")
-            : null,
+          location: updatedRecording.location,
+          date_recorded: updatedRecording.date_recorded,
         };
 
         // Update React Query cache with new data
@@ -176,9 +167,7 @@ export function MetadataEditorModal({
   const handleCancel = () => {
     // Reset to original values
     setDisplayName(clip?.display_name ?? recording.display_name);
-    setSelectedSongId(
-      clip?.song_id ?? (recording.song ? recording.song.id : null),
-    );
+    setSelectedSongId(clip?.song_id ?? null);
     setSelectedLocationName(
       recording.location ? recording.location.name : null,
     );
@@ -213,7 +202,7 @@ export function MetadataEditorModal({
           selectedLocationName={selectedLocationName}
           selectedDate={selectedDate}
           onDisplayNameChange={setDisplayName}
-          onSongChange={setSelectedSongId}
+          onSongChange={clip ? setSelectedSongId : undefined}
           onLocationChange={clip ? undefined : setSelectedLocationName}
           onDateChange={clip ? undefined : setSelectedDate}
           onSave={handleSave}

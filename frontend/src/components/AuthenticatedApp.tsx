@@ -21,7 +21,7 @@ import "../styles/player.css";
 import "../styles/sidebar.css";
 import "../styles/splash.css";
 import "../styles/waveform.css";
-import type { FileWithStems } from "@/api/generated";
+import type { RecordingWithStems } from "@/api/generated";
 import { apiRecordingsRecordingIdDeleteRecordingEndpoint } from "@/api/generated";
 import { ClipsView } from "./ClipsView";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
@@ -33,8 +33,8 @@ import { QRUploadOverlay } from "./QRUploadOverlay";
 import { RecordingPlayer } from "./RecordingPlayer";
 import { RecordingsView } from "./RecordingsView";
 import { SongMetadata } from "./SongMetadata";
-import { SongsView } from "./SongsView";
 import { SongPageView } from "./SongPageView";
+import { SongsView } from "./SongsView";
 import type { StemPlayerHandle } from "./StemPlayer";
 import { Upload } from "./Upload";
 import { UserNav } from "./UserNav";
@@ -76,7 +76,9 @@ export function AuthenticatedApp({
   const [selectedProfile, setSelectedProfile] = useState<string | null>(
     initialProfile || null,
   );
-  const [selectedFile, setSelectedFile] = useState<FileWithStems | null>(null);
+  const [selectedFile, setSelectedFile] = useState<RecordingWithStems | null>(
+    null,
+  );
   const [isLoadingStems, setIsLoadingStems] = useState(false);
   const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
   const [isMetadataEditorOpen, setIsMetadataEditorOpen] = useState(false);
@@ -173,8 +175,8 @@ export function AuthenticatedApp({
   // Fetch the recording status for the clip to get location/date metadata
   const clipRecordingStatus = useRecording(clip?.data?.recording_id);
 
-  // Build a FileWithStems from clip data and recording status
-  const clipRecordingData: FileWithStems | null = useMemo(() => {
+  // Build a RecordingWithStems from clip data and recording status
+  const clipRecordingData: RecordingWithStems | null = useMemo(() => {
     if (!clip?.data || !clipRecordingStatus.data) return null;
 
     return {
@@ -288,7 +290,7 @@ export function AuthenticatedApp({
     navigate({ to: "/p/$profileName", params: { profileName } });
   };
 
-  const handleFileSelect = (file: FileWithStems) => {
+  const handleFileSelect = (file: RecordingWithStems) => {
     setSelectedFile(file);
     if (selectedProfile) {
       console.log("handleFileSelect:", file);
@@ -388,7 +390,7 @@ export function AuthenticatedApp({
   // Sort files using the sort hook
   const sortedFiles = useMemo(() => {
     if (!files) return [];
-    return sortData<FileWithStems>(
+    return sortData<RecordingWithStems>(
       files,
       (file) => file.date_recorded,
       (file) => file.display_name || file.name,
@@ -488,7 +490,10 @@ export function AuthenticatedApp({
                 />
               </TabsContent>
 
-              <TabsContent value="clips" className="mt-0 flex-1 overflow-y-auto">
+              <TabsContent
+                value="clips"
+                className="mt-0 flex-1 overflow-y-auto"
+              >
                 {selectedProfile && (
                   <ClipsView
                     profileName={selectedProfile}
@@ -497,7 +502,10 @@ export function AuthenticatedApp({
                 )}
               </TabsContent>
 
-              <TabsContent value="songs" className="mt-0 flex-1 overflow-y-auto">
+              <TabsContent
+                value="songs"
+                className="mt-0 flex-1 overflow-y-auto"
+              >
                 {selectedProfile && (
                   <SongsView
                     profileName={selectedProfile}
@@ -543,7 +551,6 @@ export function AuthenticatedApp({
                         clip.data.display_name ||
                         clipRecordingData.display_name,
                     }}
-                    profileName={selectedProfile!}
                     onEdit={() => setIsClipMetadataEditorOpen(true)}
                     onShowQR={() => setIsClipQRModalOpen(true)}
                     onDelete={() => setIsClipDeleteModalOpen(true)}
@@ -635,7 +642,6 @@ export function AuthenticatedApp({
                   {!isLoadingStems && (
                     <SongMetadata
                       recording={selectedFile}
-                      profileName={selectedProfile}
                       onEdit={() => setIsMetadataEditorOpen(true)}
                       onShowQR={() => setIsQRModalOpen(true)}
                       onDelete={() => setIsDeleteModalOpen(true)}
