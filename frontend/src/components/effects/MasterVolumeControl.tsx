@@ -1,6 +1,6 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useState } from "react";
-import { VolumeSlider } from "../VolumeSlider";
+import { VolumeSlider } from "@/components/player/VolumeSlider";
 
 export interface MasterVolumeControlProps {
   volume: number; // 0 to 1 (linear)

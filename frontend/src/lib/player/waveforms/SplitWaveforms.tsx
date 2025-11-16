@@ -1,5 +1,5 @@
-import { WaveformVisualization } from "../../../components/WaveformVisualization";
-import type { RangeSelectionContext } from "../canvas/useCanvasInteraction";
+import { WaveformVisualization } from "@/components/player/WaveformVisualization";
+import type { RangeSelectionContext } from "@/lib/player/canvas/useCanvasInteraction";
 
 export interface StemWaveformData {
   stemType: string;

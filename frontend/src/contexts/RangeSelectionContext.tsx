@@ -1,10 +1,10 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
   type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
 
 export interface RangeSelection {
@@ -12,7 +12,7 @@ export interface RangeSelection {
   endSec: number | null;
 }
 
-interface RangeSelectionContextValue {
+export interface RangeSelectionContextValue {
   selection: RangeSelection;
   setInPoint: (timeSec: number) => void;
   setOutPoint: (timeSec: number) => void;
@@ -147,9 +147,7 @@ export function RangeSelectionProvider({
 export function useRangeSelection() {
   const context = useContext(RangeSelectionContext);
   if (!context) {
-    throw new Error(
-      "useRangeSelection must be used within a RangeSelectionProvider",
-    );
+    return null;
   }
   return context;
 }

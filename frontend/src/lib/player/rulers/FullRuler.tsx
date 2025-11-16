@@ -1,5 +1,5 @@
-import { Ruler } from "../../../components/Ruler";
-import type { RangeSelectionContext } from "../canvas/useCanvasInteraction";
+import { Ruler } from "@/components/player/Ruler";
+import type { RangeSelectionContext } from "@/lib/player/canvas/useCanvasInteraction";
 
 export interface FullRulerProps {
   currentTime: number;

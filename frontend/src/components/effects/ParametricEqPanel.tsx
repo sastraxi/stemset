@@ -1,5 +1,5 @@
+import { VerticalDragControl } from "@/components/common/VerticalDragControl";
 import type { ParametricEqBandConfig, ParametricEqConfig } from "@/types";
-import { VerticalDragControl } from "../VerticalDragControl";
 
 // Props for ParametricEqPanel component
 export interface ParametricEqPanelProps {

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClipPage } from "../../../../components/ClipPage";
+import { ClipPage } from "@/components/pages/ClipPage";
 
 export const Route = createFileRoute("/p/$profileName/clips/$clipId")({
   component: ClipPage,

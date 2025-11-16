@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RecordingPage } from "../../../components/RecordingPage";
+import { RecordingPage } from "@/components/pages/RecordingPage";
 
 export const Route = createFileRoute("/p/$profileName/$recordingName")({
   component: RecordingPage,

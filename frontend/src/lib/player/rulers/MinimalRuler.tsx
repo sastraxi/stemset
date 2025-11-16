@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
-import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
+import { useCanvasInteraction } from "@/lib/player/canvas/useCanvasInteraction";
 import { formatTime } from "../../../lib/utils";
-import { useCanvasInteraction } from "../canvas/useCanvasInteraction";
+import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
 
 export interface MinimalRulerProps {
   currentTime: number;
@@ -36,11 +36,7 @@ export function MinimalRuler({
   const previewTimeRef = useRef<number | null>(null);
 
   const onRender = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      canvas: HTMLCanvasElement,
-      dpr: number,
-    ) => {
+    (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, dpr: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Use previewTime if available for the cursor position
