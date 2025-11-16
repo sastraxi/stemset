@@ -410,7 +410,10 @@ async def get_recording_status(
         stmt = (
             select(Recording)
             .where(Recording.id == recording_id)
-            .options(selectinload(Recording.stems))  # pyright: ignore[reportArgumentType]
+            .options(
+                selectinload(Recording.stems),  # pyright: ignore[reportArgumentType]
+                selectinload(Recording.location),  # pyright: ignore[reportArgumentType]
+            )
         )
         result = await session.exec(stmt)
         recording = result.first()
@@ -475,6 +478,20 @@ async def get_recording_status(
 
                 config_data = RecordingConfigData(**config_dict)
 
+        # Build location metadata if present
+        location_metadata = None
+        if recording.location:
+            from .models import LocationMetadata
+
+            location_metadata = LocationMetadata(
+                id=str(recording.location.id), name=recording.location.name
+            )
+
+        # Format date_recorded if present
+        date_recorded_str = None
+        if recording.date_recorded:
+            date_recorded_str = recording.date_recorded.isoformat()
+
         return RecordingStatusResponse(
             recording_id=str(recording.id),
             status=recording.status,
@@ -483,6 +500,8 @@ async def get_recording_status(
             display_name=recording.display_name,
             stems=stems_list,
             config=config_data,
+            location=location_metadata,
+            date_recorded=date_recorded_str,
         )
 
 

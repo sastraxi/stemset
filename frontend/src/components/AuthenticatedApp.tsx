@@ -183,12 +183,12 @@ export function AuthenticatedApp({
       id: clip.data.recording_id,
       name: clip.data.recording_output_name,
       display_name: clipRecordingStatus.data.display_name,
-      date_recorded: null, // Recordings don't have date in RecordingStatusResponse
+      date_recorded: clipRecordingStatus.data.date_recorded || null,
       status: "complete" as const,
       stems: clip.data.stems,
       created_at: clip.data.created_at,
       song: clip.data.song || null,
-      location: null, // Location not in RecordingStatusResponse
+      location: clipRecordingStatus.data.location || null,
     };
   }, [clip?.data, clipRecordingStatus.data]);
 
