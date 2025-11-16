@@ -28,8 +28,6 @@ export function SongPage() {
     <>
       <Toaster position="bottom-right" />
       <AuthenticatedApp
-        user={authStatus.user!}
-        onLogout={logout}
         initialProfile={profileName}
         initialSong={songId}
       />

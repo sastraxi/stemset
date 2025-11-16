@@ -14,7 +14,7 @@ import {
 // Use environment variable for API URL in production, fallback to root for local dev
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;

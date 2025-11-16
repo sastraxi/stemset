@@ -29,8 +29,6 @@ export function ClipPage() {
     <>
       <Toaster position="bottom-right" />
       <AuthenticatedApp
-        user={authStatus.user!}
-        onLogout={logout}
         initialProfile={profileName}
         initialClip={clipId}
         timeParam={timeParam}

@@ -7,20 +7,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth, type User } from "../contexts/AuthContext";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  picture?: string;
-}
+export function UserNav() {
+  const { authStatus, logout } = useAuth();
 
-interface UserNavProps {
-  user: User;
-  onLogout: () => void;
-}
+  if (!authStatus?.user) {
+    return null;
+  }
 
-export function UserNav({ user, onLogout }: UserNavProps) {
+  const { user } = authStatus;
+
   // Get user's initials from name or email
   const getInitials = (user: User) => {
     if (user.name) {
@@ -94,7 +91,7 @@ export function UserNav({ user, onLogout }: UserNavProps) {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={onLogout}
+          onClick={logout}
           className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:text-red-300 focus:bg-red-500/10"
         >
           <LogOut className="mr-2 h-4 w-4" />

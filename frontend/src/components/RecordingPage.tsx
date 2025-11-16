@@ -26,8 +26,6 @@ export function RecordingPage() {
     <>
       <Toaster position="bottom-right" />
       <AuthenticatedApp
-        user={authStatus.user!}
-        onLogout={logout}
         initialProfile={profileName}
         initialRecording={recordingName}
         sourceParam={source}

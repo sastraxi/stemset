@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Upload as UploadIcon, X } from "lucide-react";
 import { useState } from "react";
@@ -7,18 +8,23 @@ import "./QRUploadOverlay.css";
 interface QRUploadOverlayProps {
   profileName: string;
   recordingName: string;
-  onUploadComplete: () => void;
   onNavigateToRecording: (profileName: string, fileName: string) => void;
 }
 
 export function QRUploadOverlay({
   profileName,
   recordingName,
-  onUploadComplete,
   onNavigateToRecording,
 }: QRUploadOverlayProps) {
   const [isClosing, setIsClosing] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const handleUploadComplete = () => {
+    queryClient.invalidateQueries({
+      queryKey: ["profile-files", profileName],
+    });
+  };
 
   const handleGoToRecording = () => {
     navigate({
@@ -63,7 +69,7 @@ export function QRUploadOverlay({
           <div className="qr-upload-actions">
             <Upload
               profileName={profileName}
-              onUploadComplete={onUploadComplete}
+              onUploadComplete={handleUploadComplete}
               onNavigateToRecording={onNavigateToRecording}
             />
 
