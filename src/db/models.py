@@ -135,7 +135,7 @@ class AudioFile(SQLModel, table=True):
     file_hash: str  # SHA256 content hash (for dedup)
     file_size_bytes: int
 
-    created_at: datetime = Field(
+    uploaded_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
 
