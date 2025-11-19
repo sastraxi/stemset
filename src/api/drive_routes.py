@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import secrets
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
+import httpx
 from litestar import get, post
 from litestar.exceptions import NotFoundException, ValidationException
 from pydantic import BaseModel
@@ -19,6 +21,8 @@ from src.db.config import get_engine
 
 from ..db.models import AudioFile, Profile, Recording, User
 from ..google_drive import GoogleDriveClient
+from ..processor.models import WorkerJobPayload
+from ..processor.trigger import trigger_processing
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
 from .state import AppState
@@ -299,23 +303,13 @@ async def import_drive_file(
             await session.commit()
             await session.refresh(recording)
 
-        # Trigger processing (same as upload flow)
-        from litestar.background_tasks import BackgroundTask
-
-        from ..processor.local import process_locally
-
-        # For now, use local processing (can extend to Modal later)
-        print(f"[Drive Import] Queueing recording {recording.id} for background processing")
-
-        # Start background task
-        task = BackgroundTask(
-            _process_drive_file,
-            str(recording.id),
-            state.config,
+        await trigger_processing(
+            recording=recording,
+            profile=profile,
+            input_filename=data.file_name,
+            config=state.config,
+            backend_url=state.backend_url,
         )
-
-        # Execute task in background (Litestar will handle this)
-        await task()
 
         return DriveImportResponse(
             recording_id=str(recording.id),
@@ -327,14 +321,3 @@ async def import_drive_file(
         if temp_path and temp_path.exists():
             temp_path.unlink(missing_ok=True)
 
-
-async def _process_drive_file(recording_id: str, config) -> None:
-    """Background task to process Drive file.
-
-    Args:
-        recording_id: Recording identifier
-        config: Application config
-    """
-    from ..processor.local import process_locally
-
-    await process_locally(UUID(recording_id), config)
