@@ -92,6 +92,10 @@ def detect_clip_boundaries(
 
     sr = detected_sr
 
+    # Get total duration from the first loaded stem
+    first_stem_audio = next(iter(stems_audio.values()))
+    total_duration_sec = len(first_stem_audio) / sr
+
     # Step 1: Activity Detection Per Stem
     stem_activity_ranges: dict[str, list[TimeRange]] = {}
 
@@ -133,6 +137,12 @@ def detect_clip_boundaries(
     islands = _compute_intersection_ranges(list(stem_activity_ranges.values()))
 
     if not islands:
+        # Fallback: If no islands, check if the whole file is a valid clip
+        if total_duration_sec >= min_clip_duration_sec:
+            print("No activity islands found, creating a single clip for the full duration.")
+            return {
+                "clip_0": ClipBoundary(start_time_sec=0.0, end_time_sec=total_duration_sec)
+            }
         return {}
 
     # Step 3: Grow to Natural Boundaries
