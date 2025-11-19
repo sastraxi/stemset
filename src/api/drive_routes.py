@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import secrets
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from uuid import UUID
 
-import httpx
 from litestar import get, post
 from litestar.exceptions import NotFoundException, ValidationException
 from pydantic import BaseModel
-from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -21,7 +17,6 @@ from src.db.config import get_engine
 
 from ..db.models import AudioFile, Profile, Recording, User
 from ..google_drive import GoogleDriveClient
-from ..processor.models import WorkerJobPayload
 from ..processor.trigger import trigger_processing
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
@@ -63,6 +58,7 @@ class DriveImportResponse(BaseModel):
     """Response after importing a Drive file."""
 
     recording_id: str
+    output_name: str
     status: str
     message: str | None = None
 
@@ -107,7 +103,9 @@ async def get_drive_folder_contents(
         target_folder_id = folder_id or profile.google_drive_folder_id
 
         if not target_folder_id:
-            raise NotFoundException(f"Profile '{profile_name}' has no Google Drive folder configured")
+            raise NotFoundException(
+                f"Profile '{profile_name}' has no Google Drive folder configured"
+            )
 
         # Get user's refresh token
         user_stmt = select(User).where(User.email == request.user.email)
@@ -233,6 +231,7 @@ async def import_drive_file(
             if existing_recording and existing_recording.status == "complete":
                 return DriveImportResponse(
                     recording_id=str(existing_recording.id),
+                    output_name=existing_recording.output_name,
                     status="complete",
                     message="File already imported and processed",
                 )
@@ -313,6 +312,7 @@ async def import_drive_file(
 
         return DriveImportResponse(
             recording_id=str(recording.id),
+            output_name=recording.output_name,
             status="processing",
             message="File imported and processing started",
         )
@@ -320,4 +320,3 @@ async def import_drive_file(
     finally:
         if temp_path and temp_path.exists():
             temp_path.unlink(missing_ok=True)
-

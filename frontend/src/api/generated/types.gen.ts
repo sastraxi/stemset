@@ -91,6 +91,7 @@ export type DriveFileInfo = {
   size?: number | null;
   is_folder: boolean;
   is_imported: boolean;
+  parent_id?: string | null;
 };
 
 /**
@@ -117,6 +118,7 @@ export type DriveImportRequest = {
  */
 export type DriveImportResponse = {
   recording_id: string;
+  output_name: string;
   status: string;
   message?: string | null;
 };

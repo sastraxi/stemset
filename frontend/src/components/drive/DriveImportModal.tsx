@@ -46,9 +46,8 @@ export function DriveImportModal({
         },
       });
 
-      const recordingId = response.data.recording_id;
-
       // Show success toast with navigation link
+      const recordingName = response.output_name;
       toast.success(
         <div className="flex flex-col gap-2">
           <div>Import started! Processing...</div>
@@ -57,8 +56,8 @@ export function DriveImportModal({
             variant="outline"
             onClick={() => {
               navigate({
-                to: "/recordings/$recordingId",
-                params: { recordingId },
+                to: "/p/$profileName/$recordingName",
+                params: { profileName: profileName, recordingName: recordingName },
               });
             }}
           >
@@ -101,7 +100,7 @@ export function DriveImportModal({
             )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Modified:</span>
-              <span>{new Date(file.modified_time).toLocaleDateString()}</span>
+              <span>{new Date(file.modifiedTime).toLocaleDateString()}</span>
             </div>
           </div>
         )}
