@@ -44,6 +44,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     name: str | None = None
     picture_url: str | None = None
+    google_refresh_token: str | None = None  # OAuth refresh token for Drive API
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
@@ -66,6 +67,7 @@ class Profile(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     source_folder: str
     strategy_name: str
+    google_drive_folder_id: str | None = None
     created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
@@ -102,18 +104,38 @@ class Profile(SQLModel, table=True):
 
 
 class AudioFile(SQLModel, table=True):
-    """Original uploaded/scanned source audio file."""
+    """Source audio file reference (upload, Google Drive, or local scan).
+
+    Normalized schema with source tracking:
+    - source_type: "upload" | "google_drive" | "local_scan"
+    - source_id: Unique identifier within source type (file_hash or drive_file_id)
+    - Unique constraint: (profile_id, source_type, source_id)
+
+    Derived properties (not stored):
+    - storage_url: Computed from profile + file_hash
+    - duration_seconds: Query first stem
+    """
 
     __tablename__: ClassVar[Any] = "audio_files"
+    __table_args__: ClassVar[Any] = (
+        sa.UniqueConstraint("profile_id", "source_type", "source_id", name="uq_audio_files_profile_source"),
+    )
 
     id: UUID = Field(default_factory=new_uuid, primary_key=True)
     profile_id: UUID = Field(foreign_key="profiles.id", index=True)
-    filename: str
-    file_hash: str = Field(unique=True, index=True)  # SHA256
-    storage_url: str  # R2/local path (e.g., "inputs/h4n/myfile.wav")
+
+    # Source tracking
+    source_type: str  # "upload" | "google_drive" | "local_scan"
+    source_id: str = Field(index=True)  # drive_file_id OR file_hash
+    source_parent_id: str | None = None  # For navigation (drive folders)
+    source_modified_time: int | None = None  # Unix timestamp
+
+    # File metadata
+    filename: str  # Display name
+    file_hash: str  # SHA256 content hash (for dedup)
     file_size_bytes: int
-    duration_seconds: float  # NOT NULL - fail fast if unknown
-    uploaded_at: datetime = Field(
+
+    created_at: datetime = Field(
         default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
     )
 
@@ -127,6 +149,11 @@ class AudioFile(SQLModel, table=True):
     stems: list["Stem"] = Relationship(
         back_populates="audio_file", sa_relationship_kwargs={"lazy": "noload"}
     )
+
+    @property
+    def is_from_drive(self) -> bool:
+        """Check if this file originated from Google Drive."""
+        return self.source_type == "google_drive"
 
 
 class Song(SQLModel, table=True):

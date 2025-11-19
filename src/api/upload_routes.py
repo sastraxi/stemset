@@ -120,18 +120,27 @@ async def upload_file(
         # Create database records
         engine = get_engine()
         async with AsyncSession(engine, expire_on_commit=False) as session:
-            # Get or create AudioFile (deduplicate by hash)
-            stmt = select(AudioFile).where(AudioFile.file_hash == file_hash)
+            # Get or create AudioFile (deduplicate by profile + source_type + source_id)
+            stmt = select(AudioFile).where(
+                AudioFile.profile_id == profile.id,
+                AudioFile.source_type == "upload",
+                AudioFile.source_id == file_hash,
+            )
             result = await session.exec(stmt)
             audio_file = result.first()
             if not audio_file:
+                # Get file modified time from temp file (Unix timestamp)
+                source_modified_time = int(temp_path.stat().st_mtime)
+
                 audio_file = AudioFile(
                     profile_id=profile.id,
+                    source_type="upload",
+                    source_id=file_hash,  # For uploads, source_id = file_hash
+                    source_parent_id=None,  # Uploads have no parent folder
+                    source_modified_time=source_modified_time,
                     filename=data.filename,
                     file_hash=file_hash,
-                    storage_url=f"inputs/{profile_name}/{data.filename}",
                     file_size_bytes=file_size,
-                    duration_seconds=0,  # Will be updated by worker callback
                 )
                 session.add(audio_file)
                 await session.commit()
@@ -341,15 +350,6 @@ async def recording_complete(
         # Update recording status
         recording.status = "complete"
         recording.error_message = None
-
-        # Update audio file duration from the first stem
-        if stems_data:
-            audio_file.duration_seconds = stems_data[0].duration_seconds
-            print(
-                f"Updated audio file {audio_file.id} duration to {audio_file.duration_seconds:.2f}s"
-            )
-        else:
-            audio_file.duration_seconds = -1.0  # Sentinel value
 
         # Create clips from clip_boundaries provided by worker
         from src.db.models import Clip
