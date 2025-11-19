@@ -34,6 +34,8 @@ from .models import (
     SongMetadata,
     StemResponse,
     UpdateClipRequest,
+    UpdateDriveFolderRequest,
+    UpdateDriveFolderResponse,
 )
 
 
@@ -47,7 +49,12 @@ async def get_profiles() -> list[ProfileResponse]:
         profiles = result.all()
 
         return [
-            ProfileResponse(id=str(p.id), name=p.name, source_folder=p.source_folder)
+            ProfileResponse(
+                id=str(p.id),
+                name=p.name,
+                source_folder=p.source_folder,
+                google_drive_folder_id=p.google_drive_folder_id,
+            )
             for p in profiles
         ]
 
@@ -65,7 +72,51 @@ async def get_profile(profile_name: str) -> ProfileResponse:
             raise NotFoundException(detail=f"Profile '{profile_name}' not found")
 
         return ProfileResponse(
-            id=str(profile.id), name=profile.name, source_folder=profile.source_folder
+            id=str(profile.id),
+            name=profile.name,
+            source_folder=profile.source_folder,
+            google_drive_folder_id=profile.google_drive_folder_id,
+        )
+
+
+@patch("/api/profiles/{profile_name:str}/drive-folder")
+async def update_drive_folder(
+    profile_name: str, data: UpdateDriveFolderRequest
+) -> UpdateDriveFolderResponse:
+    """Update the Google Drive folder ID for a profile.
+
+    Accepts either a raw folder ID or a full Google Drive URL.
+    Extracts the folder ID from URLs like: https://drive.google.com/drive/folders/FOLDER_ID
+    """
+    engine = get_engine()
+
+    # Extract folder ID from URL if needed
+    folder_id = data.google_drive_folder_id.strip()
+    if "drive.google.com" in folder_id:
+        # Extract ID from URL: https://drive.google.com/drive/folders/FOLDER_ID
+        parts = folder_id.split("/folders/")
+        if len(parts) == 2:
+            # Remove any query parameters or trailing slashes
+            folder_id = parts[1].split("?")[0].split("/")[0].strip()
+        else:
+            raise NotFoundException(detail="Invalid Google Drive URL format")
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        result = await session.exec(select(DBProfile).where(DBProfile.name == profile_name))
+        profile = result.first()
+
+        if profile is None:
+            raise NotFoundException(detail=f"Profile '{profile_name}' not found")
+
+        # Update folder ID
+        profile.google_drive_folder_id = folder_id
+
+        await session.commit()
+        await session.refresh(profile)
+
+        return UpdateDriveFolderResponse(
+            google_drive_folder_id=folder_id,
+            updated_at=datetime.now(timezone.utc).isoformat(),
         )
 
 

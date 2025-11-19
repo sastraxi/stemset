@@ -14,6 +14,7 @@ const KEYS = {
   MASTER_VOLUME: "stemset.masterVolume",
   PROFILE: "stemset.profile",
   PROFILE_RECORDING_PREFIX: "stemset.profile.",
+  DRIVE_HISTORY_PREFIX: "stemset.drive.history.",
 } as const;
 
 /**
@@ -105,6 +106,42 @@ export function clearSessionRecording(profileName: string): void {
   } catch (error) {
     console.error(
       `[storage] Failed to remove recording for ${profileName}:`,
+      error,
+    );
+  }
+}
+
+// ============================================================================
+// Google Drive Navigation History
+// ============================================================================
+
+export interface DriveFolderHistory {
+  folderId: string;
+  folderName: string;
+}
+
+export function getDriveFolderHistory(
+  profileName: string,
+): DriveFolderHistory[] {
+  const key = `${KEYS.DRIVE_HISTORY_PREFIX}${profileName}`;
+  return getItem<DriveFolderHistory[]>(key, []);
+}
+
+export function setDriveFolderHistory(
+  profileName: string,
+  history: DriveFolderHistory[],
+): void {
+  const key = `${KEYS.DRIVE_HISTORY_PREFIX}${profileName}`;
+  setItem(key, history);
+}
+
+export function clearDriveFolderHistory(profileName: string): void {
+  const key = `${KEYS.DRIVE_HISTORY_PREFIX}${profileName}`;
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.error(
+      `[storage] Failed to remove Drive history for ${profileName}:`,
       error,
     );
   }

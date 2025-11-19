@@ -5,11 +5,13 @@ import type { SortField } from "@/hooks/useSortPreference";
 import { ClipsView } from "@/components/views/ClipsView";
 import { RecordingsView } from "@/components/views/RecordingsView";
 import { SongsView } from "@/components/views/SongsView";
+import { DriveView } from "@/components/views/DriveView";
 import { Upload } from "@/components/upload/Upload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SidebarProps {
   selectedProfile: string | null;
+  googleDriveFolderId?: string | null;
   initialClip?: string;
   initialSong?: string;
   onNavigateToRecording: (profileName: string, fileName: string) => void;
@@ -27,6 +29,7 @@ interface SidebarProps {
 
 export function Sidebar({
   selectedProfile,
+  googleDriveFolderId,
   initialClip,
   initialSong,
   onNavigateToRecording,
@@ -65,10 +68,11 @@ export function Sidebar({
           onValueChange={setSidebarTab}
           className="w-full flex flex-col flex-1 min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="recordings">Recordings</TabsTrigger>
             <TabsTrigger value="clips">Clips</TabsTrigger>
             <TabsTrigger value="songs">Songs</TabsTrigger>
+            <TabsTrigger value="drive">Drive</TabsTrigger>
           </TabsList>
 
           <TabsContent
@@ -103,6 +107,15 @@ export function Sidebar({
               <SongsView
                 profileName={selectedProfile}
                 onRefresh={refetchFiles}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="drive" className="mt-0 flex-1 overflow-y-auto">
+            {selectedProfile && (
+              <DriveView
+                profileName={selectedProfile}
+                googleDriveFolderId={googleDriveFolderId}
               />
             )}
           </TabsContent>

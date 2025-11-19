@@ -17,6 +17,7 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "greenlet>=3.2.4",
     "soundfile>=0.12.1",
+    "aiogoogle>=5.17.0",
 ]
 
 [project.scripts]
@@ -27,18 +28,14 @@ where = ["."]
 include = ["src*"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0.0", "black>=23.0.0", "ruff>=0.1.0"]
+dev = ["pytest>=7.0.0", "ruff>=0.1.0"]
 
 [build-system]
 requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
-dev = [
-    "basedpyright>=1.31.7",
-    "boto3-stubs[s3]>=1.40.64",
-    "ruff>=0.14.1",
-]
+dev = ["basedpyright>=1.31.7", "boto3-stubs[s3]>=1.40.64", "ruff>=0.14.1"]
 preload_models = ["audio-separator>=0.39.1"]
 shared = [
     # Shared dependencies used by both API and processing
@@ -66,11 +63,6 @@ modal = [
     "fastapi>=0.115.0",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ['py313']
-indent-width = 4
-
 [tool.ruff]
 line-length = 100
 target-version = "py313"
@@ -78,7 +70,7 @@ indent-width = 4
 
 [tool.uv]
 allow-insecure-host = ["*.r2.cloudflarestorage.com"]
-default-groups = ["shared"]
+default-groups = ["dev", "shared"]
 
 [tool.basedpyright]
 include = ["src/"]

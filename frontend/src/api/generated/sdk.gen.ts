@@ -22,6 +22,15 @@ import type {
   ApiProfilesProfileNameClipsGetProfileClipsData,
   ApiProfilesProfileNameClipsGetProfileClipsErrors,
   ApiProfilesProfileNameClipsGetProfileClipsResponses,
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData,
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsErrors,
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponses,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderData,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderErrors,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponses,
+  ApiProfilesProfileNameDriveImportImportDriveFileData,
+  ApiProfilesProfileNameDriveImportImportDriveFileErrors,
+  ApiProfilesProfileNameDriveImportImportDriveFileResponses,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesGetProfileFilesErrors,
   ApiProfilesProfileNameFilesGetProfileFilesResponses,
@@ -240,6 +249,31 @@ export const apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName =
       },
     });
   };
+
+/**
+ * UpdateDriveFolder
+ */
+export const apiProfilesProfileNameDriveFolderUpdateDriveFolder = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileNameDriveFolderUpdateDriveFolderData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponses,
+    ApiProfilesProfileNameDriveFolderUpdateDriveFolderErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_name}/drive-folder",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
 
 /**
  * DeleteRecordingEndpoint
@@ -537,6 +571,52 @@ export const apiProfilesProfileNameClipsGetProfileClips = <
   >({
     url: "/api/profiles/{profile_name}/clips",
     ...options,
+  });
+};
+
+/**
+ * GetDriveFolderContents
+ */
+export const apiProfilesProfileNameDriveContentsGetDriveFolderContents = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponses,
+    ApiProfilesProfileNameDriveContentsGetDriveFolderContentsErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_name}/drive/contents",
+    ...options,
+  });
+};
+
+/**
+ * ImportDriveFile
+ */
+export const apiProfilesProfileNameDriveImportImportDriveFile = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApiProfilesProfileNameDriveImportImportDriveFileData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApiProfilesProfileNameDriveImportImportDriveFileResponses,
+    ApiProfilesProfileNameDriveImportImportDriveFileErrors,
+    ThrowOnError
+  >({
+    url: "/api/profiles/{profile_name}/drive/import",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 

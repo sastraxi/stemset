@@ -27,6 +27,7 @@ class ProfileResponse(BaseModel):
     id: str
     name: str
     source_folder: str
+    google_drive_folder_id: str | None = None
 
 
 class StemResponse(BaseModel):
@@ -170,3 +171,16 @@ class UpdateClipRequest(BaseModel):
     end_time_sec: float | None = None
     song_id: str | None = None
     display_name: str | None = None
+
+
+class UpdateDriveFolderRequest(BaseModel):
+    """Request to update Google Drive folder ID."""
+
+    google_drive_folder_id: str
+
+
+class UpdateDriveFolderResponse(BaseModel):
+    """Response for updating Google Drive folder ID."""
+
+    google_drive_folder_id: str
+    updated_at: str

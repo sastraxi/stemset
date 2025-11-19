@@ -9,6 +9,9 @@ import {
   apiClipsClipIdUpdateClipEndpoint,
   apiProfilesGetProfiles,
   apiProfilesProfileNameClipsGetProfileClips,
+  apiProfilesProfileNameDriveContentsGetDriveFolderContents,
+  apiProfilesProfileNameDriveFolderUpdateDriveFolder,
+  apiProfilesProfileNameDriveImportImportDriveFile,
   apiProfilesProfileNameFilesGetProfileFiles,
   apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayName,
   apiProfilesProfileNameGetProfile,
@@ -41,6 +44,13 @@ import type {
   ApiClipsClipIdUpdateClipEndpointResponse,
   ApiProfilesGetProfilesData,
   ApiProfilesProfileNameClipsGetProfileClipsData,
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderData,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderError,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponse,
+  ApiProfilesProfileNameDriveImportImportDriveFileData,
+  ApiProfilesProfileNameDriveImportImportDriveFileError,
+  ApiProfilesProfileNameDriveImportImportDriveFileResponse,
   ApiProfilesProfileNameFilesGetProfileFilesData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameData,
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameError,
@@ -321,6 +331,37 @@ export const apiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameMu
     };
     return mutationOptions;
   };
+
+/**
+ * UpdateDriveFolder
+ */
+export const apiProfilesProfileNameDriveFolderUpdateDriveFolderMutation = (
+  options?: Partial<
+    Options<ApiProfilesProfileNameDriveFolderUpdateDriveFolderData>
+  >,
+): UseMutationOptions<
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponse,
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderError,
+  Options<ApiProfilesProfileNameDriveFolderUpdateDriveFolderData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponse,
+    ApiProfilesProfileNameDriveFolderUpdateDriveFolderError,
+    Options<ApiProfilesProfileNameDriveFolderUpdateDriveFolderData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiProfilesProfileNameDriveFolderUpdateDriveFolder(
+        {
+          ...options,
+          ...fnOptions,
+          throwOnError: true,
+        },
+      );
+      return data;
+    },
+  };
+  return mutationOptions;
+};
 
 /**
  * DeleteRecordingEndpoint
@@ -689,6 +730,69 @@ export const apiProfilesProfileNameClipsGetProfileClipsOptions = (
     },
     queryKey: apiProfilesProfileNameClipsGetProfileClipsQueryKey(options),
   });
+};
+
+export const apiProfilesProfileNameDriveContentsGetDriveFolderContentsQueryKey =
+  (
+    options: Options<ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData>,
+  ) =>
+    createQueryKey(
+      "apiProfilesProfileNameDriveContentsGetDriveFolderContents",
+      options,
+    );
+
+/**
+ * GetDriveFolderContents
+ */
+export const apiProfilesProfileNameDriveContentsGetDriveFolderContentsOptions =
+  (
+    options: Options<ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData>,
+  ) => {
+    return queryOptions({
+      queryFn: async ({ queryKey, signal }) => {
+        const { data } =
+          await apiProfilesProfileNameDriveContentsGetDriveFolderContents({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true,
+          });
+        return data;
+      },
+      queryKey:
+        apiProfilesProfileNameDriveContentsGetDriveFolderContentsQueryKey(
+          options,
+        ),
+    });
+  };
+
+/**
+ * ImportDriveFile
+ */
+export const apiProfilesProfileNameDriveImportImportDriveFileMutation = (
+  options?: Partial<
+    Options<ApiProfilesProfileNameDriveImportImportDriveFileData>
+  >,
+): UseMutationOptions<
+  ApiProfilesProfileNameDriveImportImportDriveFileResponse,
+  ApiProfilesProfileNameDriveImportImportDriveFileError,
+  Options<ApiProfilesProfileNameDriveImportImportDriveFileData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    ApiProfilesProfileNameDriveImportImportDriveFileResponse,
+    ApiProfilesProfileNameDriveImportImportDriveFileError,
+    Options<ApiProfilesProfileNameDriveImportImportDriveFileData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await apiProfilesProfileNameDriveImportImportDriveFile({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
 };
 
 /**

@@ -35,6 +35,7 @@ class DriveFileInfo(BaseModel):
     size: int | None
     is_folder: bool
     is_imported: bool  # Whether this file has an AudioFile record
+    parent_id: str | None
 
 
 class DriveFolderContentsResponse(BaseModel):
@@ -143,6 +144,7 @@ async def get_drive_folder_contents(
                     size=drive_file.size,
                     is_folder=is_folder,
                     is_imported=is_imported,
+                    parent_id=drive_file.parents[0] if drive_file.parents else None,
                 )
             )
 

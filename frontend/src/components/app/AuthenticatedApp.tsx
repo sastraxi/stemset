@@ -168,6 +168,10 @@ export function AuthenticatedApp({
       <div className="main-content">
         <Sidebar
           selectedProfile={selectedProfile}
+          googleDriveFolderId={
+            profiles?.find((p) => p.name === selectedProfile)
+              ?.google_drive_folder_id
+          }
           initialClip={initialClip}
           initialSong={initialSong}
           onNavigateToRecording={handleNavigateToRecording}

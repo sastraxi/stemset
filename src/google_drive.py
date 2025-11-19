@@ -1,8 +1,9 @@
-"""Google Drive API client for accessing user files."""
+"Google Drive API client for accessing user files."
 
 from __future__ import annotations
 
-import httpx
+from aiogoogle.auth.creds import ClientCreds, UserCreds
+from aiogoogle.client import Aiogoogle
 from pydantic import BaseModel
 
 from .config import Config
@@ -29,7 +30,7 @@ class DriveFileList(BaseModel):
 class GoogleDriveClient:
     """Client for Google Drive API v3.
 
-    Handles OAuth token refresh and file operations.
+    Handles OAuth token refresh and file operations using aiogoogle.
     """
 
     def __init__(self, config: Config, refresh_token: str):
@@ -42,40 +43,12 @@ class GoogleDriveClient:
         if config.auth is None:
             raise ValueError("Auth configuration required for Drive API")
 
-        self.config = config
-        self.refresh_token = refresh_token
-        self._access_token: str | None = None
-
-    async def _ensure_access_token(self) -> str:
-        """Get valid access token, refreshing if necessary.
-
-        Returns:
-            Valid Google OAuth access token
-
-        Raises:
-            httpx.HTTPError: If token refresh fails
-        """
-        if self._access_token:
-            # TODO: Check expiration and refresh if needed
-            # For now, we refresh on every request (simpler but less efficient)
-            pass
-
-        # Refresh access token using refresh token
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://oauth2.googleapis.com/token",
-                data={
-                    "client_id": self.config.auth.google_client_id,
-                    "client_secret": self.config.auth.google_client_secret,
-                    "refresh_token": self.refresh_token,
-                    "grant_type": "refresh_token",
-                },
-            )
-            response.raise_for_status()
-            tokens = response.json()
-            self._access_token = tokens["access_token"]
-
-        return self._access_token
+        self.client_creds = ClientCreds(
+            client_id=config.auth.google_client_id,
+            client_secret=config.auth.google_client_secret,
+        )
+        self.user_creds = UserCreds(refresh_token=refresh_token)
+        self.aiogoogle = Aiogoogle(client_creds=self.client_creds)
 
     async def list_folder_contents(
         self, folder_id: str, page_token: str | None = None
@@ -90,49 +63,38 @@ class GoogleDriveClient:
             List of files/folders with metadata
 
         Raises:
-            httpx.HTTPError: If API request fails
+            Exception: If API request fails
         """
-        access_token = await self._ensure_access_token()
+        drive_v3 = await self.aiogoogle.discover("drive", "v3")
 
-        # Audio file MIME types to filter
         audio_mimetypes = [
             "audio/wav",
             "audio/x-wav",
             "audio/flac",
-            "audio/mpeg",  # MP3
-            "audio/mp4",  # M4A
+            "audio/mpeg",
+            "audio/mp4",
             "audio/aac",
             "audio/opus",
             "audio/ogg",
         ]
-
-        # Query: files in this folder that are either folders or audio files
         query_parts = [
             f"'{folder_id}' in parents",
             "trashed = false",
-            f"(mimeType = 'application/vnd.google-apps.folder' or {' or '.join(f'mimeType = \"{mt}\"' for mt in audio_mimetypes)})",
+            f"(mimeType = 'application/vnd.google-apps.folder' or {' or '.join([f'mimeType = "{mt}"' for mt in audio_mimetypes])})",
         ]
         query = " and ".join(query_parts)
 
         params = {
             "q": query,
             "fields": "files(id,name,mimeType,modifiedTime,size,parents),nextPageToken",
-            "orderBy": "folder,name",  # Folders first, then alphabetical
+            "orderBy": "folder,name",
             "pageSize": 100,
         }
-
         if page_token:
             params["pageToken"] = page_token
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.googleapis.com/drive/v3/files",
-                headers={"Authorization": f"Bearer {access_token}"},
-                params=params,
-            )
-            response.raise_for_status()
-            data = response.json()
-
+        req = drive_v3.files.list(**params)
+        data = await self.aiogoogle.as_user(req, user_creds=self.user_creds)
         return DriveFileList(**data)
 
     async def get_file_metadata(self, file_id: str) -> DriveFile:
@@ -145,19 +107,15 @@ class GoogleDriveClient:
             File metadata
 
         Raises:
-            httpx.HTTPError: If API request fails
+            Exception: If API request fails
         """
-        access_token = await self._ensure_access_token()
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                headers={"Authorization": f"Bearer {access_token}"},
-                params={"fields": "id,name,mimeType,modifiedTime,size,parents"},
-            )
-            response.raise_for_status()
-            data = response.json()
-
+        drive_v3 = await self.aiogoogle.discover("drive", "v3")
+        params = {
+            "fileId": file_id,
+            "fields": "id,name,mimeType,modifiedTime,size,parents",
+        }
+        req = drive_v3.files.get(**params)
+        data = await self.aiogoogle.as_user(req, user_creds=self.user_creds)
         return DriveFile(**data)
 
     async def download_file(self, file_id: str, local_path: str) -> None:
@@ -168,19 +126,12 @@ class GoogleDriveClient:
             local_path: Local path to save file
 
         Raises:
-            httpx.HTTPError: If download fails
+            Exception: If download fails
         """
-        access_token = await self._ensure_access_token()
+        drive_v3 = await self.aiogoogle.discover("drive", "v3")
+        params = {"fileId": file_id, "alt": "media"}
+        req = drive_v3.files.get(**params)
+        response = await self.aiogoogle.as_user(req, user_creds=self.user_creds)
 
-        async with httpx.AsyncClient(timeout=300.0) as client:  # 5min timeout for large files
-            response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                headers={"Authorization": f"Bearer {access_token}"},
-                params={"alt": "media"},  # Download actual file content
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-
-            # Write to file
-            with open(local_path, "wb") as f:
-                f.write(response.content)
+        with open(local_path, "wb") as f:
+            _ = f.write(response)
