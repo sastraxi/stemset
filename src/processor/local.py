@@ -17,7 +17,7 @@ from ..models.metadata import StemsMetadata
 from ..storage import get_storage
 
 
-async def process_locally(recording_id: UUID, config: Config) -> None:
+async def process_locally(recording_id: UUID, config: Config, backend_url: str) -> None:
     """
     Processes a recording locally. This function is idempotent and can be re-run.
     """
@@ -64,7 +64,7 @@ async def process_locally(recording_id: UUID, config: Config) -> None:
             if not recording.verification_token:
                 raise ValueError(f"Recording {recording_id} has no verification token.")
 
-            callback_url = f"{config.backend_url}/api/recordings/{recording_id}/complete/{recording.verification_token}"
+            callback_url = f"{backend_url}/api/recordings/{recording_id}/complete/{recording.verification_token}"
             output_dir = Path("media") / profile.name / recording.output_name
             storage = get_storage(config)
             input_path = Path(storage.get_input_url(profile.name, audio_file.filename))

@@ -21,6 +21,7 @@ from ..config import get_config
 from ..db.config import get_engine
 from .auth_routes import auth_callback, auth_login, auth_logout, auth_status
 from .config_routes import update_recording_config
+from .drive_routes import get_drive_folder_contents, import_drive_file
 from .location_routes import create_location, get_profile_locations
 from .profile_routes import (
     create_clip_endpoint,
@@ -35,6 +36,7 @@ from .profile_routes import (
     get_song_clips,
     update_clip_endpoint,
     update_display_name,
+    update_drive_folder,
 )
 from .song_routes import create_song, get_profile_songs_by_name
 from .state import AppState
@@ -145,6 +147,7 @@ app = Litestar(
         get_profile,
         get_profile_files,
         update_display_name,
+        update_drive_folder,
         delete_recording_endpoint,
         update_recording_config,
         create_song,
@@ -158,6 +161,8 @@ app = Litestar(
         delete_clip_endpoint,
         get_profile_clips,
         get_profile_songs_by_name,
+        get_drive_folder_contents,
+        import_drive_file,
         upload_file,
         recording_complete,
         get_recording_status,

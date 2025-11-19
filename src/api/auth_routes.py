@@ -86,7 +86,9 @@ async def auth_login() -> Redirect:
         "client_id": config.auth.google_client_id,
         "redirect_uri": config.auth.redirect_uri,
         "response_type": "code",
-        "scope": "openid email profile",
+        "scope": "openid email profile https://www.googleapis.com/auth/drive.readonly",
+        "access_type": "offline",  # Request refresh token
+        "prompt": "consent",  # Force consent to get refresh token
         "state": state,
     }
     auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
@@ -147,12 +149,16 @@ async def auth_callback(
             user.name = userinfo.name
             user.picture_url = userinfo.picture
             user.last_login_at = datetime.now(timezone.utc)
+            # Store refresh token if provided (only on first auth or re-consent)
+            if "refresh_token" in tokens:
+                user.google_refresh_token = tokens["refresh_token"]
         else:
             # Create new user
             user = User(
                 email=userinfo.email,
                 name=userinfo.name,
                 picture_url=userinfo.picture,
+                google_refresh_token=tokens.get("refresh_token"),
             )
             session.add(user)
 

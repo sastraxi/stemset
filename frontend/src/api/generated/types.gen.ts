@@ -81,6 +81,49 @@ export type CreateSongRequest = {
 };
 
 /**
+ * DriveFileInfo
+ */
+export type DriveFileInfo = {
+  id: string;
+  name: string;
+  mimeType: string;
+  modifiedTime: string;
+  size?: number | null;
+  is_folder: boolean;
+  is_imported: boolean;
+  parent_id?: string | null;
+};
+
+/**
+ * DriveFolderContentsResponse
+ */
+export type DriveFolderContentsResponse = {
+  files: Array<DriveFileInfo>;
+  nextPageToken?: string | null;
+};
+
+/**
+ * DriveImportRequest
+ */
+export type DriveImportRequest = {
+  file_id: string;
+  file_name: string;
+  file_size: number;
+  modified_time: string;
+  parent_id?: string | null;
+};
+
+/**
+ * DriveImportResponse
+ */
+export type DriveImportResponse = {
+  recording_id: string;
+  output_name: string;
+  status: string;
+  message?: string | null;
+};
+
+/**
  * LocationMetadata
  */
 export type LocationMetadata = {
@@ -123,6 +166,7 @@ export type ProfileResponse = {
   id: string;
   name: string;
   source_folder: string;
+  google_drive_folder_id?: string | null;
 };
 
 /**
@@ -271,6 +315,21 @@ export type UpdateDisplayNameRequest = {
  */
 export type UpdateDisplayNameResponse = {
   display_name: string;
+  updated_at: string;
+};
+
+/**
+ * UpdateDriveFolderRequest
+ */
+export type UpdateDriveFolderRequest = {
+  google_drive_folder_id: string;
+};
+
+/**
+ * UpdateDriveFolderResponse
+ */
+export type UpdateDriveFolderResponse = {
+  google_drive_folder_id: string;
   updated_at: string;
 };
 
@@ -512,6 +571,44 @@ export type ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameRes
 
 export type ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponse =
   ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponses[keyof ApiProfilesProfileNameFilesOutputNameDisplayNameUpdateDisplayNameResponses];
+
+export type ApiProfilesProfileNameDriveFolderUpdateDriveFolderData = {
+  body: UpdateDriveFolderRequest;
+  path: {
+    profile_name: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_name}/drive-folder";
+};
+
+export type ApiProfilesProfileNameDriveFolderUpdateDriveFolderErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileNameDriveFolderUpdateDriveFolderError =
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderErrors[keyof ApiProfilesProfileNameDriveFolderUpdateDriveFolderErrors];
+
+export type ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponses = {
+  /**
+   * Request fulfilled, document follows
+   */
+  200: UpdateDriveFolderResponse;
+};
+
+export type ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponse =
+  ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponses[keyof ApiProfilesProfileNameDriveFolderUpdateDriveFolderResponses];
 
 export type ApiRecordingsRecordingIdDeleteRecordingEndpointData = {
   body?: never;
@@ -1044,6 +1141,85 @@ export type ApiProfilesProfileNameClipsGetProfileClipsResponses = {
 
 export type ApiProfilesProfileNameClipsGetProfileClipsResponse =
   ApiProfilesProfileNameClipsGetProfileClipsResponses[keyof ApiProfilesProfileNameClipsGetProfileClipsResponses];
+
+export type ApiProfilesProfileNameDriveContentsGetDriveFolderContentsData = {
+  body?: never;
+  path: {
+    profile_name: string;
+  };
+  query?: {
+    folder_id?: string | null;
+  };
+  url: "/api/profiles/{profile_name}/drive/contents";
+};
+
+export type ApiProfilesProfileNameDriveContentsGetDriveFolderContentsErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileNameDriveContentsGetDriveFolderContentsError =
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsErrors[keyof ApiProfilesProfileNameDriveContentsGetDriveFolderContentsErrors];
+
+export type ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponses =
+  {
+    /**
+     * Request fulfilled, document follows
+     */
+    200: DriveFolderContentsResponse;
+  };
+
+export type ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponse =
+  ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponses[keyof ApiProfilesProfileNameDriveContentsGetDriveFolderContentsResponses];
+
+export type ApiProfilesProfileNameDriveImportImportDriveFileData = {
+  body: DriveImportRequest;
+  path: {
+    profile_name: string;
+  };
+  query?: never;
+  url: "/api/profiles/{profile_name}/drive/import";
+};
+
+export type ApiProfilesProfileNameDriveImportImportDriveFileErrors = {
+  /**
+   * Validation Exception
+   */
+  400: {
+    status_code: number;
+    detail: string;
+    extra?:
+      | null
+      | {
+          [key: string]: unknown;
+        }
+      | Array<unknown>;
+  };
+};
+
+export type ApiProfilesProfileNameDriveImportImportDriveFileError =
+  ApiProfilesProfileNameDriveImportImportDriveFileErrors[keyof ApiProfilesProfileNameDriveImportImportDriveFileErrors];
+
+export type ApiProfilesProfileNameDriveImportImportDriveFileResponses = {
+  /**
+   * Document created, URL follows
+   */
+  201: DriveImportResponse;
+};
+
+export type ApiProfilesProfileNameDriveImportImportDriveFileResponse =
+  ApiProfilesProfileNameDriveImportImportDriveFileResponses[keyof ApiProfilesProfileNameDriveImportImportDriveFileResponses];
 
 export type ApiUploadProfileNameUploadFileData = {
   body: {

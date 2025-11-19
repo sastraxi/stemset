@@ -33,6 +33,7 @@ from ..processor.models import (
     UploadResponse,
     WorkerJobPayload,
 )
+from ..processor.trigger import trigger_processing
 from ..storage import get_storage
 from ..utils import compute_file_hash, derive_output_name
 from .models import RecordingConfigData, RecordingStatusResponse
@@ -120,18 +121,27 @@ async def upload_file(
         # Create database records
         engine = get_engine()
         async with AsyncSession(engine, expire_on_commit=False) as session:
-            # Get or create AudioFile (deduplicate by hash)
-            stmt = select(AudioFile).where(AudioFile.file_hash == file_hash)
+            # Get or create AudioFile (deduplicate by profile + source_type + source_id)
+            stmt = select(AudioFile).where(
+                AudioFile.profile_id == profile.id,
+                AudioFile.source_type == "upload",
+                AudioFile.source_id == file_hash,
+            )
             result = await session.exec(stmt)
             audio_file = result.first()
             if not audio_file:
+                # Get file modified time from temp file (Unix timestamp)
+                source_modified_time = int(temp_path.stat().st_mtime)
+
                 audio_file = AudioFile(
                     profile_id=profile.id,
+                    source_type="upload",
+                    source_id=file_hash,  # For uploads, source_id = file_hash
+                    source_parent_id=None,  # Uploads have no parent folder
+                    source_modified_time=source_modified_time,
                     filename=data.filename,
                     file_hash=file_hash,
-                    storage_url=f"inputs/{profile_name}/{data.filename}",
                     file_size_bytes=file_size,
-                    duration_seconds=0,  # Will be updated by worker callback
                 )
                 session.add(audio_file)
                 await session.commit()
@@ -172,89 +182,27 @@ async def upload_file(
             await session.commit()
             await session.refresh(recording)
 
-        # Create callback URL
-        callback_url = (
-            f"{state.backend_url}/api/recordings/{recording.id}/complete/{verification_token}"
+        await trigger_processing(
+            recording=recording,
+            profile=profile,
+            input_filename=data.filename,
+            config=config,
+            backend_url=state.backend_url,
         )
 
-        # Determine worker (Modal or local background task)
-        gpu_worker_url = config.gpu_worker_url or os.getenv("GPU_WORKER_URL")
-
-        if gpu_worker_url:
-            # Remote Modal worker - trigger via HTTP
-            worker_payload = WorkerJobPayload(
+        return Response(
+            UploadResponse(
                 recording_id=str(recording.id),
-                profile_name=profile_name,
-                strategy_name=profile.strategy_name,
-                input_filename=data.filename,
+                profile_name=profile.name,
                 output_name=output_name,
-                callback_url=callback_url,
-                output_config_dict=profile.output.model_dump(),
+                filename=data.filename,
+                status="processing",
             )
-
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.post(gpu_worker_url, json=worker_payload.model_dump())
-                    _ = response.raise_for_status()
-                    print(f"Triggered Modal worker for recording {recording.id}")
-            except (httpx.TimeoutException, httpx.HTTPError) as e:
-                print(f"Error: Failed to trigger Modal worker: {e}")
-                # Clean up the recording on failure
-                async with AsyncSession(get_engine()) as session:
-                    stmt = select(Recording).where(Recording.id == recording.id)
-                    result = await session.exec(stmt)
-                    failed_recording = result.first()
-                    if failed_recording:
-                        failed_recording.status = "error"
-                        failed_recording.error_message = f"Failed to start processing: {e}"
-                        await session.commit()
-                raise ValidationException(f"Failed to start processing: {e}")
-
-            return Response(
-                UploadResponse(
-                    recording_id=str(recording.id),
-                    profile_name=profile.name,
-                    output_name=output_name,
-                    filename=data.filename,
-                    status="processing",
-                )
-            )
-        else:
-            # Local processing - use background task directly (no self-HTTP-call!)
-            print(f"[Local Worker] Queueing recording {recording.id} for background processing")
-
-            task = BackgroundTask(
-                _process_and_callback,
-                str(recording.id),
-                config,
-            )
-
-            return Response(
-                UploadResponse(
-                    recording_id=str(recording.id),
-                    profile_name=profile.name,
-                    output_name=output_name,
-                    filename=data.filename,
-                    status="processing",
-                ),
-                background=task,
-            )
+        )
 
     finally:
         temp_path.unlink(missing_ok=True)
 
-
-async def _process_and_callback(
-    recording_id: str,
-    config: Config,
-) -> None:
-    """Background task to process audio and call back with results.
-
-    Args:
-        recording_id: Recording identifier
-        config: Application config
-    """
-    await process_locally(UUID(recording_id), config)
 
 
 @post("/api/recordings/{recording_id:uuid}/complete/{verification_token:str}")
@@ -341,15 +289,6 @@ async def recording_complete(
         # Update recording status
         recording.status = "complete"
         recording.error_message = None
-
-        # Update audio file duration from the first stem
-        if stems_data:
-            audio_file.duration_seconds = stems_data[0].duration_seconds
-            print(
-                f"Updated audio file {audio_file.id} duration to {audio_file.duration_seconds:.2f}s"
-            )
-        else:
-            audio_file.duration_seconds = -1.0  # Sentinel value
 
         # Create clips from clip_boundaries provided by worker
         from src.db.models import Clip
