@@ -43,7 +43,7 @@ def reprocess(recording_id: UUID) -> None:
         config = load_config()
         config.backend_url = os.getenv("BACKEND_URL") or "http://localhost:8000"
         typer.echo(f"Reprocessing recording {recording_id}...")
-        await process_locally(recording_id, config)
+        await process_locally(recording_id, config, config.backend_url)
         typer.echo(f"Reprocessing for {recording_id} complete.")
 
     asyncio.run(_reprocess())

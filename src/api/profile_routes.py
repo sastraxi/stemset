@@ -188,7 +188,6 @@ async def get_profile_files(profile_name: str) -> list[RecordingWithStems]:
                     stems=stems,
                     created_at=recording.created_at.isoformat(),
                     status=status,
-                    song=None,  # Recordings no longer have songs, only clips do
                     location=(
                         LocationMetadata(
                             id=str(recording.location.id), name=recording.location.name
