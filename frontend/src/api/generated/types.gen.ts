@@ -91,6 +91,7 @@ export type DriveFileInfo = {
   size?: number | null;
   is_folder: boolean;
   is_imported: boolean;
+  recording_name?: string | null;
   parent_id?: string | null;
 };
 

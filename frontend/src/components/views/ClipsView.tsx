@@ -1,19 +1,28 @@
 import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ClipCard } from "@/components/common/ClipCard";
+import { SongClipRow } from "@/components/common/SongClipRow";
+import { QRCodeModal } from "@/components/modals/QRCodeModal";
 import { apiProfilesProfileNameClipsGetProfileClips } from "@/api/generated";
 import { useSortPreference } from "@/hooks/useSortPreference";
 import type { ClipWithStemsResponse } from "@/api/generated";
 
 interface ClipsViewProps {
+  layout?: "sidebar" | "grid";
   profileName: string;
   onRefresh: () => void;
 }
 
-export function ClipsView({ profileName, onRefresh }: ClipsViewProps) {
+export function ClipsView({
+  layout = "sidebar",
+  profileName,
+  onRefresh,
+}: ClipsViewProps) {
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [shareClipId, setShareClipId] = useState<string | null>(null);
   const {
     data: clipsResponse,
     isLoading,
@@ -51,6 +60,15 @@ export function ClipsView({ profileName, onRefresh }: ClipsViewProps) {
 
   const sortLabel = `${sortField === "name" ? "NAME" : "DATE"} ${sortDirection === "asc" ? "↑" : "↓"}`;
 
+  const handleShareClip = (clipId: string) => {
+    setShareClipId(clipId);
+    setShowQRModal(true);
+  };
+
+  const shareUrl = shareClipId
+    ? `${window.location.origin}/p/${profileName}/clips/${shareClipId}`
+    : "";
+
   return (
     <>
       <div className="flex items-center justify-between mb-3 gap-2">
@@ -83,6 +101,17 @@ export function ClipsView({ profileName, onRefresh }: ClipsViewProps) {
         <p className="empty-state">
           No clips yet. Create clips by selecting a range in a recording.
         </p>
+      ) : layout === "grid" ? (
+        <div className="space-y-2">
+          {sortedClips.map((clip) => (
+            <SongClipRow
+              key={clip.id}
+              clip={clip}
+              profileName={profileName}
+              onShare={() => handleShareClip(clip.id)}
+            />
+          ))}
+        </div>
       ) : (
         <div className="space-y-2">
           {sortedClips.map((clip) => (
@@ -94,6 +123,18 @@ export function ClipsView({ profileName, onRefresh }: ClipsViewProps) {
             />
           ))}
         </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && shareClipId && (
+        <QRCodeModal
+          isOpen={showQRModal}
+          onClose={() => {
+            setShowQRModal(false);
+            setShareClipId(null);
+          }}
+          url={shareUrl}
+        />
       )}
     </>
   );

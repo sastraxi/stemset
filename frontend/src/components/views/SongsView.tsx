@@ -6,14 +6,20 @@ import { Spinner } from "@/components/ui/spinner";
 import { SongCard } from "@/components/common/SongCard";
 import { apiProfilesProfileNameSongsGetProfileSongsByName } from "@/api/generated";
 import { useSortPreference } from "@/hooks/useSortPreference";
+import { cn } from "@/lib/utils";
 import type { SongWithClipCount } from "@/api/generated";
 
 interface SongsViewProps {
+  layout?: "sidebar" | "grid";
   profileName: string;
   onRefresh: () => void;
 }
 
-export function SongsView({ profileName, onRefresh }: SongsViewProps) {
+export function SongsView({
+  layout = "sidebar",
+  profileName,
+  onRefresh,
+}: SongsViewProps) {
   const {
     data: songsResponse,
     isLoading,
@@ -84,7 +90,12 @@ export function SongsView({ profileName, onRefresh }: SongsViewProps) {
           No songs yet. Assign songs to recordings to see them here.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div
+          className={cn(
+            layout === "sidebar" && "space-y-2",
+            layout === "grid" && "grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+          )}
+        >
           {sortedSongs.map((song) => (
             <SongCard key={song.id} song={song} profileName={profileName} />
           ))}

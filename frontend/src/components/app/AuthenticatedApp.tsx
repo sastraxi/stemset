@@ -16,6 +16,7 @@ import { Sidebar } from "@/components/app/Sidebar";
 import { QRUploadOverlay } from "@/components/upload/QRUploadOverlay";
 
 interface AuthenticatedAppProps {
+  showSidebar?: boolean;
   initialProfile?: string;
   initialRecording?: string;
   initialClip?: string;
@@ -26,6 +27,7 @@ interface AuthenticatedAppProps {
 }
 
 export function AuthenticatedApp({
+  showSidebar = true,
   initialProfile,
   initialRecording,
   initialClip,
@@ -166,18 +168,41 @@ export function AuthenticatedApp({
       />
 
       <div className="main-content">
-        <Sidebar
+        {showSidebar && (
+          <Sidebar
+            selectedProfile={selectedProfile}
+            googleDriveFolderId={
+              profiles?.find((p) => p.name === selectedProfile)
+                ?.google_drive_folder_id
+            }
+            initialClip={initialClip}
+            initialSong={initialSong}
+            onNavigateToRecording={handleNavigateToRecording}
+            selectedFileName={selectedFile?.name || null}
+            onFileSelect={handleFileSelect}
+            isOnDetailView={!!initialRecording || !!initialClip || !!initialSong}
+            files={sortedFiles}
+            filesLoading={filesLoading}
+            filesError={filesError}
+            refetchFiles={refetchFiles}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            cycleSort={cycleSort}
+          />
+        )}
+
+        <PlayerView
+          isHomePage={!showSidebar}
           selectedProfile={selectedProfile}
+          selectedFile={selectedFile}
+          initialClip={initialClip}
+          initialSong={initialSong}
+          initialStateParam={initialStateParam}
+          onFileSelect={handleFileSelect}
           googleDriveFolderId={
             profiles?.find((p) => p.name === selectedProfile)
               ?.google_drive_folder_id
           }
-          initialClip={initialClip}
-          initialSong={initialSong}
-          onNavigateToRecording={handleNavigateToRecording}
-          selectedFileName={selectedFile?.name || null}
-          onFileSelect={handleFileSelect}
-          isOnDetailView={!!initialRecording || !!initialClip || !!initialSong}
           files={sortedFiles}
           filesLoading={filesLoading}
           filesError={filesError}
@@ -185,15 +210,6 @@ export function AuthenticatedApp({
           sortField={sortField}
           sortDirection={sortDirection}
           cycleSort={cycleSort}
-        />
-
-        <PlayerView
-          selectedProfile={selectedProfile}
-          selectedFile={selectedFile}
-          initialClip={initialClip}
-          initialSong={initialSong}
-          initialStateParam={initialStateParam}
-          onFileSelect={handleFileSelect}
         />
       </div>
 

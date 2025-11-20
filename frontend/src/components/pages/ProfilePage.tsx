@@ -17,10 +17,16 @@ export function ProfilePage() {
     return <LoginPage />;
   }
 
+  // Check if we're on the home route (no recording/clip/song selected)
+  const isHomePage = true; // This is the profile index route, so always home page
+
   return (
     <>
       <Toaster position="bottom-right" />
-      <AuthenticatedApp initialProfile={profileName} />
+      <AuthenticatedApp
+        showSidebar={!isHomePage}
+        initialProfile={profileName}
+      />
     </>
   );
 }

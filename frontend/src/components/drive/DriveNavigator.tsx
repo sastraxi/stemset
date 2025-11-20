@@ -98,33 +98,16 @@ export function DriveNavigator({
     return <DriveConnector onConnect={handleConnectFolder} />;
   }
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner size="md" />
-      </div>
-    );
-  }
-
-  // Render error state
-  if (error) {
-    return (
-      <EmptyState
-        icon={FolderOpen}
-        title="Unable to load Drive files"
-        description="Please ensure you've granted Google Drive access and try again."
-        action={{ label: "Retry", onClick: () => refetch() }}
-      />
-    );
-  }
-
   const files = data?.files || [];
+
+  // Separate folders and files
+  const folders = files.filter((f) => f.is_folder);
+  const audioFiles = files.filter((f) => !f.is_folder);
 
   return (
     <div className={cn("flex flex-col h-full", mode === "column" && "gap-2")}>
       {/* Header: Breadcrumbs + Refresh */}
-      <div className="flex items-center gap-2 pb-2 border-b">
+      <div className="flex items-center gap-2 pb-2 border-b mb-6">
         {/* Breadcrumbs */}
         <div className="flex-1 flex items-center gap-1 overflow-x-auto">
           <Button
@@ -166,27 +149,78 @@ export function DriveNavigator({
       <div
         className={cn("flex-1 overflow-y-auto", mode === "column" && "space-y-2")}
       >
-        {files.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Spinner size="md" />
+          </div>
+        ) : error ? (
+          <EmptyState
+            icon={FolderOpen}
+            title="Unable to load Drive files"
+            description="Please ensure you've granted Google Drive access and try again."
+            action={{ label: "Retry", onClick: () => refetch() }}
+          />
+        ) : files.length === 0 ? (
           <EmptyState
             icon={FolderOpen}
             title="No files or folders"
             description="This folder is empty or contains no audio files."
           />
         ) : (
-          <div
-            className={cn(
-              mode === "column" ? "space-y-2" : "grid grid-cols-2 gap-3",
+          <div className="space-y-6">
+            {/* Folders Section */}
+            {folders.length > 0 && (
+              <div>
+                {mode === "full" && (
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Folders
+                  </h3>
+                )}
+                <div
+                  className={cn(
+                    mode === "column" ? "space-y-2" : "grid grid-cols-3 gap-3",
+                  )}
+                >
+                  {folders.map((file: DriveFileInfo) => (
+                    <DriveFileItem
+                      key={file.id}
+                      file={file}
+                      profileName={profileName}
+                      mode={mode}
+                      onNavigateFolder={handleNavigateFolder}
+                      onRequestImport={handleRequestImport}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
-          >
-            {files.map((file: DriveFileInfo) => (
-              <DriveFileItem
-                key={file.id}
-                file={file}
-                mode={mode}
-                onNavigateFolder={handleNavigateFolder}
-                onRequestImport={handleRequestImport}
-              />
-            ))}
+
+            {/* Files Section */}
+            {audioFiles.length > 0 && (
+              <div>
+                {mode === "full" && folders.length > 0 && (
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Files
+                  </h3>
+                )}
+                <div
+                  className={cn(
+                    mode === "column" ? "space-y-2" : "grid grid-cols-3 gap-3",
+                  )}
+                >
+                  {audioFiles.map((file: DriveFileInfo) => (
+                    <DriveFileItem
+                      key={file.id}
+                      file={file}
+                      profileName={profileName}
+                      mode={mode}
+                      onNavigateFolder={handleNavigateFolder}
+                      onRequestImport={handleRequestImport}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

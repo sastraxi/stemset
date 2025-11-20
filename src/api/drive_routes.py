@@ -34,6 +34,7 @@ class DriveFileInfo(BaseModel):
     size: int | None
     is_folder: bool
     is_imported: bool  # Whether this file has an AudioFile record
+    recording_name: str | None = None  # Output name of imported recording (for navigation)
     parent_id: str | None
 
 
@@ -121,21 +122,29 @@ async def get_drive_folder_contents(
         drive_client = GoogleDriveClient(state.config, user.google_refresh_token)
         drive_files = await drive_client.list_folder_contents(target_folder_id)
 
-        # Check which files are already imported
+        # Check which files are already imported and get their recording names
         file_ids = [f.id for f in drive_files.files]
-        imported_stmt = select(AudioFile).where(
-            AudioFile.profile_id == profile.id,
-            AudioFile.source_type == "google_drive",
-            AudioFile.source_id.in_(file_ids),  # pyright: ignore[reportAttributeAccessIssue]
+        imported_stmt = (
+            select(AudioFile, Recording.output_name)
+            .join(Recording, AudioFile.id == Recording.audio_file_id)  # pyright: ignore[reportArgumentType]
+            .where(
+                AudioFile.profile_id == profile.id,
+                AudioFile.source_type == "google_drive",
+                AudioFile.source_id.in_(file_ids),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownArgumentType, reportUnknownMemberType]
+                Recording.status == "complete",
+            )
         )
         imported_result = await session.exec(imported_stmt)
-        imported_files = {af.source_id for af in imported_result.all()}
+        imported_files_map = {
+            af.source_id: output_name for af, output_name in imported_result.all()
+        }
 
         # Build response
         files_info = []
         for drive_file in drive_files.files:
             is_folder = drive_file.mimeType == "application/vnd.google-apps.folder"
-            is_imported = drive_file.id in imported_files
+            recording_name = imported_files_map.get(drive_file.id)
+            is_imported = recording_name is not None
 
             files_info.append(
                 DriveFileInfo(
@@ -146,6 +155,7 @@ async def get_drive_folder_contents(
                     size=drive_file.size,
                     is_folder=is_folder,
                     is_imported=is_imported,
+                    recording_name=recording_name,
                     parent_id=drive_file.parents[0] if drive_file.parents else None,
                 )
             )

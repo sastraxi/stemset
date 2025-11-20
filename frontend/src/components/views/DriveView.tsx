@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { apiProfilesProfileNameGetProfileOptions } from "@/api/generated/@tanstack/react-query.gen";
 
 interface DriveViewProps {
+  layout?: "sidebar" | "grid";
   profileName: string;
   googleDriveFolderId: string | null | undefined;
 }
 
 export function DriveView({
+  layout = "sidebar",
   profileName,
   googleDriveFolderId: _googleDriveFolderId, // Ignore the prop, fetch fresh data
 }: DriveViewProps) {
@@ -23,7 +25,7 @@ export function DriveView({
     <DriveNavigator
       profileName={profileName}
       rootFolderId={profile?.google_drive_folder_id}
-      mode="column"
+      mode={layout === "sidebar" ? "column" : "full"}
     />
   );
 }

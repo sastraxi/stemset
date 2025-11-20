@@ -16,25 +16,45 @@ import { QRCodeModal } from "@/components/modals/QRCodeModal";
 import { RecordingPlayer } from "@/components/player/RecordingPlayer";
 import { SongMetadata } from "@/components/common/SongMetadata";
 import { SongPageView } from "@/components/views/SongPageView";
+import { HomePageView } from "@/components/views/HomePageView";
 import type { StemPlayerHandle } from "@/components/player/StemPlayer";
+import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 import { Spinner } from "@/components/ui/spinner";
 
 interface PlayerViewProps {
+  isHomePage?: boolean;
   selectedProfile: string | null;
   selectedFile: RecordingWithStems | null;
   initialClip?: string;
   initialSong?: string;
   initialStateParam?: string;
   onFileSelect: (file: RecordingWithStems | null) => void;
+  googleDriveFolderId?: string | null;
+  files?: RecordingWithStems[];
+  filesLoading?: boolean;
+  filesError?: Error | null;
+  refetchFiles?: () => void;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  cycleSort?: () => void;
 }
 
 export function PlayerView({
+  isHomePage = false,
   selectedProfile,
   selectedFile,
   initialClip,
   initialSong,
   initialStateParam,
   onFileSelect,
+  googleDriveFolderId,
+  files = [],
+  filesLoading = false,
+  filesError = null,
+  refetchFiles = () => {},
+  sortField = "date",
+  sortDirection = "desc",
+  cycleSort = () => {},
 }: PlayerViewProps) {
   const [isLoadingStems, setIsLoadingStems] = useState(false);
   const [wasInitiallyProcessing, setWasInitiallyProcessing] = useState(false);
@@ -180,10 +200,11 @@ export function PlayerView({
   );
 
   const isOnDetailView = isOnSongRoute || isOnClipRoute || !!selectedFile;
+  const showPlayerArea = isOnDetailView || isHomePage;
 
   return (
     <main
-      className={`player-area ${isOnDetailView ? "block" : "md:block hidden"}`}
+      className={`player-area ${showPlayerArea ? "block" : "md:block hidden"}`}
     >
       {isOnSongRoute ? (
         songClipsLoading ? (
@@ -357,6 +378,20 @@ export function PlayerView({
             />
           </>
         )
+      ) : isHomePage && selectedProfile ? (
+        <HomePageView
+          profileName={selectedProfile}
+          googleDriveFolderId={googleDriveFolderId}
+          files={files}
+          filesLoading={filesLoading}
+          filesError={filesError}
+          refetchFiles={refetchFiles}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          cycleSort={cycleSort}
+          selectedFileName={selectedFile?.name || null}
+          onFileSelect={onFileSelect}
+        />
       ) : (
         <div className="empty-state">
           <p>Select a recording to start playing</p>

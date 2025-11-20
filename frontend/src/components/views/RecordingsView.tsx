@@ -6,6 +6,7 @@ import type { RecordingWithStems } from "@/api/generated";
 import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 
 interface RecordingsViewProps {
+  layout?: "sidebar" | "grid";
   files: RecordingWithStems[] | undefined;
   isLoading: boolean;
   error: Error | null;
@@ -19,6 +20,7 @@ interface RecordingsViewProps {
 }
 
 export function RecordingsView({
+  layout = "sidebar",
   files,
   isLoading,
   error,
@@ -65,7 +67,12 @@ export function RecordingsView({
           No processed files yet. Upload a file above or use the CLI.
         </p>
       ) : (
-        <ul className="list-none">
+        <ul
+          className={cn(
+            "list-none",
+            layout === "grid" && "grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+          )}
+        >
           {files.map((file) => {
             const relativeTime = getRelativeTime(file.date_recorded);
             return (
