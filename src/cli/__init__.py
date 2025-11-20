@@ -17,6 +17,7 @@ from ..db.config import get_engine
 from ..db.models import Profile, Recording
 from ..db.operations import delete_recording
 from ..processor.local import process_locally
+from .migrate_drive import migrate_profile_drive_files
 
 app = typer.Typer(
     name="stemset",
@@ -79,6 +80,35 @@ def delete(recording_id: str) -> None:
                 raise typer.Exit(code=1)
 
     asyncio.run(_delete())
+
+
+@app.command("migrate-drive")
+def migrate_drive(
+    profile_name: str,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be updated without making changes"
+    ),
+) -> None:
+    """Match existing uploaded files to Google Drive sources by SHA256 hash.
+
+    For profiles with google_drive_folder_id configured, this command scans
+    the Drive folder recursively, computes SHA256 hashes, and updates AudioFile
+    records that match uploaded files.
+
+    Args:
+        profile_name: Name of the profile to migrate
+        dry_run: If True, report matches without updating database
+    """
+
+    async def _migrate() -> None:
+        config = load_config()
+        try:
+            await migrate_profile_drive_files(profile_name, config, dry_run)
+        except ValueError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_migrate())
 
 
 @app.command("cleanup")

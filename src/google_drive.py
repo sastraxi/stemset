@@ -18,6 +18,7 @@ class DriveFile(BaseModel):
     modifiedTime: str  # ISO 8601 format
     size: int | None = None  # Folders don't have size
     parents: list[str] | None = None
+    sha256Checksum: str | None = None  # SHA256 hash for binary files
 
 
 class DriveFileList(BaseModel):
@@ -86,7 +87,7 @@ class GoogleDriveClient:
 
         params = {
             "q": query,
-            "fields": "files(id,name,mimeType,modifiedTime,size,parents),nextPageToken",
+            "fields": "files(id,name,mimeType,modifiedTime,size,parents,sha256Checksum),nextPageToken",
             "orderBy": "folder,name",
             "pageSize": 100,
         }
@@ -112,7 +113,7 @@ class GoogleDriveClient:
         drive_v3 = await self.aiogoogle.discover("drive", "v3")
         params = {
             "fileId": file_id,
-            "fields": "id,name,mimeType,modifiedTime,size,parents",
+            "fields": "id,name,mimeType,modifiedTime,size,parents,sha256Checksum",
         }
         req = drive_v3.files.get(**params)
         data = await self.aiogoogle.as_user(req, user_creds=self.user_creds)
