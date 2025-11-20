@@ -16,17 +16,54 @@
 }
 
 .upload-sidebar-button:hover {
-  /* border-color: #4a9eff;
-	background: #4a9eff2f; */
   transform: translateY(-3px);
-
-  /* border-color: #ff4a9e;
-	background: #ff4a9e2f;
- */
   border-color: #ff9f43;
   background: #ff9f432f;
-
   box-shadow: 0 6px 6px #ff9f432f;
+}
+
+/* Split Button Specific Styles */
+.upload-split-button {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  height: auto;
+}
+
+.upload-main-action {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  flex: 1;
+  cursor: pointer;
+  height: 100%;
+}
+
+.upload-dropdown-trigger {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.upload-dropdown-trigger button {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.upload-dropdown-trigger button:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .upload-sidebar-button span {

@@ -1,20 +1,40 @@
-import { Upload as UploadIcon } from "lucide-react";
+import { ChevronDown, Mic, Upload as UploadIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { RecordingModal } from "./RecordingModal";
 import { uploadAudioFile } from "@/lib/uploadAudioFile";
 import "./Upload.css";
 
-interface UploadProps {
+export interface UploadDropdownProps {
   profileName: string;
   onUploadComplete: () => void;
   onNavigateToRecording?: (profileName: string, fileName: string) => void;
 }
 
-export function Upload({
+/**
+ * Split button dropdown for uploading files or recording audio.
+ *
+ * Primary action: Upload file (opens file picker)
+ * Dropdown action: Record audio (opens recording modal)
+ *
+ * Features:
+ * - File upload via click or drag-and-drop
+ * - Audio recording via microphone
+ * - Full-screen drag overlay
+ * - Reuses upload logic from uploadAudioFile utility
+ */
+export function UploadDropdown({
   profileName,
   onUploadComplete,
   onNavigateToRecording,
-}: UploadProps) {
+}: UploadDropdownProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -95,8 +115,25 @@ export function Upload({
     }
   };
 
-  const handleClick = () => {
+  const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleRecordClick = () => {
+    setIsRecordingModalOpen(true);
+  };
+
+  const handleRecordingUpload = async (audioBlob: Blob, filename: string) => {
+    const result = await uploadAudioFile(audioBlob, filename, profileName);
+    const { profile_name, output_name } = result;
+
+    // Navigate to recording
+    if (onNavigateToRecording) {
+      onNavigateToRecording(profile_name, output_name);
+    }
+
+    // Trigger refresh
+    onUploadComplete();
   };
 
   return (
@@ -104,18 +141,43 @@ export function Upload({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".wav,.flac,.mp3,.m4a,.aac,.opus,.ogg,.wave"
+        accept=".wav,.flac,.mp3,.m4a,.aac,.opus,.ogg,.wave,.webm"
         onChange={handleFileSelect}
         style={{ display: "none" }}
       />
 
-      {/* Simple upload button in sidebar */}
-      {/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
-      {/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
-      <div className="upload-sidebar-button" onClick={handleClick}>
-        <UploadIcon className="h-6 w-6" />
-        <span>Recording</span>
-      </div>
+      {/* Split button with dropdown */}
+      <DropdownMenu>
+        <div className="upload-sidebar-button upload-split-button">
+          {/* Main button - Upload file */}
+          {/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
+          {/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
+          <div className="upload-main-action" onClick={handleUploadClick}>
+            <UploadIcon className="h-6 w-6" />
+            <span>Recording</span>
+          </div>
+
+          {/* Dropdown trigger */}
+          <div className="upload-dropdown-trigger">
+            <DropdownMenuTrigger asChild>
+              <button type="button">
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+          </div>
+        </div>
+
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleUploadClick} className="gap-2">
+            <UploadIcon className="h-4 w-4" />
+            Upload File
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleRecordClick} className="gap-2">
+            <Mic className="h-4 w-4" />
+            Record Audio
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Full-screen drop overlay */}
       {isDragging && (
@@ -127,6 +189,14 @@ export function Upload({
           </div>
         </div>
       )}
+
+      {/* Recording Modal */}
+      <RecordingModal
+        isOpen={isRecordingModalOpen}
+        onClose={() => setIsRecordingModalOpen(false)}
+        profileName={profileName}
+        onUpload={handleRecordingUpload}
+      />
     </>
   );
 }

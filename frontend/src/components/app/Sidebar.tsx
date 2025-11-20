@@ -6,7 +6,7 @@ import { ClipsView } from "@/components/views/ClipsView";
 import { RecordingsView } from "@/components/views/RecordingsView";
 import { SongsView } from "@/components/views/SongsView";
 import { DriveView } from "@/components/views/DriveView";
-import { Upload } from "@/components/upload/Upload";
+import { UploadDropdown } from "@/components/upload/UploadDropdown";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SidebarProps {
@@ -55,7 +55,7 @@ export function Sidebar({
       className={`sidebar flex gap-7 flex-col p-7 ${isOnDetailView ? "hidden md:flex" : "flex"}`}
     >
       {selectedProfile && (
-        <Upload
+        <UploadDropdown
           profileName={selectedProfile}
           onUploadComplete={refetchFiles}
           onNavigateToRecording={onNavigateToRecording}

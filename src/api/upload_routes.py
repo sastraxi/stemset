@@ -92,7 +92,7 @@ async def upload_file(
         )
 
     # Validate file extension
-    ALLOWED_EXTENSIONS = {".wav", ".flac", ".mp3", ".m4a", ".aac", ".opus", ".ogg", ".wave"}
+    ALLOWED_EXTENSIONS = {".wav", ".flac", ".mp3", ".m4a", ".aac", ".opus", ".ogg", ".wave", ".webm"}
     file_ext = Path(data.filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise ValidationException(

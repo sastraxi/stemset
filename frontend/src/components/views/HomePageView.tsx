@@ -5,7 +5,7 @@ import { RecordingsView } from "@/components/views/RecordingsView";
 import { ClipsView } from "@/components/views/ClipsView";
 import { SongsView } from "@/components/views/SongsView";
 import { DriveView } from "@/components/views/DriveView";
-import { Upload } from "@/components/upload/Upload";
+import { UploadDropdown } from "@/components/upload/UploadDropdown";
 import type { RecordingWithStems } from "@/api/generated";
 import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 import { getRelativeTime } from "@/lib/utils";
@@ -105,7 +105,7 @@ export function HomePageView({
 
         {/* Upload Button */}
         <div className="home-page-upload">
-          <Upload
+          <UploadDropdown
             profileName={profileName}
             onUploadComplete={refetchFiles}
             onNavigateToRecording={onNavigateToRecording}
