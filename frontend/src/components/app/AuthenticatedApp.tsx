@@ -199,6 +199,7 @@ export function AuthenticatedApp({
           initialSong={initialSong}
           initialStateParam={initialStateParam}
           onFileSelect={handleFileSelect}
+          onNavigateToRecording={handleNavigateToRecording}
           googleDriveFolderId={
             profiles?.find((p) => p.name === selectedProfile)
               ?.google_drive_folder_id

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useConfigPersistence } from "../useConfigPersistence";
+import { useConfigKey } from "../useRecordingConfig";
 import { StereoExpanderConfig } from "@/types";
 
 export interface UseStereoExpanderEffectOptions {
@@ -34,12 +34,12 @@ export function useStereoExpanderEffect({
   recordingId,
 }: UseStereoExpanderEffectOptions): UseStereoExpanderEffectResult {
   // Persist config directly to database
-  const { config, setConfig } = useConfigPersistence({
+  const { config, setConfig } = useConfigKey(
     recordingId,
-    configKey: "stereoExpander",
-    defaultValue: DEFAULT_STEREO_EXPANDER_CONFIG,
-    debounceMs: 500,
-  });
+    "stereoExpander",
+    DEFAULT_STEREO_EXPANDER_CONFIG,
+    500,
+  );
 
   const [isReady, setIsReady] = useState(false);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);

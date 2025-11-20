@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useConfigPersistence } from "../useConfigPersistence";
+import { useConfigKey } from "../useRecordingConfig";
 import type { ParametricEqConfig, ParametricEqBandConfig } from "@/types";
 
 export interface UseParametricEqEffectOptions {
@@ -50,12 +50,12 @@ export function useParametricEqEffect({
   recordingId,
 }: UseParametricEqEffectOptions): UseParametricEqEffectResult {
   // Persist config directly to database
-  const { config, setConfig } = useConfigPersistence({
+  const { config, setConfig } = useConfigKey(
     recordingId,
-    configKey: "parametricEq",
-    defaultValue: DEFAULT_PARAMETRIC_EQ_CONFIG,
-    debounceMs: 500,
-  });
+    "parametricEq",
+    DEFAULT_PARAMETRIC_EQ_CONFIG,
+    500,
+  );
 
   const [isReady, setIsReady] = useState(false);
   const nodesRef = useRef<BiquadFilterNode[]>([]);

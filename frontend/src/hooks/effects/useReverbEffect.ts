@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useConfigPersistence } from "../useConfigPersistence";
+import { useConfigKey } from "../useRecordingConfig";
 import { ReverbConfig } from "@/types";
 
 export interface UseReverbEffectOptions {
@@ -28,12 +28,12 @@ export function useReverbEffect({
   recordingId,
 }: UseReverbEffectOptions): UseReverbEffectResult {
   // Persist config directly to database
-  const { config, setConfig } = useConfigPersistence({
+  const { config, setConfig } = useConfigKey(
     recordingId,
-    configKey: "reverb",
-    defaultValue: DEFAULT_REVERB_CONFIG,
-    debounceMs: 500,
-  });
+    "reverb",
+    DEFAULT_REVERB_CONFIG,
+    500,
+  );
 
   const [isReady, setIsReady] = useState(false);
   const inputNodeRef = useRef<GainNode | null>(null);

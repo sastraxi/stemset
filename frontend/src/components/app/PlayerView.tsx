@@ -29,6 +29,7 @@ interface PlayerViewProps {
   initialSong?: string;
   initialStateParam?: string;
   onFileSelect: (file: RecordingWithStems | null) => void;
+  onNavigateToRecording?: (profileName: string, fileName: string) => void;
   googleDriveFolderId?: string | null;
   files?: RecordingWithStems[];
   filesLoading?: boolean;
@@ -47,6 +48,7 @@ export function PlayerView({
   initialSong,
   initialStateParam,
   onFileSelect,
+  onNavigateToRecording,
   googleDriveFolderId,
   files = [],
   filesLoading = false,
@@ -391,6 +393,7 @@ export function PlayerView({
           cycleSort={cycleSort}
           selectedFileName={selectedFile?.name || null}
           onFileSelect={onFileSelect}
+          onNavigateToRecording={onNavigateToRecording}
         />
       ) : (
         <div className="empty-state">

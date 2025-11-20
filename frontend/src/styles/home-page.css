@@ -25,14 +25,14 @@
   display: flex;
   flex-direction: row;
   gap: 1rem;
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
   align-items: center;
   justify-content: center;
 }
 
 @media (max-width: 768px) {
   .home-page-header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.5rem;
   }
 }
 
@@ -67,6 +67,25 @@
 
 .home-page-drive-button:hover {
   transform: scale(1.1);
+}
+
+/* Upload Section */
+.home-page-upload {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+@media (max-width: 768px) {
+  .home-page-upload {
+    margin-bottom: 2rem;
+  }
+}
+
+/* Override upload button styling for home page */
+.home-page-upload .upload-sidebar-button {
+  max-width: 400px;
+  width: 100%;
 }
 
 /* Tabs */

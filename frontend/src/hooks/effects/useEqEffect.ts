@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useConfigPersistence } from "../useConfigPersistence";
+import { useConfigKey } from "../useRecordingConfig";
 import { EqBand, EqConfig } from "@/types";
 
 export interface UseEqEffectOptions {
@@ -39,12 +39,12 @@ export function useEqEffect({
   recordingId,
 }: UseEqEffectOptions): UseEqEffectResult {
   // Persist config directly to database
-  const { config, setConfig } = useConfigPersistence({
+  const { config, setConfig } = useConfigKey(
     recordingId,
-    configKey: "eq",
-    defaultValue: DEFAULT_EQ_CONFIG,
-    debounceMs: 500,
-  });
+    "eq",
+    DEFAULT_EQ_CONFIG,
+    500,
+  );
 
   const [isReady, setIsReady] = useState(false);
   const nodesRef = useRef<BiquadFilterNode[]>([]);

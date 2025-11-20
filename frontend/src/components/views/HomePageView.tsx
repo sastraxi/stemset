@@ -5,6 +5,7 @@ import { RecordingsView } from "@/components/views/RecordingsView";
 import { ClipsView } from "@/components/views/ClipsView";
 import { SongsView } from "@/components/views/SongsView";
 import { DriveView } from "@/components/views/DriveView";
+import { Upload } from "@/components/upload/Upload";
 import type { RecordingWithStems } from "@/api/generated";
 import type { SortField, SortDirection } from "@/hooks/useSortPreference";
 import { getRelativeTime } from "@/lib/utils";
@@ -57,6 +58,7 @@ interface HomePageViewProps {
   cycleSort: () => void;
   selectedFileName: string | null;
   onFileSelect: (file: RecordingWithStems | null) => void;
+  onNavigateToRecording?: (profileName: string, fileName: string) => void;
 }
 
 export function HomePageView({
@@ -71,6 +73,7 @@ export function HomePageView({
   cycleSort,
   selectedFileName,
   onFileSelect,
+  onNavigateToRecording,
 }: HomePageViewProps) {
   const [activeTab, setActiveTab] = useState<string>("recordings");
 
@@ -98,6 +101,15 @@ export function HomePageView({
               </a>
             </Button>
           )}
+        </div>
+
+        {/* Upload Button */}
+        <div className="home-page-upload">
+          <Upload
+            profileName={profileName}
+            onUploadComplete={refetchFiles}
+            onNavigateToRecording={onNavigateToRecording}
+          />
         </div>
 
         {/* Tabs */}

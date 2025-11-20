@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CompressorConfig } from "@/types";
-import { useConfigPersistence } from "../useConfigPersistence";
+import { useConfigKey } from "../useRecordingConfig";
 
 export interface UseCompressorEffectOptions {
   audioContext: AudioContext | null;
@@ -39,12 +39,12 @@ export function useCompressorEffect({
   recordingId,
 }: UseCompressorEffectOptions): UseCompressorEffectResult {
   // Persist config directly to database
-  const { config, setConfig } = useConfigPersistence({
+  const { config, setConfig } = useConfigKey(
     recordingId,
-    configKey: "compressor",
-    defaultValue: DEFAULT_COMPRESSOR_CONFIG,
-    debounceMs: 500,
-  });
+    "compressor",
+    DEFAULT_COMPRESSOR_CONFIG,
+    500,
+  );
 
   const [isReady, setIsReady] = useState(false);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { debounce } from "lodash-es";
 import type { StemResponse } from "../api/generated/types.gen";
 import type {
   EffectsChainConfig,
@@ -11,7 +12,7 @@ import { useAudioContext } from "../lib/audio/core/useAudioContext";
 import { useAudioEffects } from "./useAudioEffects";
 import type { LoadingMetrics } from "../lib/audio/types";
 import { useAudioBufferLoader } from "../lib/audio/core/useAudioBufferLoader";
-import { useConfigPersistence } from "./useConfigPersistence";
+import { useRecordingConfig } from "./useRecordingConfig";
 import { usePlaybackEngine } from "../lib/audio/core/usePlaybackEngine";
 import type { PlaybackNode } from "../lib/audio/types";
 import { useStemAudioGraph } from "../lib/audio/effects/useStemAudioGraph";
@@ -122,24 +123,38 @@ export function useStemPlayer({
   const masterInput = getMasterInput();
   const masterOutput = getMasterOutput();
 
-  // 2. Persist stem configs (volume, mute, solo) and playback position independently
-  const { config: stemConfigs, setConfig: setStemConfigs } =
-    useConfigPersistence<Record<string, StemUserConfig>>({
-      recordingId,
-      configKey: "stems",
-      defaultValue: {},
-      debounceMs: 500,
-    });
+  // 2. Configuration from backend (React Query cache)
+  const { config, updateConfig } = useRecordingConfig(recordingId);
 
-  const {
-    config: playbackPositionConfig,
-    setConfig: setPlaybackPositionConfig,
-  } = useConfigPersistence<{ position: number }>({
-    recordingId,
-    configKey: "playbackPosition",
-    defaultValue: { position: 0 },
-    debounceMs: 1000, // Longer debounce for playback position
-  });
+  // Ephemeral local state for immediate UI updates
+  const [localStemConfigs, setLocalStemConfigs] = useState<Record<string, StemUserConfig>>({});
+
+  // Debounced save to backend
+  const debouncedSaveStemConfigs = useMemo(
+    () =>
+      debounce((newConfigs: Record<string, StemUserConfig>) => {
+        updateConfig("stems", newConfigs);
+      }, 500),
+    [updateConfig],
+  );
+
+  const debouncedSavePlaybackPosition = useMemo(
+    () =>
+      debounce((position: number) => {
+        updateConfig("playbackPosition", { position });
+      }, 1000),
+    [updateConfig],
+  );
+
+  // Merged config: local ephemeral state overrides backend state
+  const stemConfigs = useMemo(() => {
+    const backendStems = (config.stems as Record<string, StemUserConfig>) ?? {};
+    return { ...backendStems, ...localStemConfigs };
+  }, [config.stems, localStemConfigs]);
+
+  const playbackPositionConfig = useMemo(() => {
+    return (config.playbackPosition as { position: number }) ?? { position: 0 };
+  }, [config.playbackPosition]);
 
   // 3. Load audio buffers
   const {
@@ -243,9 +258,9 @@ export function useStemPlayer({
   // Persist playback position when playback stops or pauses
   useEffect(() => {
     if (isPlaying) return; // Don't save while playing (too many updates)
-    setPlaybackPositionConfig({ position: currentTime });
+    debouncedSavePlaybackPosition(currentTime);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, currentTime]); // Intentionally omit setPlaybackPositionConfig to avoid infinite loop
+  }, [isPlaying, currentTime]); // Intentionally omit debouncedSavePlaybackPosition to avoid infinite loop
 
   // Validate and correct playback position once duration is loaded
   useEffect(() => {
@@ -255,51 +270,59 @@ export function useStemPlayer({
     }
   }, [duration, currentTime, stop]);
 
-  // Stem control actions
+  // Stem control actions (update local state + trigger debounced save)
   const setStemGain = useCallback(
     (stemName: string, gain: number) => {
       const newGain = Math.max(0, Math.min(gain, 2));
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], gain: newGain },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs],
+    [stemConfigs, debouncedSaveStemConfigs],
   );
 
   const resetStemGain = useCallback(
     (stemName: string) => {
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: {
           ...stemConfigs[stemName],
           gain: stems[stemName]?.initialGain ?? 1,
         },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const toggleMute = useCallback(
     (stemName: string) => {
       const currentMuted = stems[stemName]?.muted ?? false;
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], muted: !currentMuted },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const toggleSolo = useCallback(
     (stemName: string) => {
       const currentSoloed = stems[stemName]?.soloed ?? false;
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], soloed: !currentSoloed },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const cycleStemCompression = useCallback(
@@ -316,12 +339,14 @@ export function useStemPlayer({
       const nextIndex = (currentIndex + 1) % compressionLevels.length;
       const nextCompression = compressionLevels[nextIndex];
 
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], compression: nextCompression },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const cycleStemEqLow = useCallback(
@@ -332,12 +357,14 @@ export function useStemPlayer({
       const nextIndex = (currentIndex + 1) % levels.length;
       const nextLevel = levels[nextIndex];
 
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], eqLow: nextLevel },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const cycleStemEqMid = useCallback(
@@ -348,12 +375,14 @@ export function useStemPlayer({
       const nextIndex = (currentIndex + 1) % levels.length;
       const nextLevel = levels[nextIndex];
 
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], eqMid: nextLevel },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   const cycleStemEqHigh = useCallback(
@@ -364,12 +393,14 @@ export function useStemPlayer({
       const nextIndex = (currentIndex + 1) % levels.length;
       const nextLevel = levels[nextIndex];
 
-      setStemConfigs({
+      const newConfigs = {
         ...stemConfigs,
         [stemName]: { ...stemConfigs[stemName], eqHigh: nextLevel },
-      });
+      };
+      setLocalStemConfigs(newConfigs);
+      debouncedSaveStemConfigs(newConfigs);
     },
-    [stemConfigs, setStemConfigs, stems],
+    [stemConfigs, debouncedSaveStemConfigs, stems],
   );
 
   return {
