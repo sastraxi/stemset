@@ -1,5 +1,5 @@
-import { Circle, Mic, Square, Trash2, Upload as UploadIcon } from "lucide-react";
-import { useEffect } from "react";
+import { Circle, Mic, Square, Upload as UploadIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { VuMeter } from "@/components/player/VuMeter";
 import { RecordingWaveform } from "./RecordingWaveform";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useRecordingVuMeter } from "@/hooks/useRecordingVuMeter";
@@ -41,9 +40,15 @@ export function RecordingModal({
 }: RecordingModalProps) {
   const { state, controls } = useAudioRecorder();
   const levels = useRecordingVuMeter(state.mediaStream, state.isRecording);
+  const [waveformResetSignal, setWaveformResetSignal] = useState(0);
 
   const { isRecording, recordingTime, audioBlob, error } = state;
-  const { startRecording, stopRecording, resetRecording } = controls;
+  const { startRecording, stopRecording, resetRecording, reRecord } = controls;
+
+  // Debug: Log recordingTime changes
+  useEffect(() => {
+    console.log("RecordingModal - recordingTime:", recordingTime, "isRecording:", isRecording);
+  }, [recordingTime, isRecording]);
 
   // Show error toast when error occurs
   useEffect(() => {
@@ -82,16 +87,73 @@ export function RecordingModal({
     }
   };
 
-  const handleReset = () => {
-    resetRecording();
-  };
-
   const handleClose = () => {
     if (isRecording) {
       stopRecording();
     }
     resetRecording();
     onClose();
+  };
+
+  // Render VU meter segments
+  const SEGMENT_COUNT = 6;
+
+  const getLitSegments = (level: number): number => {
+    return Math.floor(level * SEGMENT_COUNT);
+  };
+
+  const getSegmentColor = (index: number, isLit: boolean): string => {
+    if (!isLit) return "#1a1a22";
+    if (index < 3) return "#22c55e"; // Green
+    if (index < 5) return "#eab308"; // Yellow
+    return "#ff6b35"; // Red
+  };
+
+  const renderLeftChannel = (level: number) => {
+    const leftLit = getLitSegments(level);
+    return (
+      <div className="flex gap-[3px] items-center">
+        {Array.from({ length: SEGMENT_COUNT }).map((_, i) => {
+          const segmentIndex = SEGMENT_COUNT - 1 - i;
+          const isLit = segmentIndex < leftLit;
+          return (
+            <div
+              key={i}
+              className={`vu-meter-segment ${isLit ? "lit" : ""}`}
+              style={{
+                backgroundColor: getSegmentColor(segmentIndex, isLit),
+                boxShadow: isLit
+                  ? `0 0 8px ${getSegmentColor(segmentIndex, true)}`
+                  : "none",
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderRightChannel = (level: number) => {
+    const rightLit = getLitSegments(level);
+    return (
+      <div className="flex gap-[3px] items-center">
+        {Array.from({ length: SEGMENT_COUNT }).map((_, i) => {
+          const isLit = i < rightLit;
+          return (
+            <div
+              key={i}
+              className={`vu-meter-segment ${isLit ? "lit" : ""}`}
+              style={{
+                backgroundColor: getSegmentColor(i, isLit),
+                boxShadow: isLit
+                  ? `0 0 8px ${getSegmentColor(i, true)}`
+                  : "none",
+              }}
+            />
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -110,48 +172,53 @@ export function RecordingModal({
         </DialogHeader>
 
         <div className="recording-modal-content">
-          {/* Timer and Status */}
-          <div className="recording-status">
-            {isRecording && (
-              <div className="recording-indicator">
-                <Circle className="recording-pulse" fill="currentColor" />
-                <span className="recording-text">RECORDING</span>
+          {/* Integrated VCR Display - VU Meters flanking Timecode */}
+          <div className="recording-vcr-display">
+            {/* VU Meters and Timecode Row */}
+            <div className="recording-vcr-status">
+              {/* Left Channel VU Meter */}
+              {(isRecording || audioBlob) && (
+                <div className="recording-vu-left">
+                  {renderLeftChannel(levels.left)}
+                </div>
+              )}
+
+              {/* Center: Timecode with Recording Indicator */}
+              <div className="recording-vcr-center">
+                <div className="recording-indicator-slot">
+                  {isRecording && (
+                    <div className="recording-indicator">
+                      <Circle className="recording-pulse" fill="currentColor" />
+                      <span className="recording-text">REC</span>
+                    </div>
+                  )}
+                </div>
+                <div className="recording-timer">{formatTime(recordingTime)}</div>
               </div>
-            )}
-            <div className="recording-timer">{formatTime(recordingTime)}</div>
-          </div>
 
-          {/* VU Meter */}
-          {(isRecording || audioBlob) && (
-            <div className="recording-vu-container">
-              <VuMeter levels={levels} />
+              {/* Right Channel VU Meter */}
+              {(isRecording || audioBlob) && (
+                <div className="recording-vu-right">
+                  {renderRightChannel(levels.right)}
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Waveform */}
-          <div className="recording-waveform-container">
-            <RecordingWaveform
-              mediaStream={state.mediaStream}
-              isRecording={isRecording}
-              width={600}
-              height={100}
-            />
+            {/* Waveform - Integrated below */}
+            <div className="recording-waveform-container">
+              <RecordingWaveform
+                mediaStream={state.mediaStream}
+                isRecording={isRecording}
+                recordingTime={recordingTime}
+                resetSignal={waveformResetSignal}
+              />
+            </div>
           </div>
 
           {/* Error Display */}
           {error && (
             <div className="recording-error">
               <p>{error}</p>
-            </div>
-          )}
-
-          {/* Instructions */}
-          {!isRecording && !audioBlob && (
-            <div className="recording-instructions">
-              <p>Click "Start Recording" to begin</p>
-              <p className="text-sm text-muted-foreground">
-                You'll be asked for microphone permission on first use
-              </p>
             </div>
           )}
         </div>
@@ -176,13 +243,20 @@ export function RecordingModal({
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={handleReset} className="gap-2">
-                <Trash2 className="h-4 w-4" />
-                Reset
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setWaveformResetSignal((prev) => prev + 1);
+                  await reRecord();
+                }}
+                className="gap-2"
+              >
+                <Mic className="h-4 w-4" />
+                Re-record
               </Button>
               <Button onClick={handleSaveRecording} className="gap-2">
                 <UploadIcon className="h-4 w-4" />
-                Save Recording
+                Process
               </Button>
             </>
           )}

@@ -1,36 +1,99 @@
-/* Recording Modal Styles */
+/* Recording Modal Styles - Retro-Funk High-Tech Aesthetic */
 
+/* Main Modal Content */
 .recording-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   padding: 1rem 0;
 }
 
-/* Status Bar */
-.recording-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Integrated VCR Display Container */
+.recording-vcr-display {
+  background: linear-gradient(135deg, rgba(25, 25, 35, 0.6) 0%, rgba(15, 15, 25, 0.8) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 10px;
+  border: 1px solid rgba(100, 120, 180, 0.25);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  position: relative;
 }
 
+/* Subtle accent line at top */
+.recording-vcr-display::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(74, 158, 255, 0.3) 50%,
+    transparent 100%
+  );
+  z-index: 1;
+}
+
+/* VCR Status Row - VU Meters flanking Timecode */
+.recording-vcr-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  gap: 2rem;
+  position: relative;
+}
+
+/* Left VU Meter Channel */
+.recording-vu-left {
+  display: flex;
+  align-items: center;
+}
+
+/* Center Section - Timecode and Recording Indicator */
+.recording-vcr-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 180px;
+}
+
+/* Recording Indicator Slot - Always reserves space */
+.recording-indicator-slot {
+  height: 1rem; /* Reserve space for the indicator */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Right VU Meter Channel */
+.recording-vu-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Recording Indicator - LED-style */
 .recording-indicator {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   color: #ef4444;
   font-weight: 600;
-  font-size: 0.875rem;
-  letter-spacing: 0.05em;
+  font-size: 0.625rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
+/* Pulsing LED circle */
 .recording-pulse {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
+  filter: drop-shadow(0 0 4px currentColor);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -39,50 +102,92 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.25;
   }
 }
 
-.recording-text {
-  text-transform: uppercase;
-}
-
+/* Timer - Monospace VCR-style */
 .recording-timer {
-  font-family: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #e8e8e8;
-  letter-spacing: 0.1em;
+  font-family: "Share Tech Mono", "SF Mono", "Monaco", "Inconsolata", monospace;
+  font-size: 2rem;
+  font-weight: 300;
+  color: #d8d8e8;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px rgba(74, 158, 255, 0.3);
 }
 
-/* VU Meter Container */
-.recording-vu-container {
-  display: flex;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
+/* VU meter segments in recording modal */
+.recording-vu-left .vu-meter-segment,
+.recording-vu-right .vu-meter-segment {
+  width: 8px;
+  height: 42px;
+  border-radius: 2px;
+  background-color: #1a1a22;
+  border: 1px solid rgba(100, 120, 180, 0.15);
+  transition: all 0.1s ease-out;
 }
 
-/* Waveform Container */
+.recording-vu-left .vu-meter-segment.lit,
+.recording-vu-right .vu-meter-segment.lit {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Waveform Container - Integrated with VCR display */
 .recording-waveform-container {
   width: 100%;
-  aspect-ratio: 6 / 1;
-  min-height: 100px;
+  min-height: 200px;
+  border-top: 1px solid rgba(100, 120, 180, 0.15);
+  background: #191923;
+  position: relative;
+}
+
+/* Subtle divider line */
+.recording-waveform-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(74, 158, 255, 0.2) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.recording-waveform-wrapper {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  overflow: hidden;
+  background: #191923;
+  position: relative;
+}
+
+.recording-waveform {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* Error Display */
 .recording-error {
   padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 6px;
   color: #fca5a5;
+  box-shadow: inset 0 1px 0 rgba(239, 68, 68, 0.1);
 }
 
 .recording-error p {
   margin: 0;
   font-size: 0.875rem;
+  letter-spacing: 0.02em;
 }
 
 /* Instructions */
@@ -94,10 +199,146 @@
 
 .recording-instructions p {
   margin: 0.5rem 0;
+  letter-spacing: 0.02em;
 }
 
 .recording-instructions p:first-child {
   font-size: 1rem;
-  color: #e8e8e8;
+  color: #b8c2d8;
   font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* Button Overrides - Orange retro-funk style */
+.recording-modal .dialog-footer {
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+}
+
+/* Primary action buttons - Orange with glow */
+.recording-modal button[data-recording="true"],
+.recording-modal button:has(.lucide-mic),
+.recording-modal button:has(.lucide-upload) {
+  background: linear-gradient(180deg, rgba(40, 45, 60, 0.4) 0%, rgba(25, 30, 40, 0.6) 100%);
+  border: 2px solid #ff8833;
+  color: #ffaa66;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  min-height: 2.75rem;
+  padding: 0 1.5rem;
+  border-radius: 6px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.recording-modal button[data-recording="true"]:hover,
+.recording-modal button:has(.lucide-mic):hover,
+.recording-modal button:has(.lucide-upload):hover {
+  background: linear-gradient(180deg, rgba(60, 70, 90, 0.5) 0%, rgba(40, 50, 60, 0.7) 100%);
+  border-color: #ffaa66;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    0 0 12px rgba(255, 136, 51, 0.3);
+  transform: translateY(-1px);
+}
+
+.recording-modal button[data-recording="true"]:active,
+.recording-modal button:has(.lucide-mic):active,
+.recording-modal button:has(.lucide-upload):active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Stop button - Red with intensity */
+.recording-modal button:has(.lucide-square) {
+  background: linear-gradient(180deg, rgba(60, 30, 30, 0.4) 0%, rgba(40, 20, 20, 0.6) 100%);
+  border: 2px solid #ef4444;
+  color: #fca5a5;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  min-height: 2.75rem;
+  padding: 0 1.5rem;
+  border-radius: 6px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 100, 100, 0.05);
+  transition: all 0.15s ease;
+}
+
+.recording-modal button:has(.lucide-square):hover {
+  background: linear-gradient(180deg, rgba(80, 40, 40, 0.5) 0%, rgba(60, 30, 30, 0.7) 100%);
+  border-color: #fca5a5;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    0 0 12px rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Secondary buttons - Subtle with blue tint */
+.recording-modal button[variant="outline"],
+.recording-modal button:has(.lucide-trash-2) {
+  background: linear-gradient(180deg, rgba(40, 45, 60, 0.3) 0%, rgba(25, 30, 40, 0.5) 100%);
+  border: 1px solid rgba(100, 120, 180, 0.3);
+  color: #b8c2d8;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  min-height: 2.75rem;
+  padding: 0 1.5rem;
+  border-radius: 6px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.15s ease;
+}
+
+.recording-modal button[variant="outline"]:hover,
+.recording-modal button:has(.lucide-trash-2):hover {
+  background: linear-gradient(180deg, rgba(60, 70, 90, 0.4) 0%, rgba(40, 50, 65, 0.6) 100%);
+  border-color: rgba(120, 150, 220, 0.4);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    0 0 12px rgba(100, 150, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Disabled state */
+.recording-modal button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .recording-vcr-status {
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+  }
+
+  .recording-vcr-center {
+    min-width: 150px;
+  }
+
+  .recording-timer {
+    font-size: 1.5rem;
+  }
+
+  .recording-vcr-status .vu-meter-segment {
+    width: 6px;
+    height: 32px;
+  }
+
+  .recording-waveform-container {
+    min-height: 150px;
+  }
+
+  .recording-modal button {
+    min-height: 2.5rem;
+    padding: 0 1.25rem;
+    font-size: 0.875rem;
+  }
 }

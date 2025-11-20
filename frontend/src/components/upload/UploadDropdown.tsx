@@ -168,10 +168,6 @@ export function UploadDropdown({
         </div>
 
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleUploadClick} className="gap-2">
-            <UploadIcon className="h-4 w-4" />
-            Upload File
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleRecordClick} className="gap-2">
             <Mic className="h-4 w-4" />
             Record Audio

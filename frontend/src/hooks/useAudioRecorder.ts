@@ -12,6 +12,7 @@ export interface AudioRecorderControls {
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   resetRecording: () => void;
+  reRecord: () => Promise<void>;
 }
 
 /**
@@ -45,16 +46,26 @@ export function useAudioRecorder(): {
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log("🎬 isRecording state changed:", isRecording);
+  }, [isRecording]);
+
+  useEffect(() => {
+    console.log("📊 recordingTime state updated:", recordingTime);
+  }, [recordingTime]);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<number | null>(null);
 
   /**
    * Start recording audio from the user's microphone.
    * Requests permission on first use.
    */
   const startRecording = useCallback(async () => {
+    console.log("🎙️ START RECORDING CALLED");
     try {
       setError(null);
 
@@ -104,13 +115,15 @@ export function useAudioRecorder(): {
 
       // Handle recording stop
       mediaRecorder.onstop = () => {
+        console.log("🛑 MediaRecorder ONSTOP fired!");
         const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setIsRecording(false);
 
         // Stop timer
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
+        if (timerIntervalRef.current !== null) {
+          console.log("⏹️ Clearing interval:", timerIntervalRef.current);
+          window.clearInterval(timerIntervalRef.current);
           timerIntervalRef.current = null;
         }
 
@@ -129,14 +142,23 @@ export function useAudioRecorder(): {
       // Start recording
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
+
+      const now = Date.now();
+      startTimeRef.current = now;
+      console.log("⏰ Starting timer - startTime:", now);
+
       setIsRecording(true);
       setRecordingTime(0);
-      startTimeRef.current = Date.now();
 
       // Start timer (update every 100ms for smooth UI)
-      timerIntervalRef.current = setInterval(() => {
-        setRecordingTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      const intervalId = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        console.log("⏱️ Timer tick:", elapsed, "startTime:", startTimeRef.current);
+        setRecordingTime(elapsed);
       }, 100);
+
+      timerIntervalRef.current = intervalId;
+      console.log("✅ Interval started with ID:", intervalId);
 
     } catch (err) {
       console.error("Failed to start recording:", err);
@@ -177,8 +199,8 @@ export function useAudioRecorder(): {
     }
 
     // Clear timer
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
+    if (timerIntervalRef.current !== null) {
+      window.clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
 
@@ -197,20 +219,51 @@ export function useAudioRecorder(): {
     mediaRecorderRef.current = null;
   }, [isRecording, mediaStream]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount ONLY (no dependencies to avoid running on state changes)
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current && isRecording) {
+      console.log("🧹 CLEANUP EFFECT RUNNING (unmount only)");
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        console.log("🧹 Cleanup stopping mediaRecorder");
         mediaRecorderRef.current.stop();
       }
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
+      if (timerIntervalRef.current !== null) {
+        console.log("🧹 Cleanup clearing interval");
+        window.clearInterval(timerIntervalRef.current);
       }
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
-      }
+      // Note: mediaStream cleanup handled in onstop handler
     };
-  }, [isRecording, mediaStream]);
+  }, []); // Empty deps = only run on mount/unmount
+
+  /**
+   * Re-record: Reset and immediately start a new recording.
+   */
+  const reRecord = useCallback(async () => {
+    // First reset everything
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (timerIntervalRef.current !== null) {
+      window.clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+    }
+
+    setIsRecording(false);
+    setRecordingTime(0);
+    setAudioBlob(null);
+    setMediaStream(null);
+    setError(null);
+    chunksRef.current = [];
+    mediaRecorderRef.current = null;
+
+    // Then start a new recording
+    await startRecording();
+  }, [isRecording, mediaStream, startRecording]);
 
   return {
     state: {
@@ -224,6 +277,7 @@ export function useAudioRecorder(): {
       startRecording,
       stopRecording,
       resetRecording,
+      reRecord,
     },
   };
 }
