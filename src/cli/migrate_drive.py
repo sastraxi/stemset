@@ -111,7 +111,7 @@ async def collect_drive_files(
 
 
 async def migrate_profile_drive_files(
-    profile_name: str, config: Config, dry_run: bool = False
+    profile_name: str, config: Config, dry_run: bool = False, verbose: bool = False
 ) -> None:
     """Migrate uploaded files to Drive sources for a profile.
 
@@ -119,6 +119,7 @@ async def migrate_profile_drive_files(
         profile_name: Name of the profile to migrate
         config: Application configuration
         dry_run: If True, report matches without updating database
+        verbose: If True, show detailed file listings for debugging
 
     Raises:
         ValueError: If profile not found or missing Drive folder configuration
@@ -166,6 +167,19 @@ async def migrate_profile_drive_files(
         )
         typer.echo(f"✓ Found {len(hash_to_drive_file)} unique Drive files with SHA256 hashes\n")
 
+        # Show Drive files if verbose
+        if verbose:
+            typer.echo("=" * 60)
+            typer.echo("Drive Files Found (with SHA256):")
+            typer.echo("=" * 60)
+            for hash_val, drive_file in sorted(
+                hash_to_drive_file.items(), key=lambda x: x[1].name
+            ):
+                typer.echo(f"  {drive_file.name}")
+                typer.echo(f"    Hash: {hash_val[:16]}...")
+                typer.echo(f"    Full: {hash_val}")
+            typer.echo()
+
         # Get all AudioFiles for this profile that are uploads or local scans
         audio_stmt = select(AudioFile).where(
             AudioFile.profile_id == profile.id,
@@ -178,11 +192,15 @@ async def migrate_profile_drive_files(
 
         # Match and update
         typer.echo("Matching files by SHA256 hash...")
+        unmatched_details: list[tuple[str, str]] = []
         for audio_file in audio_files:
             drive_file = hash_to_drive_file.get(audio_file.file_hash)
 
             if not drive_file:
                 stats.unmatched_uploads += 1
+                unmatched_details.append(
+                    (audio_file.filename, audio_file.file_hash[:16])
+                )
                 continue
 
             # Match found!
@@ -216,6 +234,17 @@ async def migrate_profile_drive_files(
             typer.echo("\n✓ Database updated successfully")
         else:
             typer.echo("\n[DRY RUN] No changes committed")
+
+        # Show unmatched files
+        if unmatched_details:
+            typer.echo("\n" + "=" * 60)
+            typer.echo("Unmatched Uploaded Files (no Drive match found):")
+            typer.echo("=" * 60)
+            for filename, hash_prefix in unmatched_details[:20]:
+                typer.echo(f"  {filename}")
+                typer.echo(f"    Hash: {hash_prefix}...")
+            if len(unmatched_details) > 20:
+                typer.echo(f"  ... and {len(unmatched_details) - 20} more")
 
     # Print summary
     stats.print_summary()

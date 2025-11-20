@@ -88,6 +88,9 @@ def migrate_drive(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be updated without making changes"
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed file listings for debugging"
+    ),
 ) -> None:
     """Match existing uploaded files to Google Drive sources by SHA256 hash.
 
@@ -98,12 +101,13 @@ def migrate_drive(
     Args:
         profile_name: Name of the profile to migrate
         dry_run: If True, report matches without updating database
+        verbose: If True, show detailed file listings
     """
 
     async def _migrate() -> None:
         config = load_config()
         try:
-            await migrate_profile_drive_files(profile_name, config, dry_run)
+            await migrate_profile_drive_files(profile_name, config, dry_run, verbose)
         except ValueError as e:
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1)

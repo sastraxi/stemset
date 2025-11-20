@@ -5,7 +5,8 @@ Usage:
     python scripts/migrate_drive.py <profile_name>                  # Uses .env (default)
     python scripts/migrate_drive.py <profile_name> .env.production  # Uses specific env file
     python scripts/migrate_drive.py <profile_name> --dry-run        # Dry run with .env
-    python scripts/migrate_drive.py <profile_name> .env.production --dry-run  # Dry run with specific env
+    python scripts/migrate_drive.py <profile_name> --verbose        # Show detailed file listings
+    python scripts/migrate_drive.py <profile_name> .env.production --dry-run --verbose
 """
 
 from __future__ import annotations
@@ -28,11 +29,14 @@ if len(sys.argv) < 2:
 profile_name = sys.argv[1]
 env_file = ".env"
 dry_run = False
+verbose = False
 
 # Parse remaining arguments
 for arg in sys.argv[2:]:
     if arg == "--dry-run":
         dry_run = True
+    elif arg in ("--verbose", "-v"):
+        verbose = True
     elif arg.startswith(".env"):
         env_file = arg
 
@@ -53,7 +57,7 @@ async def main() -> None:
     """Run the migration."""
     config = load_config()
     try:
-        await migrate_profile_drive_files(profile_name, config, dry_run)
+        await migrate_profile_drive_files(profile_name, config, dry_run, verbose)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

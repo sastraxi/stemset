@@ -77,6 +77,9 @@ class GoogleDriveClient:
             "audio/aac",
             "audio/opus",
             "audio/ogg",
+            "audio/m4a",
+            "audio/x-m4a",
+            "audio/x-aac",
         ]
         query_parts = [
             f"'{folder_id}' in parents",

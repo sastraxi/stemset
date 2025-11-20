@@ -32,6 +32,8 @@ def prepare_success_payload(
         audio_path = output_dir / stem_meta.stem_url
         file_size_bytes = audio_path.stat().st_size if audio_path.exists() else 0
 
+        print(f"[CALLBACK] {stem_name}: lufs={stem_meta.measured_lufs}, peak={stem_meta.peak_amplitude}, gain={stem_meta.stem_gain_adjustment_db}, duration={duration}")
+
         stem_data_list.append(
             StemData(
                 stem_type=stem_name,
@@ -45,11 +47,15 @@ def prepare_success_payload(
             )
         )
 
-    return ProcessingCallbackPayload(
+    payload = ProcessingCallbackPayload(
         status="complete",
         stems=[StemDataModel(**stem) for stem in stem_data_list],
         clip_boundaries=clip_boundaries,
     )
+
+    print(f"[CALLBACK] Payload: {[(s.stem_type, s.measured_lufs, s.peak_amplitude) for s in (payload.stems or [])]}")
+
+    return payload
 
 
 def prepare_error_payload(error: Exception | str) -> ProcessingCallbackPayload:
