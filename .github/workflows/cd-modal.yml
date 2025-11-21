@@ -34,6 +34,10 @@ jobs:
         run: |
           uv sync --frozen
 
-      - name: Deploy job
+      - name: Deploy worker
         run: |
           uv run modal deploy src/processor/worker.py
+
+      - name: Deploy webhook manager
+        run: |
+          uv run modal deploy src/processor/webhook_manager.py

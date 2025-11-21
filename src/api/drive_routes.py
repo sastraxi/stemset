@@ -330,3 +330,158 @@ async def import_drive_file(
     finally:
         if temp_path and temp_path.exists():
             temp_path.unlink(missing_ok=True)
+
+
+@post("/api/webhooks/drive")
+async def receive_drive_webhook(
+    request: AppRequest,
+    state: AppState,
+) -> dict[str, str]:
+    """Receive Google Drive push notifications for file changes.
+
+    This endpoint receives notifications when files are added/modified/deleted in
+    watched Drive folders. We filter for new file additions and auto-import them.
+
+    Google Drive sends these headers:
+    - X-Goog-Channel-ID: Our channel UUID
+    - X-Goog-Resource-State: sync|add|update|trash|change
+    - X-Goog-Resource-ID: Opaque resource ID
+    - X-Goog-Changed: properties|content|parents (optional, for changes)
+
+    Args:
+        request: HTTP request with Drive webhook headers
+        state: Application state
+
+    Returns:
+        Success acknowledgment
+
+    Note:
+        This endpoint is excluded from JWT authentication.
+        Google Drive expects a 200 OK response within a few seconds.
+        We acknowledge immediately and process asynchronously.
+    """
+    headers = request.headers
+
+    # Extract webhook headers
+    channel_id = headers.get("x-goog-channel-id")
+    resource_state = headers.get("x-goog-resource-state")
+    resource_id = headers.get("x-goog-resource-id")
+
+    if not channel_id or not resource_state:
+        print("Warning: Received Drive webhook without required headers")
+        return {"status": "ignored"}
+
+    # Ignore sync notifications (initial handshake)
+    if resource_state == "sync":
+        print(f"Drive webhook sync received for channel {channel_id}")
+        return {"status": "ok"}
+
+    print(f"Drive webhook received: channel={channel_id}, state={resource_state}, resource={resource_id}")
+
+    # We only care about new file additions
+    # For "change" events, Google doesn't tell us what changed, so we'd need to poll
+    # the folder to detect new files. For now, stick to "add" events only.
+    if resource_state != "add":
+        print(f"Ignoring non-add event: {resource_state}")
+        return {"status": "ignored"}
+
+    # Look up subscription to find profile
+    engine = get_engine()
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        from ..db.models import DriveWebhookSubscription
+
+        subscription_stmt = (
+            select(DriveWebhookSubscription, Profile)
+            .join(Profile, DriveWebhookSubscription.profile_id == Profile.id)  # pyright: ignore[reportArgumentType]
+            .where(DriveWebhookSubscription.channel_id == channel_id)
+            .where(DriveWebhookSubscription.is_active == True)  # noqa: E712
+        )
+        subscription_result = await session.exec(subscription_stmt)
+        subscription_data = subscription_result.first()
+
+        if not subscription_data:
+            print(f"Warning: No active subscription found for channel {channel_id}")
+            return {"status": "ignored"}
+
+        subscription, profile = subscription_data
+
+        # Get user refresh token from profile owner
+        # Assumes first user associated with profile has Drive access
+        user_profile_stmt = (
+            select(User)
+            .join(
+                User.profiles,  # pyright: ignore[reportArgumentType]
+            )
+            .where(Profile.id == profile.id)  # pyright: ignore[reportAttributeAccessIssue]
+        )
+        user_result = await session.exec(user_profile_stmt)
+        user = user_result.first()
+
+        if not user or not user.google_refresh_token:
+            print(f"Warning: No user with refresh token for profile {profile.name}")
+            return {"status": "error", "message": "No user refresh token"}
+
+        # Fetch folder contents to find new files
+        drive_client = GoogleDriveClient(state.config, user.google_refresh_token)
+        drive_files = await drive_client.list_folder_contents(subscription.drive_folder_id)
+
+        # Filter to audio files only (folders already filtered by list_folder_contents)
+        audio_files = [f for f in drive_files.files if not f.mimeType.startswith("application/")]
+
+        # Check which ones are not imported
+        file_ids = [f.id for f in audio_files]
+        imported_stmt = select(AudioFile.source_id).where(  # pyright: ignore[reportAttributeAccessIssue]
+            AudioFile.profile_id == profile.id,
+            AudioFile.source_type == "google_drive",
+            AudioFile.source_id.in_(file_ids),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownArgumentType, reportUnknownMemberType]
+        )
+        imported_result = await session.exec(imported_stmt)
+        imported_ids = {source_id for source_id in imported_result.all()}
+
+        # Find new files
+        new_files = [f for f in audio_files if f.id not in imported_ids]
+
+        if not new_files:
+            print(f"No new audio files found in folder {subscription.drive_folder_id}")
+            return {"status": "ok", "message": "No new files"}
+
+        print(f"Found {len(new_files)} new audio files to auto-import")
+
+        # Import each new file
+        imported_count = 0
+        for drive_file in new_files:
+            try:
+                # Use existing import logic
+                import_request = DriveImportRequest(
+                    file_id=drive_file.id,
+                    file_name=drive_file.name,
+                    file_size=drive_file.size or 0,
+                    modified_time=drive_file.modifiedTime,
+                    parent_id=drive_file.parents[0] if drive_file.parents else None,
+                )
+
+                # Create a mock request with user context for import
+                import_response = await import_drive_file(
+                    profile_name=profile.name,
+                    data=import_request,
+                    state=state,
+                    request=request._replace(user=user),  # pyright: ignore[reportAttributeAccessIssue]
+                )
+
+                print(
+                    f"Auto-imported {drive_file.name} → {import_response.output_name} "
+                    f"(recording_id={import_response.recording_id})"
+                )
+                imported_count += 1
+
+            except Exception as e:
+                print(f"Error auto-importing {drive_file.name}: {e}")
+                # Continue with other files
+                continue
+
+        return {
+            "status": "ok",
+            "message": f"Auto-imported {imported_count} files",
+        }
+

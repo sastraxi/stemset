@@ -360,3 +360,36 @@ class RecordingUserConfig(SQLModel, table=True):
         ),
         sa.Index("idx_user_recording_configs", "user_id", "recording_id"),
     )
+
+
+class DriveWebhookSubscription(SQLModel, table=True):
+    """Google Drive webhook subscription for auto-import monitoring.
+
+    Tracks active Google Drive push notification channels per profile.
+    Google Drive webhooks expire after max 24 hours, requiring periodic renewal.
+    """
+
+    __tablename__: ClassVar[Any] = "drive_webhook_subscriptions"
+
+    id: UUID = Field(default_factory=new_uuid, primary_key=True)
+    profile_id: UUID = Field(foreign_key="profiles.id", index=True)
+
+    # Google Drive API subscription identifiers
+    channel_id: str = Field(unique=True, index=True)  # UUID we generate
+    resource_id: str  # Opaque ID returned by Drive API
+    drive_folder_id: str  # Which folder we're watching
+
+    # Subscription lifecycle
+    expiration_time: datetime = Field(sa_column=Column(sa.DateTime(timezone=True), nullable=False))
+    is_active: bool = Field(default=True, index=True)
+
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_column=Column(sa.DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(sa.DateTime(timezone=True), nullable=False, onupdate=utc_now),
+    )
+
+    # Relationships
+    profile: "Profile" = Relationship(sa_relationship_kwargs={"lazy": "noload"})
