@@ -1,11 +1,5 @@
-import { ChevronDown, Mic, Upload as UploadIcon } from "lucide-react";
+import { Mic, Upload as UploadIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { RecordingModal } from "./RecordingModal";
 import { uploadAudioFile } from "@/lib/uploadAudioFile";
 import "./Upload.css";
@@ -146,34 +140,25 @@ export function UploadDropdown({
         style={{ display: "none" }}
       />
 
-      {/* Split button with dropdown */}
-      <DropdownMenu>
-        <div className="upload-sidebar-button upload-split-button">
-          {/* Main button - Upload file */}
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
-          {/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
-          <div className="upload-main-action" onClick={handleUploadClick}>
-            <UploadIcon className="h-6 w-6" />
-            <span>Recording</span>
-          </div>
-
-          {/* Dropdown trigger */}
-          <div className="upload-dropdown-trigger">
-            <DropdownMenuTrigger asChild>
-              <button type="button">
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-          </div>
+      {/* Split button with microphone icon */}
+      <div className="upload-sidebar-button upload-split-button">
+        {/* Main button - Upload file */}
+        {/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
+        {/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
+        <div className="upload-main-action" onClick={handleUploadClick}>
+          <UploadIcon className="h-6 w-6" />
+          <span>Recording</span>
         </div>
 
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleRecordClick} className="gap-2">
-            <Mic className="h-4 w-4" />
-            Record Audio
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        {/* Record button */}
+        {/** biome-ignore lint/a11y/noStaticElementInteractions: WIP */}
+        {/** biome-ignore lint/a11y/useKeyWithClickEvents: WIP */}
+        <div className="upload-dropdown-trigger" onClick={handleRecordClick}>
+          <button type="button">
+            <Mic className="h-6 w-6" />
+          </button>
+        </div>
+      </div>
 
       {/* Full-screen drop overlay */}
       {isDragging && (
